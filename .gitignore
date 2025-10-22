@@ -1,0 +1,25 @@
+# 临时文件
+bin/
+obj/
+.idea/
+assets/
+*.user
+*.suo
+*.vs
+*.vscode
+*.iml
+*.pidb
+*.pdb
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+*.git
+*.gitignore
+*.gitattributes
+*.gitmodules
+*.gitkeep
+*.gitlab-ci.yml
+*.travis.yml
+*.circleci

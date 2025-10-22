@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <Nullable>enable</Nullable>
+        <DuckovPath>G:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovPath>
+        <FileVersion>1.6.2</FileVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\TeamSoda.*" />
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\ItemStatsSystem.dll" />
+        <Reference Include="FMODUnity">
+            <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\FMODUnity.dll</HintPath>
+        </Reference>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\Unity*" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Lib.Harmony" Version="2.4.1" />
+    </ItemGroup>
+</Project>
