@@ -4,6 +4,9 @@ using UnityEngine;
 using System.Reflection;
 using FMOD;
 using Debug = UnityEngine.Debug;
+using Duckov; // AudioManager, AICharacterController, AudioObject, CharacterMainControl
+using DuckovCustomSounds.CustomEnemySounds;
+
 
 namespace DuckovCustomSounds
 {
@@ -15,7 +18,7 @@ namespace DuckovCustomSounds
         public static string ErrorMessage = "";
         public static ChannelGroup SfxGroup;
         public static ChannelGroup MusicGroup;
-        public static bool MusicGroupIsFallback; // 当 MusicGroup 当前指向 SFX 回退时为 true 
+        public static bool MusicGroupIsFallback; // 当 MusicGroup 当前指向 SFX 回退时为 true
         public static ModBehaviour Instance;
 
         // 2. Mod 根文件夹 (方便复用)
@@ -41,9 +44,13 @@ namespace DuckovCustomSounds
                 }
 
                 // 不在初始化阶段获取 Music，总线会在实际播放/预热协程中再解析，避免误判与冗余日志
+                CESLogger.ApplyFileSwitches(ModFolderName);
+
 
                 // 4. 指挥其他模块加载它们自己的资源
                 CustomBGM.CustomBGM.Load();
+                CustomEnemySounds.CustomEnemySounds.Load();
+
 
                 // 5. 应用所有补丁（动态加载 Harmony，避免在缺失 0Harmony.dll 时类型加载失败）
                 var harmonyType = Type.GetType("HarmonyLib.Harmony, 0Harmony");
@@ -58,6 +65,37 @@ namespace DuckovCustomSounds
                     var patchAll = harmonyType.GetMethod("PatchAll", new[] { typeof(Assembly) });
                     patchAll?.Invoke(harmony, new object[] { Assembly.GetExecutingAssembly() });
                     Debug.Log("[CustomSounds] Mod 已加载并应用所有补丁。");
+
+                    // 额外：诊断性输出 - 验证关键补丁的目标方法是否已被 Harmony 标记
+                    try
+                    {
+                        var amPostQuak = typeof(AudioManager).GetMethod("PostQuak", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic, null, new Type[] { typeof(string), typeof(AudioManager.VoiceType), typeof(GameObject) }, null);
+                        var aiInit = typeof(AICharacterController).GetMethod("Init", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public, null, new Type[] { typeof(CharacterMainControl), typeof(Vector3), typeof(AudioManager.VoiceType), typeof(AudioManager.FootStepMaterialType) }, null);
+                        var aoPostQuak = typeof(AudioObject).GetMethod("PostQuak", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, new Type[] { typeof(string) }, null);
+
+                        var getPatchInfo = harmonyType.GetMethod("GetPatchInfo", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                        if (getPatchInfo != null)
+                        {
+                            void logStatus(string name, System.Reflection.MethodBase m)
+                            {
+                                try
+                                {
+                                    var info = m != null ? getPatchInfo.Invoke(null, new object[] { m }) : null;
+                                    Debug.Log($"[CustomSounds] PatchStatus {name}: methodFound={(m!=null)}, patched={(info!=null)}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    Debug.Log($"[CustomSounds] PatchStatus {name}: exception {ex.Message}");
+                                }
+                            }
+
+                            logStatus("AudioManager.PostQuak", amPostQuak);
+                            logStatus("AICharacterController.Init", aiInit);
+                            logStatus("AudioObject.PostQuak", aoPostQuak);
+                        }
+                    }
+                    catch { }
+
                 }
             }
             catch (Exception e)
@@ -70,6 +108,8 @@ namespace DuckovCustomSounds
         public void OnDisable()
         {
 	        Instance = null;
+		        CustomEnemySounds.CustomEnemySounds.Unload();
+
 	        // 6. 指挥其他模块卸载它们自己的资源
 	        CustomBGM.CustomBGM.Unload();
 
@@ -124,15 +164,15 @@ namespace DuckovCustomSounds
 	                        if (sfxRes == RESULT.OK && sfxCg.hasHandle())
 	                        {
 	                            SfxGroup = sfxCg;
-	                            if (!sfxLogged) { Debug.Log("[CustomSounds] 已预热 SFX 总线通道组。"); sfxLogged = true; }
+	                            if (!sfxLogged) { CESLogger.Info("已预热 SFX 总线通道组。"); sfxLogged = true; }
 	                        }
 	                        else if (!sfxLogged)
 	                        {
-	                            Debug.Log($"[CustomSounds] SFX 总线 getChannelGroup 失败: {sfxRes}");
+	                            CESLogger.Info($"SFX 总线 getChannelGroup 失败: {sfxRes}");
 	                            sfxLogged = true;
 	                        }
 	                    }
-	                    catch (Exception ex) { Debug.Log($"[CustomSounds] SFX 总线预热异常: {ex.Message}"); }
+	                    catch (Exception ex) { CESLogger.Info($"SFX 总线预热异常: {ex.Message}"); }
 	                }
 
 	                // 预热 Music（优先多候选路径）
@@ -149,16 +189,16 @@ namespace DuckovCustomSounds
 	                            {
 	                                MusicGroup = cg;
 	                                MusicGroupIsFallback = false;
-	                                if (!musicLogged) { Debug.Log($"[CustomSounds] 已预热 Music 总线: {path}"); musicLogged = true; }
+	                                if (!musicLogged) { CESLogger.Info($"已预热 Music 总线: {path}"); musicLogged = true; }
 	                                break;
 	                            }
 	                            else if (!musicLogged)
 	                            {
-	                                Debug.Log($"[CustomSounds] Music 总线 getChannelGroup 失败 {path}: {cgRes}");
+	                                CESLogger.Info($"Music 总线 getChannelGroup 失败 {path}: {cgRes}");
 	                                // 不置 musicLogged=true，允许后续候选成功时再打一次成功日志
 	                            }
 	                        }
-	                        catch (Exception ex) { Debug.Log($"[CustomSounds] Music 总线预热异常 {path}: {ex.Message}"); }
+	                        catch (Exception ex) { CESLogger.Info($"Music 总线预热异常 {path}: {ex.Message}"); }
 	                    }
 	                }
 
@@ -170,7 +210,7 @@ namespace DuckovCustomSounds
 	            // 预热结束日志
 	            if (!SfxGroup.hasHandle() || !MusicGroup.hasHandle() || MusicGroupIsFallback)
 	            {
-	                Debug.Log($"[CustomSounds] 总线预热结束。SFX:{SfxGroup.hasHandle()} Music:{MusicGroup.hasHandle()} 回退:{MusicGroupIsFallback}");
+	                CESLogger.Info($"总线预热结束。SFX:{SfxGroup.hasHandle()} Music:{MusicGroup.hasHandle()} 回退:{MusicGroupIsFallback}");
 	            }
 	        }
 

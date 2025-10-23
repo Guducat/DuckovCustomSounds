@@ -16,7 +16,7 @@ namespace DuckovCustomSounds.CustomBGM
             if (string.IsNullOrWhiteSpace(name)) return;
             if (name == "mus_title")
             {
-                Debug.Log("[CustomSounds] 拦截到 mus_title（Postfix），先让原版启动以初始化 Music Bus，然后切换到自定义主菜单 BGM...");
+                BGMLogger.Info("拦截到 mus_title（Postfix），先让原版启动以初始化 Music Bus，然后切换到自定义主菜单 BGM...");
                 try { Duckov.AudioManager.StopBGM(); } catch { }
                 CustomBGM.PlayTitleBGM();
             }
@@ -44,10 +44,10 @@ namespace DuckovCustomSounds.CustomBGM
                 {
                     // 加载阶段（原始 play=false），为避免与标题音乐冲突，先停掉当前 BGM（通常是标题曲）
                     CustomBGM.StopCurrentBGM(false);
-                    Debug.Log("[CustomSounds] Load阶段停止标题音乐，避免冲突");
+                    BGMLogger.Info("Load阶段停止标题音乐，避免冲突");
                 }
                 // 重要：不再强制 play=false，允许原版 AudioManager.PlayBGM 执行，以确保 Studio/Music 总线初始化
-                Debug.Log($"[CustomSounds] 拦截到 BaseBGMSelector.Set()：index={index}, play={play}, showInfo={showInfo} → 允许原曲初始化后再切换自定义");
+                BGMLogger.Debug($"拦截到 BaseBGMSelector.Set()：index={index}, play={play}, showInfo={showInfo} → 允许原曲初始化后再切换自定义");
             }
         }
 
@@ -110,23 +110,23 @@ namespace DuckovCustomSounds.CustomBGM
                             }
                             else
                             {
-                                Debug.Log("[CustomSounds] proxy.Pop(string,float) 未找到，已跳过显示信息。");
+                                BGMLogger.Info("proxy.Pop(string,float) 未找到，已跳过显示信息。");
                             }
                         }
                         else
                         {
-                            Debug.Log("[CustomSounds] 无法通过反射获取 BaseBGMSelector.proxy，已跳过显示信息。");
+                            BGMLogger.Info("无法通过反射获取 BaseBGMSelector.proxy，已跳过显示信息。");
                         }
                     }
                     catch (Exception uiEx)
                     {
-                        Debug.LogWarning($"[CustomSounds] ShowInfo 反射失败: {uiEx.Message}");
+                        BGMLogger.Warn($"ShowInfo 反射失败: {uiEx.Message}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogWarning($"[CustomSounds] Set_Postfix 错误: {ex.Message}");
+                BGMLogger.Warn($"Set_Postfix 错误: {ex.Message}");
             }
         }
 
@@ -139,4 +139,23 @@ namespace DuckovCustomSounds.CustomBGM
         [HarmonyPrefix]
         public static bool SetPrevious_Prefix_PassThrough() => true;
     }
+
+        // --- 补丁 3：确保任何触发 AudioManager.StopBGM() 的场景（如场景切换/死亡等）
+        // 都会同步停止自定义 BGM，避免叠加。
+        [HarmonyPatch(typeof(AudioManager))]
+        public static class AudioManagerStopBGMPatch
+        {
+            [HarmonyPatch("StopBGM")]
+            [HarmonyPostfix]
+            public static void StopBGM_Postfix()
+            {
+                try
+                {
+                    CustomBGM.StopCurrentBGM(false);
+                    BGMLogger.Debug("StopBGM 钩子：已停止自定义 BGM 渠道");
+                }
+                catch { }
+            }
+        }
+
 }

@@ -1,6 +1,7 @@
 # 逃离鸭科夫自定义音效Mod
 
-一个为《逃离鸭科夫》(Escape from Duckov) 游戏设计的自定义音效Mod，允许玩家替换游戏中的背景音乐和击杀音效。
+一个为《逃离鸭科夫》(Escape from Duckov) 游戏设计的自定义音效Mod，允许玩家替换游戏中的背景音乐和击杀音效等。
+
 
 ### 自定义背景音乐
 - **主菜单音乐**：替换游戏主菜单的背景音乐
@@ -89,11 +90,28 @@ DuckovCustomSounds/
 ├── CustomBGM/
 │   ├── CustomBGM.cs           # BGM管理器
 │   └── CustomBGM_Patches.cs   # BGM相关补丁
-├── CustomKillSounds/
-│   └── CustomKillSounds.cs    # 击杀音效管理器
+├── CustomEnemySounds/
+│   └── CustomEnemySounds.cs    # 敌方音效管理器
 ├── ModBehaviour.cs            # Mod主控制器
 └── DuckovCustomSounds.csproj  # 项目文件
 ```
+
+---
+
+### 里程碑
+- [x] 自定义主菜单音乐
+- [x] 自定义安全屋背景音乐
+- [x] 安全屋播放音乐时留声机显示歌曲名和作者
+- [x] 自定义搜索/搜出音效 - 由 [@dzj0821](https://steamcommunity.com/profiles/76561198053835373) 的 [物品价值稀有度与搜索音效](https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576) mod提供
+- [x] 自定义击杀音效 - 由 [@F_O_G](https://steamcommunity.com/id/For_Of_Des) 的 [CF击杀反馈](https://steamcommunity.com/sharedfiles/filedetails/?id=3590362366) mod提供
+- [x] 自定义敌方音效(巡逻、惊讶、死亡等)
+- [x] 自定义文本 - 由 [@MajMaj]( ) 的 [三角洲人机语音文本替换、补充人机默认文本](https://steamcommunity.com/sharedfiles/filedetails/?id=3591752102) mod 提供
+- [ ] 自定义脚步
+- [ ] 自定义枪声
+- [ ] 更多可自定义的音效
+
+
+---
 
 ### 贡献指南
 欢迎提交问题报告和功能建议！

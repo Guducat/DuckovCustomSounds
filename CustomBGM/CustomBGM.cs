@@ -37,12 +37,12 @@ namespace DuckovCustomSounds.CustomBGM
             {
                 var result = FMODUnity.RuntimeManager.CoreSystem.createSound(titlePath, MODE.LOOP_NORMAL, out TitleBGMSound);
                 if (result != RESULT.OK) ModBehaviour.ErrorMessage += $"加载 {titlePath} 失败: {result}\n";
-                else Debug.Log($"[CustomSounds] 成功加载 {titlePath}");
+                else BGMLogger.Info($"成功加载 {titlePath}");
             }
             else
             {
                 // 主菜单音乐是可选的，不显示错误信息
-                Debug.Log($"[CustomSounds] 未找到主菜单音乐文件: {titlePath}");
+                BGMLogger.Info($"未找到主菜单音乐文件: {titlePath}");
             }
 
             // --- 加载 HomeBGM 文件夹 (新逻辑) ---
@@ -59,7 +59,7 @@ namespace DuckovCustomSounds.CustomBGM
 
             // 获取文件夹内所有 .mp3 文件（递归搜索）
             string[] musicFiles = Directory.GetFiles(homeBGMPath, "*.mp3");
-            Debug.Log($"[CustomSounds] 在 HomeBGM 中找到 {musicFiles.Length} 首歌曲。");
+            BGMLogger.Info($"在 HomeBGM 中找到 {musicFiles.Length} 首歌曲。");
 
             // 遍历所有找到的音乐文件
             foreach (string filePath in musicFiles)
@@ -76,7 +76,7 @@ namespace DuckovCustomSounds.CustomBGM
                     info.Sound = newSong;
                     // 将解析后的音乐信息添加到播放列表
                     HomeBGMList.Add(info);
-                    Debug.Log($"[CustomSounds] 成功加载 {filePath} → {info.Name} - {info.Author}");
+                    BGMLogger.Info($"成功加载 {filePath} → {info.Name} - {info.Author}");
                 }
                 else ModBehaviour.ErrorMessage += $"加载 {filePath} 失败: {result}\n";
             }
@@ -215,13 +215,13 @@ namespace DuckovCustomSounds.CustomBGM
             if (ModBehaviour.Instance != null && songToPlay.hasHandle())
             {
                 ModBehaviour.Instance.StartCoroutine(WaitForBusThenPlay(songToPlay, false));
-                Debug.Log($"[CustomSounds] 正在请求播放索引 {currentHomeBGMIndex}（延迟路由） -> {info.Name} - {info.Author}");
+                BGMLogger.Debug($"正在请求播放索引 {currentHomeBGMIndex}（延迟路由） -> {info.Name} - {info.Author}");
                 return;
             }
 
             // 兜底：无法启动协程时，直接立即播放
             PlaySoundImmediate(songToPlay);
-            Debug.Log($"[CustomSounds] 正在播放索引 {currentHomeBGMIndex}，曲目句柄有效: {songToPlay.hasHandle()} -> {info.Name} - {info.Author}");
+            BGMLogger.Debug($"正在播放索引 {currentHomeBGMIndex}，曲目句柄有效: {songToPlay.hasHandle()} -> {info.Name} - {info.Author}");
         }
 
         // 播放下一首
@@ -242,18 +242,18 @@ namespace DuckovCustomSounds.CustomBGM
         {
             if (!sound.hasHandle()) return default;
             var group = ResolveBestGroup();
-            if (!group.hasHandle()) { Debug.LogWarning("[CustomSounds] 没有有效的 ChannelGroup；为安全起见在 Core master 上播放。"); }
+            if (!group.hasHandle()) { BGMLogger.Warn("没有有效的 ChannelGroup；为安全起见在 Core master 上播放。"); }
             var result = FMODUnity.RuntimeManager.CoreSystem.playSound(sound, group.hasHandle() ? group : default, false, out var ch);
             if (result == FMOD.RESULT.OK && ch.hasHandle())
             {
                 currentBGMChannel = ch;
                 if (!string.IsNullOrEmpty(_lastResolvedBus))
-                    Debug.Log($"[CustomSounds] BGM 路由到: {_lastResolvedBus}");
+                    BGMLogger.Info($"BGM 路由到: {_lastResolvedBus}");
                 MaybeScheduleRebindToMusicAfterPlay();
             }
             else
             {
-                Debug.LogWarning($"[CustomSounds] 立即播放声音失败: {result}");
+                BGMLogger.Warn($"立即播放声音失败: {result}");
             }
             return currentBGMChannel;
         }
@@ -275,7 +275,7 @@ namespace DuckovCustomSounds.CustomBGM
                             ModBehaviour.MusicGroupIsFallback = false;
                             if (_lastResolvedBus != path)
                             {
-                                Debug.Log($"[CustomSounds] 在播放时解析到 Music bus: {path}");
+                                BGMLogger.Info($"在播放时解析到 Music bus: {path}");
                                 _lastResolvedBus = path;
                             }
                             return cg;
@@ -307,7 +307,7 @@ namespace DuckovCustomSounds.CustomBGM
             {
                 if (_lastResolvedBus != "bus:/Master/SFX")
                 {
-                    Debug.Log("[CustomSounds] 使用 SFX bus（music bus 未就绪）。");
+                    BGMLogger.Info("使用 SFX bus（music bus 未就绪）。");
                     _lastResolvedBus = "bus:/Master/SFX";
                 }
                 return ModBehaviour.SfxGroup;
@@ -321,7 +321,7 @@ namespace DuckovCustomSounds.CustomBGM
                 {
                     if (_lastResolvedBus != "bus:/Master")
                     {
-                        Debug.Log("[CustomSounds] 回退到 Master bus 通道组。");
+                        BGMLogger.Info("回退到 Master bus 通道组。");
                         _lastResolvedBus = "bus:/Master";
                     }
                     return mCg;
@@ -356,12 +356,12 @@ namespace DuckovCustomSounds.CustomBGM
                     if (setRes == FMOD.RESULT.OK)
                     {
                         _lastResolvedBus = "bus:/Master/Music";
-                        Debug.Log("[CustomSounds] 重新绑定播放中的 BGM 到 Music bus。");
+                        BGMLogger.Info("重新绑定播放中的 BGM 到 Music bus。");
                         break;
                     }
                     else
                     {
-                        Debug.LogWarning($"[CustomSounds] 重新绑定 setChannelGroup 失败: {setRes}");
+                        BGMLogger.Warn($"重新绑定 setChannelGroup 失败: {setRes}");
                     }
                 }
                 yield return new UnityEngine.WaitForSeconds(Mathf.Max(0.05f, pollInterval));
@@ -388,7 +388,7 @@ namespace DuckovCustomSounds.CustomBGM
                         ModBehaviour.MusicGroup = cg;
                         ModBehaviour.MusicGroupIsFallback = false;
                         musicOk = true;
-                        Debug.Log("[CustomSounds] (延迟) Music bus 已就绪。");
+                        BGMLogger.Info("(延迟) Music bus 已就绪。");
                         break;
                     }
                     else if (res == FMOD.RESULT.ERR_STUDIO_NOT_LOADED)
@@ -403,7 +403,7 @@ namespace DuckovCustomSounds.CustomBGM
             // 第二阶段：Home BGM 不落到 SFX，继续等待直至 Music 可用为止
             if (requireMusic && !musicOk)
             {
-                Debug.Log("[CustomSounds] Home BGM 将等待 Music bus 就绪（不使用 SFX 回退）。");
+                BGMLogger.Info("Home BGM 将等待 Music bus 就绪（不使用 SFX 回退）。");
                 while (!musicOk)
                 {
                     try
@@ -415,7 +415,7 @@ namespace DuckovCustomSounds.CustomBGM
                             ModBehaviour.MusicGroup = cg;
                             ModBehaviour.MusicGroupIsFallback = false;
                             musicOk = true;
-                            Debug.Log("[CustomSounds] (延迟) Music bus 已就绪。");
+                            BGMLogger.Info("(延迟) Music bus 已就绪。");
                             break;
                         }
                     }

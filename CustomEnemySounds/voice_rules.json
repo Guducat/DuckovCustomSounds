@@ -1,0 +1,53 @@
+﻿{
+  "Debug": {
+    "Enabled": true,
+    "Level": "Info",
+    "ValidateFileExists": true
+  },
+  "Fallback": {
+    "UseOriginalWhenMissing": true,
+    "PreferredExtensions": [ ".mp3", ".wav" ]
+  },
+  "DefaultPattern": "CustomEnemySounds/{team}/{rank}_{voiceType}_{soundKey}{ext}",
+  "Rules": [
+    {
+      "Team": "scav",
+      "IconType": "boss",
+      "MinHealth": 120,
+      "FilePattern": "CustomEnemySounds/scav/boss_{voiceType}_{soundKey}{ext}"
+    },
+    {
+      "Team": "scav",
+      "IconType": "elite",
+      "MinHealth": 80,
+      "MaxHealth": 119,
+      "FilePattern": "CustomEnemySounds/scav/elite_{voiceType}_{soundKey}{ext}"
+    },
+    {
+      "Team": "scav",
+      "IconType": "normal",
+      "MaxHealth": 79,
+      "FilePattern": "CustomEnemySounds/scav/normal_{voiceType}_{soundKey}{ext}"
+    },
+    {
+      "Team": "pmc",
+      "IconType": "elite",
+      "MinHealth": 80,
+      "MaxHealth": 119,
+      "FilePattern": "CustomEnemySounds/pmc/elite_{voiceType}_{soundKey}{ext}"
+    },
+    {
+      "Team": "pmc",
+      "IconType": "normal",
+      "MaxHealth": 79,
+      "FilePattern": "CustomEnemySounds/pmc/normal_{voiceType}_{soundKey}{ext}"
+    },
+    {
+      "Team": "pmc",
+      "IconType": "boss",
+      "MinHealth": 120,
+      "FilePattern": "CustomEnemySounds/pmc/boss_{voiceType}_{soundKey}{ext}"
+    }
+  ]
+}
+

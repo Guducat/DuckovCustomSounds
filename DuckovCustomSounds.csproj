@@ -4,7 +4,8 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>enable</Nullable>
         <DuckovPath>G:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovPath>
-        <FileVersion>1.6.2</FileVersion>
+        <FileVersion>1.0.0</FileVersion>
+        <LangVersion>9</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,6 +15,12 @@
             <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\FMODUnity.dll</HintPath>
         </Reference>
         <Reference Include="$(DuckovPath)\Duckov_Data\Managed\Unity*" />
+        <Reference Include="Newtonsoft.Json">
+          <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\Newtonsoft.Json.dll</HintPath>
+        </Reference>
+        <Reference Include="SodaLocalization">
+          <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\SodaLocalization.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
     <ItemGroup>
