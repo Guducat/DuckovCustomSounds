@@ -121,16 +121,28 @@ DuckovCustomSounds/
 - [x] 自定义主菜单音乐
 - [x] 自定义安全屋背景音乐
 - [x] 安全屋播放音乐时留声机显示歌曲名和作者
-- [x] 自定义搜索/搜出音效 - 由 [@dzj0821](https://steamcommunity.com/profiles/76561198053835373) 的 [物品价值稀有度与搜索音效](https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576) mod提供
-- [x] 自定义击杀音效 - 由 [@F_O_G](https://steamcommunity.com/id/For_Of_Des) 的 [CF击杀反馈](https://steamcommunity.com/sharedfiles/filedetails/?id=3590362366) mod提供
 - [x] 自定义敌方音效(巡逻、惊讶、死亡等)
-- [x] 自定义文本 - 由 [@MajMaj](https://steamcommunity.com/profiles/76561198990516691) 的 [三角洲人机文本替换增加人机 交战 换弹 躲避手雷文本](https://steamcommunity.com/sharedfiles/filedetails/?id=3592577168
-  ) mod 提供
 - [x] 自定义手雷音效
+- [x] 自定义死亡音效
+- [ ] 自定义小兵躲避手雷/换弹音效
 - [ ] 自定义脚步
 - [ ] 自定义枪声
-- [ ] 更多可自定义的音效
+- [ ] 无限可能……
 
+### 不重复实现的功能
+- [x] 自定义文本 - 由 [@MajMaj](https://steamcommunity.com/profiles/76561198990516691) 的 [三角洲人机文本替换增加人机 交战 换弹 躲避手雷文本](https://steamcommunity.com/sharedfiles/filedetails/?id=3592577168
+  ) mod 提供
+- [x] 自定义搜索/搜出音效 - 由 [@dzj0821](https://steamcommunity.com/profiles/76561198053835373) 的 [物品价值稀有度与搜索音效](https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576) mod提供
+- [x] 自定义击杀音效 - 由 [@F_O_G](https://steamcommunity.com/id/For_Of_Des) 的 [CF击杀反馈](https://steamcommunity.com/sharedfiles/filedetails/?id=3590362366) mod提供
+      
+
+---
+
+### 示例资源包
+
+[蓝奏云-1025更新](https://guducat.lanzoul.com/i0uZu399sglc)，音效请解压在*游戏根目录(Escape from Duckov/DuckovCustomSounds/...)下，确保结果与文档一致*。 
+**额外说明**：资源包仅作演示，请自行修改。目前包括：五字搜打撤游戏BGM、阿萨拉小兵语音、罐头笑声、专业配音员手雷掷出声。  
+如果各位有好的想法欢迎提issues！
 
 ---
 
