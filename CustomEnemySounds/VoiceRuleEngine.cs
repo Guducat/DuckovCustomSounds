@@ -38,7 +38,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     CESLogger.Debug($"[CES:Rule] 使用模板: {pattern}, vt={vtStr}, soundKey={soundKey}");
 
                     var cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, ParseVoiceType(vtStr, voiceType), _config.Fallback.PreferredExtensions, true);
-                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, out var chosen, out var tried))
+                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
                     {
                         CESLogger.Info($"[CES:Rule] 命中: {chosen}");
                         route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = Describe(r), TriedPaths = tried };
@@ -57,7 +57,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 var defPattern = SanitizePatternLocal(_config.DefaultPattern);
                 CESLogger.Debug($"[CES:Rule] 尝试默认模板: {defPattern}, vt={voiceType}, soundKey={soundKey}");
                 var cands = PathBuilder.BuildCandidates(defPattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
-                if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, out var chosen, out var tried))
+                if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
                 {
                     CESLogger.Info($"[CES:Rule] 默认模板命中: {chosen}");
                     route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = "<default>", TriedPaths = tried };

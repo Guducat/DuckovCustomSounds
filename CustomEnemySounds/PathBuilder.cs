@@ -63,7 +63,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
             }
         }
 
-        public static bool TryResolveExisting(IEnumerable<string> candidates, bool validateExists, out string chosen, out List<string> tried)
+        public static bool TryResolveExisting(IEnumerable<string> candidates, bool validateExists, int ownerId, out string chosen, out List<string> tried)
         {
             tried = new List<string>();
             foreach (var c in candidates)
@@ -82,7 +82,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     if (exists)
                     {
                         // 基础文件存在，尝试查找随机变体
-                        var final = ChooseRandomVariant(normalized);
+                        var final = ChooseRandomVariant(normalized, ownerId, out var _);
                         chosen = final;
                         return true;
                     }
@@ -99,8 +99,9 @@ namespace DuckovCustomSounds.CustomEnemySounds
         /// 若存在同名变体（base_1.ext, base_2.ext, ...，编号需连续），随机在 [0, N) 中选择其一
         /// 0 表示基础文件本身；若出现异常或无变体，返回基础文件
         /// </summary>
-        private static string ChooseRandomVariant(string baseFullPath)
+        internal static string ChooseRandomVariant(string baseFullPath, int ownerId, out int availableCount)
         {
+            availableCount = 1;
             try
             {
                 var dir = Path.GetDirectoryName(baseFullPath);
@@ -113,14 +114,36 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     if (File.Exists(cand)) count++;
                     else break; // 要求编号连续，遇到缺失即停止
                 }
+                availableCount = count;
                 if (count <= 1)
+                {
                     return baseFullPath;
+                }
 
-                int index = UnityEngine.Random.Range(0, count);
-                CESLogger.Debug($"[CES:Path] 找到 {count} 个语音变体（包括基础文件），随机选择索引 {index}");
-                var selected = index == 0 ? baseFullPath : Path.Combine(dir, $"{name}_{index}{ext}");
-                CESLogger.Debug($"[CES:Path] 最终选择文件 -> {selected}");
-                return selected;
+                // 是否启用绑定：启用则使用绑定索引；否则随机
+                bool bindEnabled = CustomEnemySounds.Config?.BindVariantIndexPerEnemy ?? false;
+                if (bindEnabled)
+                {
+                    var boundIndex = VariantIndexBinder.GetOrAllocate(ownerId, count);
+                    int selectedIndex = boundIndex;
+                    if (boundIndex >= count)
+                    {
+                        int fallbackIndex = Mathf.Clamp(boundIndex, 0, count - 1);
+                        CESLogger.Debug($"[CES:Variant] 绑定索引 {boundIndex} 超出范围（共 {count} 个变体），回退到索引 {fallbackIndex}");
+                        selectedIndex = fallbackIndex;
+                    }
+                    var selectedBound = selectedIndex == 0 ? baseFullPath : Path.Combine(dir, $"{name}_{selectedIndex}{ext}");
+                    CESLogger.Debug($"[CES:Variant] 使用绑定索引 {selectedIndex} 选择文件 -> {selectedBound}");
+                    return selectedBound;
+                }
+                else
+                {
+                    int index = UnityEngine.Random.Range(0, count);
+                    CESLogger.Debug($"[CES:Path] 找到 {count} 个语音变体（包括基础文件），随机选择索引 {index}");
+                    var selected = index == 0 ? baseFullPath : Path.Combine(dir, $"{name}_{index}{ext}");
+                    CESLogger.Debug($"[CES:Path] 最终选择文件 -> {selected}");
+                    return selected;
+                }
             }
             catch (Exception ex)
             {

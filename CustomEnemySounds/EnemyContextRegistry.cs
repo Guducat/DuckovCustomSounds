@@ -45,12 +45,16 @@ namespace DuckovCustomSounds.CustomEnemySounds
         public static void Remove(GameObject go)
         {
             if (go == null) return;
-            Map.TryRemove(go.GetInstanceID(), out _);
+            int id = go.GetInstanceID();
+            Map.TryRemove(id, out _);
+            // 同步清理变体索引绑定
+            try { VariantIndexBinder.Remove(id); } catch { }
         }
 
         public static void Clear()
         {
             Map.Clear();
+            try { VariantIndexBinder.Clear(); } catch { }
         }
     }
 }

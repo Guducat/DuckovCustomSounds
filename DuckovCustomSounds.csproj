@@ -5,7 +5,6 @@
         <Nullable>enable</Nullable>
         <DuckovPath>G:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovPath>
         <FileVersion>1.0.0</FileVersion>
-        <LangVersion>9</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>

@@ -42,6 +42,10 @@ namespace DuckovCustomSounds.CustomEnemySounds
         // 播放行为配置：优先级打断机制（默认启用）
         public bool PriorityInterruptEnabled { get; set; } = true;
 
+
+        // 变体索引绑定：同一敌人实例的所有语音共享同一变体索引（默认关闭，保持随机）
+        public bool BindVariantIndexPerEnemy { get; set; } = false;
+
     }
 
     internal static class ConfigLoader
