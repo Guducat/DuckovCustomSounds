@@ -42,22 +42,32 @@ Escape from Duckov/Duckov_Data
 
 ```
 DuckovCustomSounds/
-├── TitleBGM/              # 主菜单音乐文件夹（可选）
-│   └── title.mp3          # 主菜单音乐文件
+├── TitleBGM/              # 主音乐文件夹（可选）
+│   ├── title.mp3          # 主菜单音乐文件
+│   ├── death.mp3          # 死亡时播放的过渡音乐
+│   └── start.mp3          # 进入大厅时播放的过渡音乐
+│
 ├── HomeBGM/               # 大厅音乐文件夹（可选）
 │   ├── 歌曲1 - 艺术家.mp3
 │   ├── 歌曲2 - 艺术家.mp3
 │   └── my_fav_track.mp3   # 支持任意文件名
+│
 ├── CustomEnemySounds/             # 敌人音效文件夹
 │   └── scav       # 阵营名称
 │       ├── normal_Duck_normal.mp3  # 敌人类型_语音类型_状态.mp3
 │       ├── normal_Duck_normal_1.mp3  # 可以添加变体，随机播放
 │       ├── normal_Duck_surprise.mp3
 │       └── normal_Duck_death.mp3
+│
+├── CustomGrenadeSounds/  # 手雷音效文件夹
+│   ├── throw.mp3        # 手雷投掷音效
+│   └── explode.mp3 # 手雷普通爆炸音效
+│
 ├── CustomShootingSounds/  # 射击音效文件夹(开发中，可忽略)
-├── CustomGrenadeSounds/  # 手雷音效文件夹(开发中，可忽略)
+│
 ├── CustomFootstepSounds/ #脚步音效文件夹(开发中，可忽略)
-└── 开发中，未来期望添加其他音效自定义，目前计划有脚步 枪械 开火等
+│
+└── 开发中，未来期望添加其他音效自定义，目前计划有脚步 枪械等
 ```
 
 ### 3. 音频文件要求
@@ -114,7 +124,9 @@ DuckovCustomSounds/
 - [x] 自定义搜索/搜出音效 - 由 [@dzj0821](https://steamcommunity.com/profiles/76561198053835373) 的 [物品价值稀有度与搜索音效](https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576) mod提供
 - [x] 自定义击杀音效 - 由 [@F_O_G](https://steamcommunity.com/id/For_Of_Des) 的 [CF击杀反馈](https://steamcommunity.com/sharedfiles/filedetails/?id=3590362366) mod提供
 - [x] 自定义敌方音效(巡逻、惊讶、死亡等)
-- [x] 自定义文本 - 由 [@MajMaj]( ) 的 [三角洲人机语音文本替换、补充人机默认文本](https://steamcommunity.com/sharedfiles/filedetails/?id=3591752102) mod 提供
+- [x] 自定义文本 - 由 [@MajMaj](https://steamcommunity.com/profiles/76561198990516691) 的 [三角洲人机文本替换增加人机 交战 换弹 躲避手雷文本](https://steamcommunity.com/sharedfiles/filedetails/?id=3592577168
+  ) mod 提供
+- [x] 自定义手雷音效
 - [ ] 自定义脚步
 - [ ] 自定义枪声
 - [ ] 更多可自定义的音效

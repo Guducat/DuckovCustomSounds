@@ -20,6 +20,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 IsLoaded = true;
                 CESLogger.Info("CustomEnemySounds 已加载，等待触发。");
                 try { CoreSoundTracker.EnsureStarted(); } catch { }
+                try { CustomEnemySounds_Patches.EnableDeathEventHook(); } catch { }
             }
             catch (Exception ex)
             {
@@ -38,6 +39,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
             {
                 EnemyContextRegistry.Clear();
                 try { CoreSoundTracker.StopAndClear(); } catch { }
+                try { CustomEnemySounds_Patches.DisableDeathEventHook(); } catch { }
                 IsLoaded = false;
             }
             catch (Exception ex)

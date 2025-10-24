@@ -25,4 +25,10 @@
     <ItemGroup>
         <PackageReference Include="Lib.Harmony" Version="2.4.1" />
     </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="assets\**\*.*" />
+        <Compile Remove="assets\**\*.cs" />
+        <Compile Remove="CustomGrenadeSounds\GrenadeSoundUtils.cs" />
+    </ItemGroup>
 </Project>
