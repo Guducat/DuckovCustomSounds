@@ -2,6 +2,13 @@
 using Duckov; // 引用 AudioManager
 using System;
 using UnityEngine; // 引用 Type
+using System.Diagnostics; // 采集调用堆栈
+using System.Text; // 构建堆栈字符串
+using System.IO; // 访问 start.mp3
+using FMOD; // Core API（RESULT、MODE、Channel 等）
+using System.Collections; // 协程监控自定义 Stinger 结束
+
+
 
 namespace DuckovCustomSounds.CustomBGM
 {
@@ -155,6 +162,278 @@ namespace DuckovCustomSounds.CustomBGM
                     BGMLogger.Debug("StopBGM 钩子：已停止自定义 BGM 渠道");
                 }
                 catch { }
+            }
+        }
+
+
+        // --- 监控补丁：记录所有 AudioManager.PlayStringer(string key) 调用 ---
+        [HarmonyPatch(typeof(AudioManager))]
+        public static class AudioManager_PlayStringer_Monitor
+        {
+            private static float s_ModStartTime = -1f;
+            private static float s_AfterInitStartTime = -1f;
+
+            [HarmonyPatch("PlayStringer", new Type[] { typeof(string) })]
+            [HarmonyPostfix]
+            public static void PlayStringer_Monitor_Postfix(string key)
+            {
+                try
+                {
+                    float now = Time.realtimeSinceStartup;
+                    if (s_ModStartTime < 0f) s_ModStartTime = now;
+
+                    bool afterInit = false;
+                    try { afterInit = LevelManager.AfterInit; } catch { /* ignore */ }
+                    if (afterInit && s_AfterInitStartTime < 0f) s_AfterInitStartTime = now;
+                    string dtAfterInitStr = (s_AfterInitStartTime >= 0f) ? (now - s_AfterInitStartTime).ToString("F3") : "N/A";
+
+                    bool isStPlaying = false;
+                    try { isStPlaying = AudioManager.IsStingerPlaying; } catch { /* ignore */ }
+
+                    string origin = "<stack-unavailable>";
+                    try
+                    {
+                        var st = new System.Diagnostics.StackTrace(2, false);
+                        int n = Math.Min(8, st.FrameCount);
+                        var sb = new StringBuilder();
+                        for (int i = 0; i < n; i++)
+                        {
+                            var f = st.GetFrame(i);
+                            var m = f?.GetMethod();
+                            if (m == null) continue;
+                            var cls = m.DeclaringType != null ? m.DeclaringType.FullName : "<unknown>";
+                            sb.Append($"{i}:{cls}.{m.Name} | ");
+                        }
+                        origin = sb.ToString();
+                    }
+                    catch { /* ignore */ }
+
+                    BGMLogger.Info($"[Monitor] PlayStringer key='{key}', t={now:F3}s, AfterInit={afterInit}, dtAfterInit={dtAfterInitStr}s, IsStingerPlaying={isStPlaying}, origin={origin}");
+                }
+                catch (Exception e)
+                {
+                    BGMLogger.Warn($"[Monitor] PlayStringer logger error: {e.Message}");
+                }
+            }
+        }
+
+        // --- 仅拦截 stg_map_base，阻止原始 Stinger，改为播放自定义 start.mp3，并用 Getter 补丁模拟“仍在播放”以保留后续 BGM 的时序 ---
+        [HarmonyPatch(typeof(AudioManager))]
+        public static class AudioManager_PlayStringer_Intercept
+        {
+            private static bool s_CustomStingerActive;
+            private static Sound s_StartSound;
+            private static Channel s_StartChannel;
+
+            [HarmonyPatch("PlayStringer", new Type[] { typeof(string) })]
+            [HarmonyPrefix]
+            public static bool Prefix(string key)
+            {
+                try
+                {
+                    if (!string.Equals(key, "stg_map_base", StringComparison.OrdinalIgnoreCase))
+                        return true; // 仅拦截过渡期 Stinger
+
+                    // 定位自定义文件
+                    string startPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "start.mp3");
+                    if (!File.Exists(startPath))
+                    {
+                        BGMLogger.Info("[Intercept] 拦截到 stg_map_base Stinger，但 start.mp3 不存在，放行原 Stinger");
+                        return true;
+                    }
+
+                    // 如果 FMOD 尚未初始化，走原始，保证安全
+                    try { if (!FMODUnity.RuntimeManager.IsInitialized) { BGMLogger.Info("[Intercept] FMOD 未初始化，放行原 Stinger"); return true; } } catch { }
+
+                    // 创建 Sound（流式，单次播放，2D）
+                    var mode = MODE.CREATESTREAM | MODE._2D | MODE.LOOP_OFF;
+                    var res = FMODUnity.RuntimeManager.CoreSystem.createSound(startPath, mode, out s_StartSound);
+                    if (res != RESULT.OK || !s_StartSound.hasHandle())
+                    {
+                        BGMLogger.Warn($"[Intercept] start.mp3 createSound 失败: {res}，放行原 Stinger");
+                        return true;
+                    }
+
+                    // 尽量走 SFX，总线未就绪则回退到 Master
+                    var group = ResolveStingerGroupSafe();
+                    var playRes = FMODUnity.RuntimeManager.CoreSystem.playSound(s_StartSound, group, false, out s_StartChannel);
+                    if (playRes == RESULT.OK && s_StartChannel.hasHandle())
+                    {
+                        s_CustomStingerActive = true;
+                        BGMLogger.Info("[Intercept] 拦截到 stg_map_base Stinger，播放自定义 start.mp3（Music→SFX→Master 路由，保持与原版一致）");
+
+                        // 启动监控协程：播放结束后清理并释放“占位”状态，用于还原 BaseBGMSelector 的时序
+                        try
+                        {
+                            if (ModBehaviour.Instance != null)
+                                ModBehaviour.Instance.StartCoroutine(WaitAndCleanupCustomStinger());
+                            else
+                                BGMLogger.Warn("[Intercept] 无 ModBehaviour.Instance，无法监控自定义 Stinger 结束（时序可能提前放行 BGM）。");
+                        }
+                        catch { }
+
+                        return false; // 阻止原始 Stinger
+                    }
+                    else
+                    {
+                        BGMLogger.Warn($"[Intercept] start.mp3 playSound 失败: {playRes}，放行原 Stinger");
+                        try { if (s_StartSound.hasHandle()) s_StartSound.release(); } catch { }
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    BGMLogger.Warn($"[Intercept] PlayStringer Prefix 异常: {ex.Message}");
+                    return true; // 安全回退
+                }
+            }
+
+            // 模拟 IsStingerPlaying = true，在我们自定义 start.mp3 播放期间，保留原本“等待 Stinger 结束再进 BGM”的节奏
+            [HarmonyPatch("get_IsStingerPlaying")]
+            [HarmonyPostfix]
+            public static void IsStingerPlaying_Postfix(ref bool __result)
+            {
+                try
+                {
+                    if (s_CustomStingerActive)
+                        __result = true;
+                }
+                catch { }
+            }
+
+            private static IEnumerator WaitAndCleanupCustomStinger()
+            {
+                float deadline = Time.realtimeSinceStartup + 12f; // 限制最长 12s，防止异常占位
+                try
+                {
+                    while (Time.realtimeSinceStartup < deadline)
+                    {
+                        bool playing = false;
+                        try { if (s_StartChannel.hasHandle()) s_StartChannel.isPlaying(out playing); } catch { }
+                        if (!playing) break;
+                        yield return new WaitForSeconds(0.05f);
+                    }
+                }
+                finally
+                {
+                    s_CustomStingerActive = false;
+                    try { if (s_StartChannel.hasHandle()) s_StartChannel.stop(); } catch { }
+                    try { if (s_StartSound.hasHandle()) s_StartSound.release(); } catch { }
+                }
+            }
+
+            public static ChannelGroup ResolveStingerGroupSafe()
+            {
+                try
+                {
+                    // 1) 优先尝试 Music bus（与原版 Stinger 一致）
+                    try
+                    {
+                        var musicBus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
+                        if (musicBus.getChannelGroup(out var cg) == RESULT.OK && cg.hasHandle())
+                            return cg;
+                    }
+                    catch { }
+
+                    // 2) 回退 SFX bus（Music 不可用时）
+                    try
+                    {
+                        var sfxBus = FMODUnity.RuntimeManager.GetBus("bus:/Master/SFX");
+                        if (sfxBus.getChannelGroup(out var cg2) == RESULT.OK && cg2.hasHandle())
+                            return cg2;
+                    }
+                    catch { }
+
+                    // 3) 最后回退 Master
+                    if (FMODUnity.RuntimeManager.CoreSystem.getMasterChannelGroup(out var master) == RESULT.OK && master.hasHandle())
+                        return master;
+                }
+                catch { }
+                return default;
+            }
+        }
+
+
+        // --- 拦截 AudioManager.Post(string) 的 stg_death，替换为自定义 death.mp3 ---
+        [HarmonyPatch(typeof(AudioManager))]
+        public static class AudioManager_Post_DeathStinger_Intercept
+        {
+            private static Sound s_DeathSound;
+            private static Channel s_DeathChannel;
+
+            [HarmonyPatch("Post", new Type[] { typeof(string) })]
+            [HarmonyPrefix]
+            public static bool Prefix(ref FMOD.Studio.EventInstance? __result, string eventName)
+            {
+                try
+                {
+                    if (!string.Equals(eventName, "Music/Stinger/stg_death", StringComparison.OrdinalIgnoreCase))
+                        return true; // 非死亡 Stinger：放行
+
+                    string deathPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "death.mp3");
+                    if (!File.Exists(deathPath))
+                    {
+                        BGMLogger.Info("[Intercept] 拦截到 stg_death，但 death.mp3 不存在，放行原 Stinger");
+                        return true;
+                    }
+
+                    try { if (!FMODUnity.RuntimeManager.IsInitialized) { BGMLogger.Info("[Intercept] FMOD 未初始化，放行原 Stinger"); return true; } } catch { }
+
+                    var mode = MODE.CREATESTREAM | MODE._2D | MODE.LOOP_OFF;
+                    var res = FMODUnity.RuntimeManager.CoreSystem.createSound(deathPath, mode, out s_DeathSound);
+                    if (res != RESULT.OK || !s_DeathSound.hasHandle())
+                    {
+                        BGMLogger.Warn($"[Intercept] death.mp3 createSound 失败: {res}，放行原 Stinger");
+                        return true;
+                    }
+
+                    var group = AudioManager_PlayStringer_Intercept.ResolveStingerGroupSafe();
+                    var playRes = FMODUnity.RuntimeManager.CoreSystem.playSound(s_DeathSound, group, false, out s_DeathChannel);
+                    if (playRes == RESULT.OK && s_DeathChannel.hasHandle())
+                    {
+                        BGMLogger.Info("[Intercept] 拦截 stg_death，播放自定义 death.mp3（Music→SFX→Master 路由，保持与原版一致）");
+                        try
+                        {
+                            if (ModBehaviour.Instance != null)
+                                ModBehaviour.Instance.StartCoroutine(WaitAndCleanupDeath());
+                        }
+                        catch { }
+
+                        __result = new FMOD.Studio.EventInstance?();
+                        return false; // 阻止原始 stg_death
+                    }
+                    else
+                    {
+                        BGMLogger.Warn($"[Intercept] death.mp3 playSound 失败: {playRes}，放行原 Stinger");
+                        try { if (s_DeathSound.hasHandle()) s_DeathSound.release(); } catch { }
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    BGMLogger.Warn($"[Intercept] Post(string) stg_death Prefix 异常: {ex.Message}");
+                    return true; // 安全回退
+                }
+            }
+
+            private static IEnumerator WaitAndCleanupDeath()
+            {
+                float deadline = Time.realtimeSinceStartup + 12f;
+                try
+                {
+                    while (Time.realtimeSinceStartup < deadline)
+                    {
+                        bool playing = false;
+                        try { if (s_DeathChannel.hasHandle()) s_DeathChannel.isPlaying(out playing); } catch { }
+                        if (!playing) break;
+                        yield return new WaitForSeconds(0.05f);
+                    }
+                }
+                finally
+                {
+                    try { if (s_DeathChannel.hasHandle()) s_DeathChannel.stop(); } catch { }
+                    try { if (s_DeathSound.hasHandle()) s_DeathSound.release(); } catch { }
+                }
             }
         }
 

@@ -9,6 +9,8 @@
     "PreferredExtensions": [ ".mp3", ".wav" ]
   },
   "DefaultPattern": "CustomEnemySounds/{team}/{rank}_{voiceType}_{soundKey}{ext}",
+  "PriorityInterruptEnabled": true,
+  "BindVariantIndexPerEnemy": false,
   "Rules": [
     {
       "Team": "scav",
