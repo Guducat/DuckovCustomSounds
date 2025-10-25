@@ -27,6 +27,11 @@ namespace DuckovCustomSounds.CustomBGM
         // 2. 状态：跟踪当前播放的歌曲
         private static int currentHomeBGMIndex = 0;
         private static Channel currentBGMChannel; // 用来停止播放
+        // 固定绑定到 Music 总线的锁，避免 Studio 重构导致 Channel 脱离 bus
+        private static FMOD.Studio.Bus _lockedMusicBus;
+        private static bool _musicBusLocked;
+        private static Coroutine _bgmGuardRoutine;
+
 
         // 3. 加载逻辑 (由 ModBehaviour.cs 调用)
         public static void Load()
@@ -169,8 +174,11 @@ namespace DuckovCustomSounds.CustomBGM
 
         public static void StopCurrentBGM(bool fade)
         {
-            if (!currentBGMChannel.hasHandle()) return;
-            currentBGMChannel.stop();
+            try { if (_bgmGuardRoutine != null && ModBehaviour.Instance != null) { ModBehaviour.Instance.StopCoroutine(_bgmGuardRoutine); _bgmGuardRoutine = null; } } catch { }
+            if (currentBGMChannel.hasHandle())
+            {
+                try { currentBGMChannel.stop(); } catch { }
+            }
         }
 
 
@@ -241,100 +249,121 @@ namespace DuckovCustomSounds.CustomBGM
         private static FMOD.Channel PlaySoundImmediate(FMOD.Sound sound)
         {
             if (!sound.hasHandle()) return default;
-            var group = ResolveBestGroup();
-            if (!group.hasHandle()) { BGMLogger.Warn("没有有效的 ChannelGroup；为安全起见在 Core master 上播放。"); }
-            var result = FMODUnity.RuntimeManager.CoreSystem.playSound(sound, group.hasHandle() ? group : default, false, out var ch);
+
+            // 严格仅在 Music bus 上播放；不可用或静音/音量为0则取消
+            if (!TryResolveMusicGroup(out var group))
+            {
+                BGMLogger.Info("自定义BGM取消：Music总线不可用。");
+                return default;
+            }
+            if (IsMusicMutedOrZero())
+            {
+                BGMLogger.Info("自定义BGM取消：Music总线音量为0或被静音。");
+                return default;
+            }
+
+            var result = FMODUnity.RuntimeManager.CoreSystem.playSound(sound, group, false, out var ch);
             if (result == FMOD.RESULT.OK && ch.hasHandle())
             {
                 currentBGMChannel = ch;
-                if (!string.IsNullOrEmpty(_lastResolvedBus))
-                    BGMLogger.Info($"BGM 路由到: {_lastResolvedBus}");
-                MaybeScheduleRebindToMusicAfterPlay();
+                BGMLogger.Info("BGM 路由到: bus:/Master/Music");
+                StartBGMRouteGuard();
             }
             else
             {
-                BGMLogger.Warn($"立即播放声音失败: {result}");
+                BGMLogger.Info($"自定义BGM播放失败: {result}");
             }
             return currentBGMChannel;
         }
-        private static string _lastResolvedBus;
-        private static FMOD.ChannelGroup ResolveBestGroup()
+
+        private static bool TryResolveMusicGroup(out FMOD.ChannelGroup cg)
         {
-            // 1) 尝试绑定到 Music bus（如果尚未有效）
-            if (!ModBehaviour.MusicGroup.hasHandle() || ModBehaviour.MusicGroupIsFallback)
+            cg = default;
+            try
             {
-                var candidates = new string[] { "bus:/Master/Music" };
-                foreach (var path in candidates)
+                // 直接解析 Music bus 的 ChannelGroup；不依赖锁定
+                if (ModBehaviour.MusicGroup.hasHandle() && !ModBehaviour.MusicGroupIsFallback)
                 {
-                    try
+                    cg = ModBehaviour.MusicGroup; return true;
+                }
+                var bus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
+                if (bus.getChannelGroup(out var g) == FMOD.RESULT.OK && g.hasHandle())
+                {
+                    ModBehaviour.MusicGroup = g;
+                    ModBehaviour.MusicGroupIsFallback = false;
+                    cg = g; return true;
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        private static bool IsMusicMutedOrZero()
+        {
+            try
+            {
+                var bus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
+                bool mute = false; float vol = 1f;
+                try { bus.getMute(out mute); } catch { }
+                try { bus.getVolume(out vol); } catch { }
+                return mute || vol <= 0.0001f;
+            }
+            catch { return false; }
+        }
+
+
+        private static void StartBGMRouteGuard()
+        {
+            if (ModBehaviour.Instance == null) return;
+            if (_bgmGuardRoutine != null) return;
+            _bgmGuardRoutine = ModBehaviour.Instance.StartCoroutine(BGMRouteGuard());
+        }
+
+        private static System.Collections.IEnumerator BGMRouteGuard()
+        {
+            var wait = new UnityEngine.WaitForSeconds(0.1f);
+            while (true)
+            {
+                bool has = false; bool playing = false;
+                try { has = currentBGMChannel.hasHandle(); } catch { has = false; }
+                if (!has) break;
+                try { currentBGMChannel.isPlaying(out playing); } catch { playing = false; }
+                if (!playing) break;
+
+                if (IsMusicMutedOrZero())
+                {
+                    try { currentBGMChannel.stop(); } catch { }
+                    break;
+                }
+
+                try
+                {
+                    if (!ModBehaviour.MusicGroup.hasHandle())
                     {
-                        var bus = FMODUnity.RuntimeManager.GetBus(path);
+                        var bus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
                         if (bus.getChannelGroup(out var cg) == FMOD.RESULT.OK && cg.hasHandle())
                         {
                             ModBehaviour.MusicGroup = cg;
                             ModBehaviour.MusicGroupIsFallback = false;
-                            if (_lastResolvedBus != path)
-                            {
-                                BGMLogger.Info($"在播放时解析到 Music bus: {path}");
-                                _lastResolvedBus = path;
-                            }
-                            return cg;
                         }
                     }
-                    catch { }
-                }
-            }
-            if (ModBehaviour.MusicGroup.hasHandle() && !ModBehaviour.MusicGroupIsFallback)
-            {
-                if (_lastResolvedBus != "bus:/Master/Music") _lastResolvedBus = "bus:/Master/Music"; // 通用
-                return ModBehaviour.MusicGroup;
-            }
-
-            // 2) 确保 SFX 句柄有效
-            if (!ModBehaviour.SfxGroup.hasHandle())
-            {
-                try
-                {
-                    var sfx = FMODUnity.RuntimeManager.GetBus("bus:/Master/SFX");
-                    if (sfx.getChannelGroup(out var sfxCg) == FMOD.RESULT.OK && sfxCg.hasHandle())
+                    if (ModBehaviour.MusicGroup.hasHandle())
                     {
-                        ModBehaviour.SfxGroup = sfxCg;
+                        currentBGMChannel.setChannelGroup(ModBehaviour.MusicGroup);
                     }
                 }
                 catch { }
-            }
-            if (ModBehaviour.SfxGroup.hasHandle())
-            {
-                if (_lastResolvedBus != "bus:/Master/SFX")
-                {
-                    BGMLogger.Info("使用 SFX bus（music bus 未就绪）。");
-                    _lastResolvedBus = "bus:/Master/SFX";
-                }
-                return ModBehaviour.SfxGroup;
-            }
 
-            // 3) 回退到 Master bus，确保至少可以通过 Master 控制滑块
-            try
-            {
-                var master = FMODUnity.RuntimeManager.GetBus("bus:/Master");
-                if (master.getChannelGroup(out var mCg) == FMOD.RESULT.OK && mCg.hasHandle())
-                {
-                    if (_lastResolvedBus != "bus:/Master")
-                    {
-                        BGMLogger.Info("回退到 Master bus 通道组。");
-                        _lastResolvedBus = "bus:/Master";
-                    }
-                    return mCg;
-                }
+                yield return wait;
             }
-            catch { }
-
-            // 最后的选择：返回我们拥有的任何内容（可能无效）
-            return ModBehaviour.MusicGroup.hasHandle() ? ModBehaviour.MusicGroup : ModBehaviour.SfxGroup;
+            _bgmGuardRoutine = null;
+            yield break;
         }
 
 
+
         private static bool _rebindScheduled;
+        private static string _lastResolvedBus;
         private static void MaybeScheduleRebindToMusicAfterPlay()
         {
             if (ModBehaviour.Instance == null) return;
@@ -372,11 +401,11 @@ namespace DuckovCustomSounds.CustomBGM
 
         private static System.Collections.IEnumerator WaitForBusThenPlay(FMOD.Sound sound, bool isTitle)
         {
-            bool requireMusic = !isTitle; // Home BGM 必须等到 Music 可用
+            // 始终要求 Music 总线可用；不可用则取消播放
+            bool requireMusic = true;
             float deadline = Time.realtimeSinceStartup + (isTitle ? 2.0f : 30.0f);
             bool musicOk = false;
 
-            // 第一阶段：在合理时间窗内轮询 Music 总线
             while (Time.realtimeSinceStartup < deadline)
             {
                 try
@@ -391,40 +420,42 @@ namespace DuckovCustomSounds.CustomBGM
                         BGMLogger.Info("(延迟) Music bus 已就绪。");
                         break;
                     }
-                    else if (res == FMOD.RESULT.ERR_STUDIO_NOT_LOADED)
-                    {
-                        // 继续等
-                    }
                 }
                 catch { }
                 yield return new UnityEngine.WaitForSeconds(0.1f);
             }
 
-            // 第二阶段：Home BGM 不落到 SFX，继续等待直至 Music 可用为止
             if (requireMusic && !musicOk)
             {
-                BGMLogger.Info("Home BGM 将等待 Music bus 就绪（不使用 SFX 回退）。");
-                while (!musicOk)
-                {
-                    try
-                    {
-                        var bus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
-                        var res = bus.getChannelGroup(out var cg);
-                        if (res == FMOD.RESULT.OK && cg.hasHandle())
-                        {
-                            ModBehaviour.MusicGroup = cg;
-                            ModBehaviour.MusicGroupIsFallback = false;
-                            musicOk = true;
-                            BGMLogger.Info("(延迟) Music bus 已就绪。");
-                            break;
-                        }
-                    }
-                    catch { }
-                    yield return new UnityEngine.WaitForSeconds(0.2f);
-                }
+                BGMLogger.Info("自定义BGM取消：Music总线在限定时间内不可用。");
+                yield break;
             }
 
-            // 安全播放
+            if (IsMusicMutedOrZero())
+            {
+                BGMLogger.Info("自定义BGM取消：Music总线音量为0或被静音。");
+                yield break;
+            }
+            // 若有 Stinger 正在播放，等待其结束（最多 10s），避免时序冲突
+            bool stingerTimeout = false;
+            float stDeadline = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < stDeadline)
+            {
+                bool stPlaying = false;
+                try { stPlaying = Duckov.AudioManager.IsStingerPlaying; } catch { stPlaying = false; }
+                if (!stPlaying) break;
+                yield return new UnityEngine.WaitForSeconds(0.1f);
+            }
+            bool stillPlaying = false;
+            try { stillPlaying = Duckov.AudioManager.IsStingerPlaying; } catch { stillPlaying = false; }
+            if (stillPlaying) stingerTimeout = true;
+            if (stingerTimeout)
+            {
+                BGMLogger.Info("自定义BGM取消：Stinger仍在播放（超时）。");
+                yield break;
+            }
+
+
             if (currentBGMChannel.hasHandle())
             {
                 currentBGMChannel.stop();
@@ -434,7 +465,6 @@ namespace DuckovCustomSounds.CustomBGM
                 PlaySoundImmediate(sound);
             }
         }
-
 
     }
 }

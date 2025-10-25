@@ -9,46 +9,262 @@
     "PreferredExtensions": [ ".mp3", ".wav" ]
   },
   "DefaultPattern": "CustomEnemySounds/{team}/{rank}_{voiceType}_{soundKey}{ext}",
+  "UseSimpleRules": true,
+  "SimpleRules": [
+    {
+      "NameKey": "Cname_Wolf",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Wolf"
+    },
+    {
+      "NameKey": "Cname_ShortEagle",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/ShortEagle"
+    },
+    {
+      "NameKey": "Cname_UltraMan",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/UltraMan"
+    },
+    {
+      "NameKey": "Cname_CrazyRob",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/CrazyRob"
+    },
+    {
+      "NameKey": "Cname_Scav",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Scav"
+    },
+    {
+      "NameKey": "Cname_Usec",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Usec"
+    },
+    {
+      "NameKey": "Cname_RobSpider",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/RobSpider"
+    },
+    {
+      "NameKey": "Cname_ScavRage",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/ScavRage"
+    },
+    {
+      "NameKey": "Cname_Boss_Sniper",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_Sniper"
+    },
+    {
+      "NameKey": "Cname_SpeedyChild",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/SpeedyChild"
+    },
+    {
+      "NameKey": "Cname_Speedy",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Speedy"
+    },
+    {
+      "NameKey": "Cname_Merchant_Myst",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Merchant_Myst"
+    },
+    {
+      "NameKey": "Cname_Prison",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Prison"
+    },
+    {
+      "NameKey": "Cname_Boss_Shot",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_Shot"
+    },
+    {
+      "NameKey": "Cname_ServerGuardian",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/ServerGuardian"
+    },
+    {
+      "NameKey": "Cname_Raider",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Raider"
+    },
+    {
+      "NameKey": "Cname_LabTestObjective",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/LabTestObjective"
+    },
+    {
+      "NameKey": "Cname_StormCreature",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormCreature"
+    },
+    {
+      "NameKey": "Cname_XING",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/XING"
+    },
+    {
+      "NameKey": "Cname_XINGS",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/XINGS"
+    },
+    {
+      "NameKey": "Cname_DengWolf",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/DengWolf"
+    },
+    {
+      "NameKey": "Cname_Mushroom",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Mushroom"
+    },
+    {
+      "NameKey": "Cname_Vida",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Vida"
+    },
+    {
+      "NameKey": "Cname_Roadblock",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Roadblock"
+    },
+    {
+      "NameKey": "Cname_StormBoss1",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormBoss1"
+    },
+    {
+      "NameKey": "Cname_StormBoss2",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormBoss2"
+    },
+    {
+      "NameKey": "Cname_StormBoss3",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormBoss3"
+    },
+    {
+      "NameKey": "Cname_StormBoss4",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormBoss4"
+    },
+    {
+      "NameKey": "Cname_StormBoss5",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormBoss5"
+    },
+    {
+      "NameKey": "Cname_Boss_Fly",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_Fly"
+    },
+    {
+      "NameKey": "Cname_Boss_Fly_Child",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_Fly_Child"
+    },
+    {
+      "NameKey": "Cname_Boss_Arcade",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_Arcade"
+    },
+    {
+      "NameKey": "Cname_BALeader",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/BALeader"
+    },
+    {
+      "NameKey": "Cname_BALeader_Child",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/BALeader_Child"
+    },
+    {
+      "NameKey": "Cname_SenorEngineer",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/SenorEngineer"
+    },
+    {
+      "NameKey": "Cname_Boss_3Shot",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_3Shot"
+    },
+    {
+      "NameKey": "Cname_3Shot_Child",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/3Shot_Child"
+    },
+    {
+      "NameKey": "Cname_Grenade",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Grenade"
+    },
+    {
+      "NameKey": "Cname_SchoolBully",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/SchoolBully"
+    },
+    {
+      "NameKey": "Cname_SchoolBully_Child",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/SchoolBully_Child"
+    },
+    {
+      "NameKey": "Cname_RPG",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/RPG"
+    },
+    {
+      "NameKey": "Cname_Drone",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Drone"
+    },
+    {
+      "NameKey": "Cname_StormVirus",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormVirus"
+    },
+    {
+      "NameKey": "Cname_MonsterClimb",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/MonsterClimb"
+    },
+    {
+      "NameKey": "Cname_Boss_Red",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Boss_Red"
+    },
+    {
+      "NameKey": "Cname_Football_1",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Football_1"
+    },
+    {
+      "NameKey": "Cname_Football_2",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Football_2"
+    },
+    {
+      "NameKey": "Cname_Prison_Boss",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/Prison_Boss"
+    },
+    {
+      "NameKey": "Cname_StormBoss1_Child",
+      "IconType": "",
+      "FilePattern": "CustomEnemySounds/StormBoss1_Child"
+    }
+  ],
   "PriorityInterruptEnabled": true,
   "BindVariantIndexPerEnemy": false,
   "Rules": [
     {
       "Team": "scav",
-      "IconType": "boss",
-      "MinHealth": 120,
-      "FilePattern": "CustomEnemySounds/scav/boss_{voiceType}_{soundKey}{ext}"
-    },
-    {
-      "Team": "scav",
-      "IconType": "elite",
-      "MinHealth": 80,
-      "MaxHealth": 119,
-      "FilePattern": "CustomEnemySounds/scav/elite_{voiceType}_{soundKey}{ext}"
-    },
-    {
-      "Team": "scav",
       "IconType": "normal",
       "MaxHealth": 79,
       "FilePattern": "CustomEnemySounds/scav/normal_{voiceType}_{soundKey}{ext}"
-    },
-    {
-      "Team": "pmc",
-      "IconType": "elite",
-      "MinHealth": 80,
-      "MaxHealth": 119,
-      "FilePattern": "CustomEnemySounds/pmc/elite_{voiceType}_{soundKey}{ext}"
-    },
-    {
-      "Team": "pmc",
-      "IconType": "normal",
-      "MaxHealth": 79,
-      "FilePattern": "CustomEnemySounds/pmc/normal_{voiceType}_{soundKey}{ext}"
-    },
-    {
-      "Team": "pmc",
-      "IconType": "boss",
-      "MinHealth": 120,
-      "FilePattern": "CustomEnemySounds/pmc/boss_{voiceType}_{soundKey}{ext}"
     }
   ]
 }

@@ -11,9 +11,10 @@ namespace DuckovCustomSounds.CustomEnemySounds
     {
         private static readonly Dictionary<string, int> Map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
         {
-            // 高 > 低：death > surprise > normal（其他未列出的走 normal）
+            // 高 > 低：death > surprise > grenade > normal（其他未列出的走 normal）
             { "death", 100 },
             { "surprise", 50 },
+            { "grenade", 40 },
             { "normal", 10 },
         };
 

@@ -19,6 +19,14 @@ namespace DuckovCustomSounds.CustomEnemySounds
         public string[] SoundKeys { get; set; } = null;     // 如果提供，仅匹配这些soundKeys
     }
 
+        internal sealed class SimpleRuleConfig
+        {
+            public string NameKey { get; set; } = null;     // 敌人唯一标识（如 Cname_Scav）
+            public string IconType { get; set; } = null;    // 可选：限定图标类型（空=匹配所有）
+            public string FilePattern { get; set; } = null; // 目录或路径前缀，例如 "CustomEnemySounds/Scav"
+        }
+
+
     internal sealed class DebugConfig
     {
         public bool Enabled { get; set; } = true;
@@ -39,9 +47,12 @@ namespace DuckovCustomSounds.CustomEnemySounds
         public FallbackConfig Fallback { get; set; } = new FallbackConfig();
         public string DefaultPattern { get; set; } = "CustomEnemySounds/{team}/{rank}_{voiceType}_{soundKey}{ext}";
 
+        // 新增：简化规则模式
+        public bool UseSimpleRules { get; set; } = false;
+        public List<SimpleRuleConfig> SimpleRules { get; set; } = new List<SimpleRuleConfig>();
+
         // 播放行为配置：优先级打断机制（默认启用）
         public bool PriorityInterruptEnabled { get; set; } = true;
-
 
         // 变体索引绑定：同一敌人实例的所有语音共享同一变体索引（默认关闭，保持随机）
         public bool BindVariantIndexPerEnemy { get; set; } = false;
@@ -120,6 +131,14 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 {
                     if (r == null) continue;
                     r.FilePattern = SanitizePattern(r.FilePattern);
+                }
+            }
+            if (cfg.SimpleRules != null)
+            {
+                foreach (var s in cfg.SimpleRules)
+                {
+                    if (s == null) continue;
+                    s.FilePattern = SanitizePattern(s.FilePattern);
                 }
             }
         }

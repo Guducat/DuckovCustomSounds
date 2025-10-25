@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using Duckov;
 
 namespace DuckovCustomSounds.CustomEnemySounds
@@ -21,6 +22,19 @@ namespace DuckovCustomSounds.CustomEnemySounds
             if (_config == null) return false;
 
             CESLogger.Debug($"[CES:Rule] ctx.team={ (ctx!=null? ctx.GetTeamNormalized() : "null") }, rank={ (ctx!=null? ctx.GetRank() : "null") }");
+
+            // 0) SimpleRules（若启用则优先并且不再回退到复杂规则）
+            if (_config.UseSimpleRules)
+            {
+                CESLogger.Debug("[CES:Rule] SimpleRules 启用，使用简化匹配模式。");
+                if (TryRouteSimple(ctx, soundKey, voiceType, out route))
+                {
+                    return true;
+                }
+                // 简化模式下未命中：直接返回不使用自定义（保留原声），不进入复杂规则
+                route = new VoiceRoute { UseCustom = false, FileFullPath = null, MatchRule = "<simple-none>", TriedPaths = new List<string>() };
+                return false;
+            }
 
             // 1) rules
             if (_config.Rules != null)
@@ -71,6 +85,95 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
             // 3) no route
             route = new VoiceRoute { UseCustom = false, FileFullPath = null, MatchRule = "<none>", TriedPaths = new List<string>() };
+            return false;
+        }
+
+        private static string NormalizeIcon(string icon)
+        {
+            var s = (icon ?? string.Empty).Trim().ToLowerInvariant();
+            if (s == "elete") s = "elite";
+            return s;
+        }
+
+        private bool TryRouteSimple(EnemyContext ctx, string soundKey, AudioManager.VoiceType voiceType, out VoiceRoute route)
+        {
+            route = null;
+            try
+            {
+                if (ctx == null || string.IsNullOrEmpty(ctx.NameKey)) return false;
+                var simpleRules = _config?.SimpleRules;
+                if (simpleRules == null || simpleRules.Count == 0) return false;
+
+                var nk = ctx.NameKey;
+                var ctxIcon = NormalizeIcon(ctx.IconType);
+
+                var candidates = simpleRules
+                    .Where(r => r != null && !string.IsNullOrEmpty(r.NameKey) && string.Equals(r.NameKey, nk, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (candidates.Count == 0) return false;
+
+                IEnumerable<SimpleRuleConfig> ordered = candidates
+                    .OrderByDescending(r => !string.IsNullOrEmpty(r.IconType) && NormalizeIcon(r.IconType) == ctxIcon)
+                    .ThenBy(r => string.IsNullOrEmpty(r.IconType));
+
+                foreach (var r in ordered)
+                {
+                    var root = SanitizePatternLocal(r.FilePattern);
+                    if (string.IsNullOrEmpty(root)) continue;
+
+                    var iconPrefix = string.IsNullOrEmpty(r.IconType) ? "normal" : NormalizeIcon(r.IconType);
+                    var pattern = $"{root.TrimEnd('/', '\\')}/{iconPrefix}_{{voiceType}}_{{soundKey}}{{ext}}";
+
+                    CESLogger.Debug($"[CES:Rule] Simple 使用模板: {pattern}, vt={voiceType}, soundKey={soundKey}, nameKey={nk}");
+
+                    var cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
+                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
+                    {
+                        CESLogger.Info($"[CES:Rule] Simple 命中: {chosen}");
+                        route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried };
+                        return true;
+                    }
+                    else
+                    {
+                        // Fallback：忽略 voiceType，尝试 {iconPrefix}_*_{soundKey}{ext}
+                        try
+                        {
+                            var baseDir = Path.Combine(ModBehaviour.ModFolderName, root.TrimEnd('/', '\\'));
+                            if (Directory.Exists(baseDir))
+                            {
+                                var safeSk = (soundKey ?? "unknown").Replace(' ', '_').Replace(':', '_');
+                                var exts = _config.Fallback?.PreferredExtensions ?? new[] { ".mp3", ".wav" };
+                                foreach (var ext in exts)
+                                {
+                                    var search = $"{iconPrefix}_*_{safeSk}{ext}";
+                                    CESLogger.Debug($"[CES:Rule] Simple 通配搜索: dir={baseDir}, pattern={search}");
+                                    string[] files = Array.Empty<string>();
+                                    try { files = Directory.GetFiles(baseDir, search, SearchOption.TopDirectoryOnly); }
+                                    catch (Exception ex) { CESLogger.Debug($"[CES:Rule] Simple 通配枚举异常: {ex.Message}"); }
+
+                                    if (files != null && files.Length > 0)
+                                    {
+                                        if (PathBuilder.TryResolveExisting(files, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen2, out var tried2))
+                                        {
+                                            CESLogger.Info($"[CES:Rule] Simple 通配命中: {chosen2}");
+                                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen2, MatchRule = $"<simple-wild:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried2 };
+                                            return true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            CESLogger.Debug($"[CES:Rule] Simple 通配处理异常: {ex.Message}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                CESLogger.Debug($"[CES:Rule] Simple 处理异常: {ex.Message}");
+            }
             return false;
         }
 

@@ -245,6 +245,18 @@ namespace DuckovCustomSounds.CustomBGM
                     // 如果 FMOD 尚未初始化，走原始，保证安全
                     try { if (!FMODUnity.RuntimeManager.IsInitialized) { BGMLogger.Info("[Intercept] FMOD 未初始化，放行原 Stinger"); return true; } } catch { }
 
+                    // 若 Music 总线静音/0音量，则放行原 Stinger，避免在 0 音量时仍有音乐
+                    try {
+                        var bus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
+                        bool mute=false; float vol=1f;
+                        try { bus.getMute(out mute); } catch { }
+                        try { bus.getVolume(out vol); } catch { }
+                        if (mute || vol <= 0.0001f) {
+                            BGMLogger.Info("[Intercept] Music 总线为0/静音，放行原 Stinger");
+                            return true;
+                        }
+                    } catch { }
+
                     // 创建 Sound（流式，单次播放，2D）
                     var mode = MODE.CREATESTREAM | MODE._2D | MODE.LOOP_OFF;
                     var res = FMODUnity.RuntimeManager.CoreSystem.createSound(startPath, mode, out s_StartSound);
@@ -309,6 +321,7 @@ namespace DuckovCustomSounds.CustomBGM
                     while (Time.realtimeSinceStartup < deadline)
                     {
                         bool playing = false;
+
                         try { if (s_StartChannel.hasHandle()) s_StartChannel.isPlaying(out playing); } catch { }
                         if (!playing) break;
                         yield return new WaitForSeconds(0.05f);

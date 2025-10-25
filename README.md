@@ -57,6 +57,7 @@ DuckovCustomSounds/
 │       ├── normal_Duck_normal.mp3  # 敌人类型_语音类型_状态.mp3
 │       ├── normal_Duck_normal_1.mp3  # 可以添加变体，随机播放
 │       ├── normal_Duck_surprise.mp3
+│       ├── nnormal_duck_grenade.mp3 # 敌人发现手雷的语音提示
 │       └── normal_Duck_death.mp3
 │
 ├── CustomGrenadeSounds/  # 手雷音效文件夹
@@ -111,6 +112,8 @@ DuckovCustomSounds/
 │   └── CustomBGM_Patches.cs   # BGM相关补丁
 ├── CustomEnemySounds/
 │   └── CustomEnemySounds.cs    # 敌方音效管理器
+├── CustomGrenadeSounds/
+│   └── CustomGrenadeSounds.cs  # 手雷音效管理器
 ├── ModBehaviour.cs            # Mod主控制器
 └── DuckovCustomSounds.csproj  # 项目文件
 ```
@@ -124,7 +127,9 @@ DuckovCustomSounds/
 - [x] 自定义敌方音效(巡逻、惊讶、死亡等)
 - [x] 自定义手雷音效
 - [x] 自定义死亡音效
-- [ ] 自定义小兵躲避手雷/换弹音效
+- [x] 增加敌人发现手雷的音效
+- [ ] 自定义撤离成功音乐
+- [ ] 自定义小兵换弹音效
 - [ ] 自定义脚步
 - [ ] 自定义枪声
 - [ ] 无限可能……

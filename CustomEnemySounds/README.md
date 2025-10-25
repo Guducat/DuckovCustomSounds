@@ -21,6 +21,69 @@
 - Fallback.PreferredExtensions：优先扩展名（如 [".mp3", ".wav"]）
 - DefaultPattern 与 Rules：路径模板与规则匹配（支持 {team},{rank},{voiceType},{soundKey},{ext}）
 
+- UseSimpleRules：是否启用简化规则（按 nameKey 直配，跳过复杂 Rules）
+- SimpleRules：数组项：NameKey、IconType（可空；空=匹配所有，且文件前缀用 normal_；不空=使用 {IconType}_ 前缀）、FilePattern（目录/路径前缀）
+  - 示例：
+    ```json
+    { "NameKey": "Cname_Scav", "IconType": "", "FilePattern": "CustomEnemySounds/Scav" }
+    ```
+    对应文件名：CustomEnemySounds/Scav/normal_Duck_death.mp3（或根据 soundKey/voiceType 变化）
+- 通配回退：若精确匹配 {iconPrefix}_{voiceType}_{soundKey}{ext} 未命中，将自动回退查找 {iconPrefix}_*_{soundKey}{ext}，便于跨 voiceType 复用同一音频文件
+
+
+## 语言对照表
+| NameKey                   | 中文名称         |
+|--------------------------|------------------|
+| Cname_Wolf               | 狼               |
+| Cname_ShortEagle         | 矮鸭             |
+| Cname_UltraMan           | 光之男           |
+| Cname_CrazyRob           | 失控机械蜘蛛     |
+| Cname_Scav               | 拾荒者           |
+| Cname_Usec               | 雇佣兵           |
+| Cname_RobSpider          | 机械蜘蛛         |
+| Cname_ScavRage           | 暴走拾荒者       |
+| Cname_Boss_Sniper        | 劳登             |
+| Cname_SpeedyChild        | 急速团成员       |
+| Cname_Speedy             | 急速团长         |
+| Cname_Merchant_Myst      | 神秘商人         |
+| Cname_Prison             | 狱卒             |
+| Cname_Boss_Shot          | 喷子             |
+| Cname_ServerGuardian     | 矿长             |
+| Cname_Raider             | 游荡者           |
+| Cname_LabTestObjective   | 测试对象         |
+| Cname_StormCreature      | 风暴生物         |
+| Cname_XING               | 大兴兴           |
+| Cname_XINGS              | 小小兴           |
+| Cname_DengWolf           | 劳登的狗         |
+| Cname_Mushroom           | 行走菇           |
+| Cname_Vida               | 维达             |
+| Cname_Roadblock          | 路障             |
+| Cname_StormBoss1         | 噗咙噗咙         |
+| Cname_StormBoss2         | 咕噜咕噜         |
+| Cname_StormBoss3         | 啪啦啪啦         |
+| Cname_StormBoss4         | 比利比利         |
+| Cname_StormBoss5         | 口口口口         |
+| Cname_Boss_Fly           | 蝇蝇队长         |
+| Cname_Boss_Fly_Child     | 蝇蝇队员         |
+| Cname_Boss_Arcade        | 暴走街机         |
+| Cname_BALeader           | BA队长           |
+| Cname_BALeader_Child     | 普通BA           |
+| Cname_SenorEngineer      | 高级工程师       |
+| Cname_Boss_3Shot         | 三枪哥           |
+| Cname_3Shot_Child        | 三枪弟           |
+| Cname_Grenade            | 炸弹狂人         |
+| Cname_SchoolBully        | 校霸             |
+| Cname_SchoolBully_Child  | 校友             |
+| Cname_RPG                | 迷塞尔           |
+| Cname_Drone              | 侦察机           |
+| Cname_StormVirus         | 风暴？           |
+| Cname_MonsterClimb       | 风暴虫           |
+| Cname_Boss_Red           | ???              |
+| Cname_Football_1         | 足球队长         |
+| Cname_Football_2         | 足球队员         |
+| Cname_Prison_Boss        | 典狱长           |
+| Cname_StormBoss1_Child   | 噗咙             |
+
 ## 日志与调试开关
 - 运行时日志前缀：[CustomEnemySounds] 或 [CustomEnemySounds:Debug]
 - 快速文件开关（位于模组根目录 DuckovCustomSounds/）：
