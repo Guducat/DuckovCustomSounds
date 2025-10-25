@@ -2,7 +2,7 @@
 using System;
 using UnityEngine;
 using Duckov;
-using DuckovCustomSounds.CustomBGM; // for CharacterMainControl, DamageInfo, ExplosionFxTypes, AudioManager, etc.
+
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
@@ -45,12 +45,12 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 {
                 }
 
-                BGMLogger.Info(
+                GrenadeLogger.Info(
                     $"[GrenadeMonitor] 手雷掷出 - 实例: Grenade_{id}, 时间: {Time.time:F2}s, hasCollideSound: {hasCollide}, collideSound: \"{(collidePath ?? string.Empty)}\"");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
             }
         }
     }
@@ -93,12 +93,12 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 {
                 }
 
-                BGMLogger.Info(
+                GrenadeLogger.Info(
                     $"[GrenadeMonitor] 手雷碰撞 - 音效启用: {hasCollide}, 音效路径: \"{(collidePath ?? string.Empty)}\", 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
             }
         }
     }
@@ -149,12 +149,12 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                     /* ignore */
                 }
 
-                BGMLogger.Info(
+                GrenadeLogger.Info(
                     $"[GrenadeMonitor] 手雷爆炸 - 类型: {prefabType}, 中心: ({center.x:F1}, {center.y:F1}, {center.z:F1}), 预制体: {prefabType}{(string.IsNullOrEmpty(prefabName) ? string.Empty : $"({prefabName})")}");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
             }
         }
     }
@@ -181,11 +181,11 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 Vector3 charPos = Vector3.zero;
                 try { charPos = from.transform.position; } catch { }
 
-                BGMLogger.Info($"[SkillMonitor] 技能释放 - 类型: {skillType}, 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 位置: ({charPos.x:F1}, {charPos.y:F1}, {charPos.z:F1})");
+                GrenadeLogger.Info($"[SkillMonitor] 技能释放 - 类型: {skillType}, 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 位置: ({charPos.x:F1}, {charPos.y:F1}, {charPos.z:F1})");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[SkillMonitor] 技能释放监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[SkillMonitor] 技能释放监控异常: {ex.Message}");
             }
         }
     }
@@ -227,11 +227,11 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 }
                 catch { }
 
-                BGMLogger.Info($"[GrenadeSkillMonitor] 手雷技能释放 - 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 角色: {fromCharacterName}, 位置: ({position.x:F1}, {position.y:F1}, {position.z:F1})");
+                GrenadeLogger.Info($"[GrenadeSkillMonitor] 手雷技能释放 - 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 角色: {fromCharacterName}, 位置: ({position.x:F1}, {position.y:F1}, {position.z:F1})");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[GrenadeSkillMonitor] 手雷技能释放监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[GrenadeSkillMonitor] 手雷技能释放监控异常: {ex.Message}");
             }
         }
     }
@@ -265,11 +265,11 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 Vector3 pos = Vector3.zero;
                 try { pos = gameObject?.transform.position ?? Vector3.zero; } catch { }
 
-                // BGMLogger.Info($"[AudioMonitor] #{callCount} Post调用 - 事件: \"{eventName}\", 对象: {objName}({objType}), 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
+                // GrenadeLogger.Info($"[AudioMonitor] #{callCount} Post调用 - 事件: \"{eventName}\", 对象: {objName}({objType}), 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[AudioMonitor] AudioManager.Post 监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[AudioMonitor] AudioManager.Post 监控异常: {ex.Message}");
             }
         }
     }
@@ -307,11 +307,11 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 Vector3 pos = Vector3.zero;
                 try { pos = gameObject?.transform.position ?? Vector3.zero; } catch { }
 
-                BGMLogger.Info($"[ExplosiveMonitor] #{explosiveCallCount} 爆炸音效 - 事件: \"{eventName}\", 对象: {objName}({objType}), 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
+                GrenadeLogger.Info($"[ExplosiveMonitor] #{explosiveCallCount} 爆炸音效 - 事件: \"{eventName}\", 对象: {objName}({objType}), 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
             }
             catch (Exception ex)
             {
-                BGMLogger.Warn($"[ExplosiveMonitor] 爆炸音效监控异常: {ex.Message}");
+                GrenadeLogger.Warn($"[ExplosiveMonitor] 爆炸音效监控异常: {ex.Message}");
             }
         }
     }
@@ -385,7 +385,8 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 string fileName = null;
                 float min = 1f, max = 30f;
 
-                // Match three grenade-related events exactly (case-insensitive)
+                // 精确匹配三种手雷相关事件（不区分大小写）
+                // 注意：可能还有其他变种未被处理，例如 throw_pipe 等
                 if (string.Equals(eventName, "SFX/Combat/Explosive/throw_grenade", StringComparison.OrdinalIgnoreCase))
                 {
                     fileName = "throw.mp3"; min = 1f; max = 20f;
@@ -400,23 +401,23 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 }
                 else
                 {
-                    return true; // Not our grenade event → allow original
+                    return true; // 不是我们处理的手雷事件 → 允许原始事件播放
                 }
 
                 string filePath = Path.Combine(ModBehaviour.ModFolderName, "CustomGrenadeSounds", fileName);
                 if (!File.Exists(filePath))
                 {
-                    BGMLogger.Info($"[GrenadeSound] 自定义文件缺失，放行原始事件: {eventName} (路径: {filePath})");
+                    GrenadeLogger.Info($"[GrenadeSound] 自定义文件缺失，放行原始事件: {eventName} (路径: {filePath})");
                     return true;
                 }
-                try { if (!RuntimeManager.IsInitialized) { BGMLogger.Info($"[GrenadeSound] FMOD 未初始化，放行原始事件: {eventName}"); return true; } } catch { }
+                try { if (!RuntimeManager.IsInitialized) { GrenadeLogger.Info($"[GrenadeSound] FMOD 未初始化，放行原始事件: {eventName}"); return true; } } catch { }
 
-                // Play custom 3D sound via Core API, route to SFX→Master
+                // 通过 Core API 播放自定义 3D 音效，路由到 SFX→Master
                 var mode = MODE.CREATESAMPLE | MODE._3D | MODE.LOOP_OFF;
                 var r1 = RuntimeManager.CoreSystem.createSound(filePath, mode, out Sound sound);
                 if (r1 != RESULT.OK || !sound.hasHandle())
                 {
-                    BGMLogger.Info($"[GrenadeSound] createSound 失败({r1})，放行原始事件: {eventName}");
+                    GrenadeLogger.Info($"[GrenadeSound] createSound 失败({r1})，放行原始事件: {eventName}");
                     return true;
                 }
 
@@ -426,7 +427,7 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
                 if (r2 != RESULT.OK || !channel.hasHandle())
                 {
-                    BGMLogger.Info($"[GrenadeSound] playSound 失败({r2})，放行原始事件: {eventName}");
+                    GrenadeLogger.Info($"[GrenadeSound] playSound 失败({r2})，放行原始事件: {eventName}");
                     try { if (sound.hasHandle()) sound.release(); } catch { }
                     return true;
                 }
@@ -438,16 +439,16 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                 try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
                 try { channel.setPaused(false); } catch { }
 
-                BGMLogger.Debug($"[GrenadeSound] 替换 {eventName} → 播放自定义音效（SFX→Master, 3D） @ ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
+                GrenadeLogger.Debug($"[GrenadeSound] 替换 {eventName} → 播放自定义音效（SFX→Master, 3D） @ ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
 
                 try { ModBehaviour.Instance?.StartCoroutine(GrenadeSfxHelpers.CleanupAfterPlay(sound, channel, 8f)); } catch { }
 
                 __result = new FMOD.Studio.EventInstance?();
-                return false; // block original event
+                return false; // 阻止原始事件播放
             }
             catch (Exception ex)
             {
-                BGMLogger.Info($"[GrenadeSound] Prefix 异常，放行原始事件: {ex.Message}");
+                GrenadeLogger.Info($"[GrenadeSound] Prefix 异常，放行原始事件: {ex.Message}");
                 return true;
             }
         }

@@ -27,6 +27,9 @@ namespace DuckovCustomSounds.CustomBGM
         // 2. 状态：跟踪当前播放的歌曲
         private static int currentHomeBGMIndex = 0;
         private static Channel currentBGMChannel; // 用来停止播放
+        // 自动切歌控制：仅对 HomeBGM 生效
+        private static bool s_AutoAdvanceEnabled = false;
+        private static bool s_StopRequested = false; // 外部/我们主动停止导致的结束，不触发自动下一首
         // 固定绑定到 Music 总线的锁，避免 Studio 重构导致 Channel 脱离 bus
         private static FMOD.Studio.Bus _lockedMusicBus;
         private static bool _musicBusLocked;
@@ -71,10 +74,8 @@ namespace DuckovCustomSounds.CustomBGM
             {
                 // 解析文件名中的曲名/作者信息
                 var info = ParseMusicInfo(filePath);
-                // 创建FMOD声音对象，设置为循环播放模式
-
-
-                var result = FMODUnity.RuntimeManager.CoreSystem.createSound(filePath, MODE.LOOP_NORMAL, out Sound newSong);
+                // 创建FMOD声音对象，设置为非循环播放（自然结束后由我们自动切换下一首）
+                var result = FMODUnity.RuntimeManager.CoreSystem.createSound(filePath, MODE.LOOP_OFF, out Sound newSong);
                 if (result == RESULT.OK)
                 {
                     // 将创建的声音对象关联到MusicInfo结构
@@ -174,6 +175,8 @@ namespace DuckovCustomSounds.CustomBGM
 
         public static void StopCurrentBGM(bool fade)
         {
+            s_StopRequested = true;
+            s_AutoAdvanceEnabled = false;
             try { if (_bgmGuardRoutine != null && ModBehaviour.Instance != null) { ModBehaviour.Instance.StopCoroutine(_bgmGuardRoutine); _bgmGuardRoutine = null; } } catch { }
             if (currentBGMChannel.hasHandle())
             {
@@ -213,6 +216,10 @@ namespace DuckovCustomSounds.CustomBGM
             int count = HomeBGMList.Count;
             int safeIndex = ((index % count) + count) % count;
             currentHomeBGMIndex = safeIndex;
+
+            // 开启自动切歌（仅 HomeBGM）
+            s_StopRequested = false;
+            s_AutoAdvanceEnabled = true;
 
             // 预热一次总线句柄，尽量让路由在首次就命中 Studio 总线
             ModBehaviour.KickBusWarmup(2f, 0.1f);
@@ -332,6 +339,8 @@ namespace DuckovCustomSounds.CustomBGM
 
                 if (IsMusicMutedOrZero())
                 {
+                    // 总线被静音/拉至0：停止并禁止自动切歌
+                    s_StopRequested = true;
                     try { currentBGMChannel.stop(); } catch { }
                     break;
                 }
@@ -356,7 +365,13 @@ namespace DuckovCustomSounds.CustomBGM
 
                 yield return wait;
             }
+            // 跳出循环：若是自然播放结束且允许自动切换，则播下一首
+            bool shouldAutoNext = s_AutoAdvanceEnabled && !s_StopRequested && HasHomeSongs;
             _bgmGuardRoutine = null;
+            if (shouldAutoNext)
+            {
+                try { PlayNextHomeBGM(); } catch { }
+            }
             yield break;
         }
 

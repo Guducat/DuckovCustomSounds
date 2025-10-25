@@ -6,6 +6,8 @@ using FMOD;
 using Debug = UnityEngine.Debug;
 using Duckov; // AudioManager, AICharacterController, AudioObject, CharacterMainControl
 using DuckovCustomSounds.CustomEnemySounds;
+using DuckovCustomSounds.Logging;
+
 
 
 namespace DuckovCustomSounds
@@ -18,6 +20,9 @@ namespace DuckovCustomSounds
         public static string ErrorMessage = "";
         public static ChannelGroup SfxGroup;
         public static ChannelGroup MusicGroup;
+
+            private static ILog CoreLog => LogManager.GetLogger("Core");
+
         public static bool MusicGroupIsFallback; // 当 MusicGroup 当前指向 SFX 回退时为 true
         public static ModBehaviour Instance;
 
@@ -31,25 +36,36 @@ namespace DuckovCustomSounds
             try
             {
                 // 3. 获取 FMOD 总线 (仅一次轻量探测；不设置回退，不写入错误信息)
+                // 加载/生成统一日志配置（settings.json）
+                LogManager.Initialize(ModFolderName);
+
+
+                // 读取并应用模块设置（例如 overrideExtractionBGM）
+                ModSettings.Initialize();
+
                 try
                 {
                     var sfxBus = FMODUnity.RuntimeManager.GetBus("bus:/Master/SFX");
                     var sfxRes = sfxBus.getChannelGroup(out SfxGroup);
                     if (sfxRes != RESULT.OK || !SfxGroup.hasHandle())
-                        Debug.Log($"[CustomSounds] SFX 总线初始化时未就绪: {sfxRes}");
+                        CoreLog.Info($"SFX 总线初始化时未就绪: {sfxRes}");
                 }
                 catch (Exception ex)
                 {
-                    Debug.Log($"[CustomSounds] SFX 总线初始化探测异常: {ex.Message}");
+                    CoreLog.Info($"SFX 总线初始化探测异常: {ex.Message}");
                 }
 
                 // 不在初始化阶段获取 Music，总线会在实际播放/预热协程中再解析，避免误判与冗余日志
-                CESLogger.ApplyFileSwitches(ModFolderName);
+                // 文件开关钳制在模块加载后统一应用（见下方 LogManager.ApplyFileSwitches）
 
 
                 // 4. 指挥其他模块加载它们自己的资源
                 CustomBGM.CustomBGM.Load();
                 CustomEnemySounds.CustomEnemySounds.Load();
+
+
+                // 应用基于文件的快速开关（仅在 settings.json 未显式指定时生效）
+                    LogManager.ApplyFileSwitches(ModFolderName);
 
 
                 // 5. 应用所有补丁（动态加载 Harmony，避免在缺失 0Harmony.dll 时类型加载失败）
@@ -64,7 +80,7 @@ namespace DuckovCustomSounds
                     harmony = ctor?.Invoke(new object[] { "com.guducat.duckovcustomsounds" });
                     var patchAll = harmonyType.GetMethod("PatchAll", new[] { typeof(Assembly) });
                     patchAll?.Invoke(harmony, new object[] { Assembly.GetExecutingAssembly() });
-                    Debug.Log("[CustomSounds] Mod 已加载并应用所有补丁。");
+                    CoreLog.Info("Mod 已加载并应用所有补丁。");
 
                     // 额外：诊断性输出 - 验证关键补丁的目标方法是否已被 Harmony 标记
                     try
@@ -81,11 +97,11 @@ namespace DuckovCustomSounds
                                 try
                                 {
                                     var info = m != null ? getPatchInfo.Invoke(null, new object[] { m }) : null;
-                                    Debug.Log($"[CustomSounds] PatchStatus {name}: methodFound={(m!=null)}, patched={(info!=null)}");
+                                    CoreLog.Info($"PatchStatus {name}: methodFound={(m!=null)}, patched={(info!=null)}");
                                 }
                                 catch (Exception ex)
                                 {
-                                    Debug.Log($"[CustomSounds] PatchStatus {name}: exception {ex.Message}");
+                                    CoreLog.Info($"PatchStatus {name}: exception {ex.Message}");
                                 }
                             }
 
@@ -124,11 +140,11 @@ namespace DuckovCustomSounds
 		        }
 		        catch (Exception ex)
 		        {
-			        Debug.LogWarning($"[CustomSounds] 卸载补丁失败: {ex}");
+			        CoreLog.Warning($"卸载补丁失败: {ex}");
 		        }
 	        }
 
-	        Debug.Log("[CustomSounds] Mod 已卸载。");
+	        CoreLog.Info("Mod 已卸载。");
         }
 
         // 手动/事件触发：在进入标题后或进入大厅时预热总线句柄，避免首次播放不受滑块控制

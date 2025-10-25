@@ -64,7 +64,7 @@ DuckovCustomSounds/
 │   ├── throw.mp3        # 手雷投掷音效
 │   └── explode.mp3 # 手雷普通爆炸音效
 │
-├── CustomShootingSounds/  # 射击音效文件夹(开发中，可忽略)
+├── CustomGunSounds/  # 射击音效文件夹
 │
 ├── CustomFootstepSounds/ #脚步音效文件夹(开发中，可忽略)
 │
@@ -102,6 +102,46 @@ C:\Users\{用户名}\AppData\LocalLow\TeamSoda\Duckov\
 - 复现流程与描述
 - 音频文件信息（可选）
 
+## 统一日志系统与配置（settings.json）
+
+为便于调试与生产环境使用，Mod 提供“按模块可控”的统一日志系统。支持的模块：Core / CustomEnemySounds / CustomBGM / CustomGrenadeSounds。
+
+- 配置文件位置：游戏根目录/DuckovCustomSounds/settings.json（与 debug_off/.nolog 同级）
+- 自动生成：若文件不存在，会在启动时自动生成默认配置（所有模块 Info）
+- 日志级别（从低到高）：Error, Warning, Info, Debug, Verbose（级别越高输出越多）
+- 兼容性：
+  - CustomEnemySounds 仍兼容 voice_rules.json 的 Debug 段配置（仅当 settings.json 未显式配置该模块时生效）
+  - debug_off 或 .nolog 文件存在时，会将所有模块的级别钳制至 Info
+
+示例配置：
+
+```
+{
+  "logging": {
+    "enabled": true,
+    "defaultLevel": "Info",
+    "modules": {
+      "Core": { "level": "Info" },
+      "CustomEnemySounds": { "level": "Info" },
+      "CustomBGM": { "level": "Error" },
+      "CustomGrenadeSounds": { "level": "Debug" }
+    }
+  }
+}
+```
+
+说明：
+- logging.enabled：全局开关（false 将关闭所有日志）
+- logging.defaultLevel：未在 modules 中显式列出的模块使用该级别
+- modules.*.level：对指定模块单独设置级别
+
+快速验证：
+1) 删除 settings.json 后启动游戏 → 检查同目录是否自动生成默认配置（所有模块 Info）
+2) 将 CustomBGM 设为 Error → 仅 Error 输出；将 CustomGrenadeSounds 设为 Debug → Debug/Info/Warn/Error 输出
+3) 创建 debug_off 文件 → 所有模块仅输出 Error/Warning/Info（Debug/Verbose 被抑制）
+
+---
+
 ## 开发信息
 
 ### 项目结构
@@ -128,10 +168,11 @@ DuckovCustomSounds/
 - [x] 自定义手雷音效
 - [x] 自定义死亡音效
 - [x] 增加敌人发现手雷的音效
-- [ ] 自定义撤离成功音乐
-- [ ] 自定义小兵换弹音效
+- [x] 自定义撤离成功音乐
+- [x] 自定义撤离倒计时音效
+- [ ] 自定义敌人换弹音效
 - [ ] 自定义脚步
-- [ ] 自定义枪声
+- [x] 自定义枪声
 - [ ] 无限可能……
 
 ### 不重复实现的功能
@@ -139,14 +180,16 @@ DuckovCustomSounds/
   ) mod 提供
 - [x] 自定义搜索/搜出音效 - 由 [@dzj0821](https://steamcommunity.com/profiles/76561198053835373) 的 [物品价值稀有度与搜索音效](https://steamcommunity.com/sharedfiles/filedetails/?id=3588386576) mod提供
 - [x] 自定义击杀音效 - 由 [@F_O_G](https://steamcommunity.com/id/For_Of_Des) 的 [CF击杀反馈](https://steamcommunity.com/sharedfiles/filedetails/?id=3590362366) mod提供
-      
+
+### 目前仍存的疑难杂症
+- 拦截stg_map_base Stinger播放自定义声音时会回落到SFX，Music路由不可用
 
 ---
 
 ### 示例资源包
 
-[蓝奏云-1025更新](https://guducat.lanzoul.com/i0uZu399sglc)，音效请解压在*游戏根目录(Escape from Duckov/DuckovCustomSounds/...)下，确保结果与文档一致*。 
-**额外说明**：资源包仅作演示，请自行修改。目前包括：五字搜打撤游戏BGM、阿萨拉小兵语音、罐头笑声、专业配音员手雷掷出声。  
+[蓝奏云-1025更新](https://guducat.lanzoul.com/i0uZu399sglc)，音效请解压在*游戏根目录(Escape from Duckov/DuckovCustomSounds/...)下，确保结果与文档一致*。
+**额外说明**：资源包仅作演示，请自行修改。目前包括：五字搜打撤游戏BGM、阿萨拉小兵语音、罐头笑声、专业配音员手雷掷出声。
 如果各位有好的想法欢迎提issues！
 
 ---

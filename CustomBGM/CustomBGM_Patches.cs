@@ -450,4 +450,111 @@ namespace DuckovCustomSounds.CustomBGM
             }
         }
 
+        // --- 拦截撤离成功 Stinger：stg_map_zero → 播放自定义 exfil.mp3 ---
+        [HarmonyPatch(typeof(AudioManager))]
+        public static class AudioManager_PlayStringer_ExfilIntercept
+        {
+            private static bool s_ExfilActive;
+            private static Sound s_ExfilSound;
+            private static Channel s_ExfilChannel;
+
+            [HarmonyPatch("PlayStringer", new Type[] { typeof(string) })]
+            [HarmonyPrefix]
+            public static bool Prefix(string key)
+            {
+                try
+                {
+                    if (!string.Equals(key, "stg_map_zero", StringComparison.OrdinalIgnoreCase))
+                        return true; // 仅拦截撤离成功
+                    if (!string.Equals(key, "stg_map_farm", StringComparison.OrdinalIgnoreCase))
+                        return true;
+
+                    // 配置控制：默认 false 使用原版撤离BGM；true 时拦截原版，不再播放自定义 BGM（撤离音效由 ExtractionSounds 负责）
+                    if (!DuckovCustomSounds.ModSettings.OverrideExtractionBGM)
+                        return true; // 放行原版
+                    else
+                        return false; // 直接阻止原版 Stinger
+
+                    // 以下旧逻辑（播放自定义 extraction.mp3）默认不再触发，仅保留以便回退/手动启用
+                    string exfilPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "extraction.mp3");
+                    if (!File.Exists(exfilPath))
+                    {
+                        BGMLogger.Info("[Intercept] 拦截到 stg_map_zero，但 extraction.mp3 不存在，放行原 Stinger");
+                        return true;
+                    }
+
+                    try { if (!FMODUnity.RuntimeManager.IsInitialized) { BGMLogger.Info("[Intercept] FMOD 未初始化，放行原 Stinger"); return true; } } catch { }
+
+                    var mode = MODE.CREATESTREAM | MODE._2D | MODE.LOOP_OFF;
+                    var res = FMODUnity.RuntimeManager.CoreSystem.createSound(exfilPath, mode, out s_ExfilSound);
+                    if (res != RESULT.OK || !s_ExfilSound.hasHandle())
+                    {
+                        BGMLogger.Warn($"[Intercept] extraction.mp3 createSound 失败: {res}，放行原 Stinger");
+                        return true;
+                    }
+
+                    var group = AudioManager_PlayStringer_Intercept.ResolveStingerGroupSafe();
+                    var playRes = FMODUnity.RuntimeManager.CoreSystem.playSound(s_ExfilSound, group, false, out s_ExfilChannel);
+                    if (playRes == RESULT.OK && s_ExfilChannel.hasHandle())
+                    {
+                        s_ExfilActive = true;
+                        BGMLogger.Info("[Intercept] 拦截 stg_map_zero，播放自定义 extraction.mp3（Music→SFX→Master 路由）");
+
+                        try
+                        {
+                            if (ModBehaviour.Instance != null)
+                                ModBehaviour.Instance.StartCoroutine(WaitAndCleanupExfil());
+                        }
+                        catch { }
+
+                        return false; // 阻止原始 Stinger
+                    }
+                    else
+                    {
+                        BGMLogger.Warn($"[Intercept] extraction.mp3 playSound 失败: {playRes}，放行原 Stinger");
+                        try { if (s_ExfilSound.hasHandle()) s_ExfilSound.release(); } catch { }
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    BGMLogger.Warn($"[Intercept] PlayStringer stg_map_zero Prefix 异常: {ex.Message}");
+                    return true; // 安全回退
+                }
+            }
+
+            [HarmonyPatch("get_IsStingerPlaying")]
+            [HarmonyPostfix]
+            public static void IsStingerPlaying_Postfix(ref bool __result)
+            {
+                try
+                {
+                    if (s_ExfilActive)
+                        __result = true;
+                }
+                catch { }
+            }
+
+            private static IEnumerator WaitAndCleanupExfil()
+            {
+                float deadline = Time.realtimeSinceStartup + 12f; // 最长占位 12s
+                try
+                {
+                    while (Time.realtimeSinceStartup < deadline)
+                    {
+                        bool playing = false;
+                        try { if (s_ExfilChannel.hasHandle()) s_ExfilChannel.isPlaying(out playing); } catch { }
+                        if (!playing) break;
+                        yield return new WaitForSeconds(0.05f);
+                    }
+                }
+                finally
+                {
+                    s_ExfilActive = false;
+                    try { if (s_ExfilChannel.hasHandle()) s_ExfilChannel.stop(); } catch { }
+                    try { if (s_ExfilSound.hasHandle()) s_ExfilSound.release(); } catch { }
+                }
+            }
+        }
+
 }

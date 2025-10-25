@@ -311,8 +311,28 @@ namespace DuckovCustomSounds.CustomEnemySounds
             min = 1.5f; max = 25f;
             try
             {
+                if (TryGetEvent3DDistancesForKey(soundKey, voiceType, out min, out max))
+                    return true;
+                // 回退：优先采用“surprise”的3D距离以保证与普通惊吓语音响度一致
+                if (!string.Equals(soundKey, "surprise", StringComparison.OrdinalIgnoreCase) &&
+                    TryGetEvent3DDistancesForKey("surprise", voiceType, out min, out max))
+                    return true;
+                // 次级回退：normal
+                if (!string.Equals(soundKey, "normal", StringComparison.OrdinalIgnoreCase) &&
+                    TryGetEvent3DDistancesForKey("normal", voiceType, out min, out max))
+                    return true;
+            }
+            catch { }
+            return false;
+        }
+
+        private static bool TryGetEvent3DDistancesForKey(string key, AudioManager.VoiceType voiceType, out float min, out float max)
+        {
+            min = 1.5f; max = 25f;
+            try
+            {
                 string vt = voiceType.ToString().ToLowerInvariant();
-                string eventPath = $"Char/Voice/vo_{vt}_{soundKey}";
+                string eventPath = $"Char/Voice/vo_{vt}_{key}";
                 FMOD.Studio.EventInstance ev;
                 if (AudioManager.TryCreateEventInstance(eventPath, out ev))
                 {
