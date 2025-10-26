@@ -25,8 +25,12 @@ namespace DuckovCustomSounds.CustomEnemySounds
         // aiInstanceID -> last play
         private static readonly Dictionary<int, LastPlay> _last = new Dictionary<int, LastPlay>();
 
+	        // Global rate limit for NPC grenade surprised voice
+	        private static float _lastGrenadeSurprisedGlobalTime = -999f;
+
+
         // 同一 AI 同一手雷的最小触发间隔
-        private const float MinCooldown = 3.0f;
+        private const float MinCooldown = 6.0f;
 
         [HarmonyPatch(typeof(AICharacterController))]
         [HarmonyPatch("OnSound", new Type[] { typeof(AISound) })]
@@ -69,6 +73,12 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 }
                 catch { }
 
+                // 设置开关/频率限制（全局）
+                if (!DuckovCustomSounds.ModSettings.NPCGrenadeSurprisedEnabled) return;
+                float __now = Time.realtimeSinceStartup;
+                float __min = DuckovCustomSounds.ModSettings.NPCGrenadeSurprisedMinInterval;
+                if (__min > 0f && (__now - _lastGrenadeSurprisedGlobalTime) < __min) return;
+
                 // 通过标准入口触发语音：soundKey = "grenade"
                 // 后续由 AudioObject.PostQuak 的 Postfix 进行自定义替换与 3D 路由
                 // 使用 AudioObject 以避免跨程序集的 internal 访问限制
@@ -77,6 +87,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 ao.VoiceType = cmc.AudioVoiceType;
                 ao.PostQuak("grenade");
 
+                _lastGrenadeSurprisedGlobalTime = Time.realtimeSinceStartup;
                 _last[aiId] = new LastPlay { LastGrenadeObjId = grenadeId, LastTime = Time.realtimeSinceStartup };
                 CESLogger.Debug($"[GrenadeVoice] AI#{aiId} 播放 grenade 提示 (obj={grenadeId})");
             }

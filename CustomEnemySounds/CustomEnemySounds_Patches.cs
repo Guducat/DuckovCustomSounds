@@ -177,6 +177,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
         // 5) 死亡语音兜底（某些流程不经由 PostQuak 时）
         private static readonly System.Collections.Generic.HashSet<int> _deathPlayed = new System.Collections.Generic.HashSet<int>();
+        private static float _lastDeathGlobalTime = -999f;
+
         private static void TryPlayDeathVoice(UnityEngine.GameObject go)
         {
             try
@@ -184,6 +186,12 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 if (go == null) return;
                 int id = go.GetInstanceID();
                 if (_deathPlayed.Contains(id)) return;
+
+                // Settings: global rate limit for death voice
+                if (!DuckovCustomSounds.ModSettings.DeathVoiceEnabled) return;
+                float __now = Time.realtimeSinceStartup;
+                float __min = DuckovCustomSounds.ModSettings.DeathVoiceMinInterval;
+                if (__min > 0f && (__now - _lastDeathGlobalTime) < __min) return;
 
                 EnemyContext ctx = null;
                 if (!EnemyContextRegistry.TryGet(go, out ctx) || ctx == null)
@@ -242,6 +250,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         var fvel = ToFMODVector(Vector3.zero);
                         try { ch.set3DAttributes(ref fpos, ref fvel); } catch { }
                         try { ch.setPaused(false); } catch { }
+                        _lastDeathGlobalTime = Time.realtimeSinceStartup;
+
 
                         CESLogger.Info($"[CES:Hook] Death: 播放自定义3D语音 -> {route.FileFullPath}");
                         try { CoreSoundTracker.Track(id, sound, ch, route.FileFullPath, "death", deathPrio, tr); } catch { }

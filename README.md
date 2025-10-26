@@ -57,7 +57,7 @@ DuckovCustomSounds/
 │       ├── normal_Duck_normal.mp3  # 敌人类型_语音类型_状态.mp3
 │       ├── normal_Duck_normal_1.mp3  # 可以添加变体，随机播放
 │       ├── normal_Duck_surprise.mp3
-│       ├── nnormal_duck_grenade.mp3 # 敌人发现手雷的语音提示
+│       ├── normal_duck_grenade.mp3 # 敌人发现手雷的语音提示
 │       └── normal_Duck_death.mp3
 │
 ├── CustomGrenadeSounds/  # 手雷音效文件夹

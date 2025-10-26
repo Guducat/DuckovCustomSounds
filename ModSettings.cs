@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Globalization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using DuckovCustomSounds.Logging;
@@ -14,6 +15,13 @@ namespace DuckovCustomSounds
     {
         private const string SettingsFileName = "settings.json";
         private static readonly ILog Log = LogManager.GetLogger("Core");
+
+        // New: voice frequency controls (global rate limit)
+        public static bool DeathVoiceEnabled { get; private set; } = true;
+        public static float DeathVoiceMinInterval { get; private set; } = 0f;
+
+        public static bool NPCGrenadeSurprisedEnabled { get; private set; } = true;
+        public static float NPCGrenadeSurprisedMinInterval { get; private set; } = 0f;
 
         public static bool OverrideExtractionBGM { get; private set; } = false;
 
@@ -41,22 +49,51 @@ namespace DuckovCustomSounds
                     }
                 }
 
-                // 读取并带默认值写回
-                bool hadKey = root.TryGetValue("overrideExtractionBGM", StringComparison.OrdinalIgnoreCase, out var token);
-                bool value = token?.Type == JTokenType.Boolean ? token.Value<bool>() : false;
-                if (!hadKey)
-                {
-                    root["overrideExtractionBGM"] = value; // 默认 false
-                }
-                OverrideExtractionBGM = value;
+                bool needsWriteBack = false;
 
-                // 如果文件原本不存在或缺失键，则写回（非破坏式，仅合并这个键）
-                if (!exists || !hadKey)
+                // 1) overrideExtractionBGM
+                bool hadOverride = root.TryGetValue("overrideExtractionBGM", StringComparison.OrdinalIgnoreCase, out var overrideToken);
+                bool overrideVal = overrideToken?.Type == JTokenType.Boolean ? overrideToken.Value<bool>() : false;
+                if (!hadOverride)
+                {
+                    root["overrideExtractionBGM"] = overrideVal; // 默认 false
+                    needsWriteBack = true;
+                }
+                OverrideExtractionBGM = overrideVal;
+
+                // 2) deathVoiceFrequency（"always"/number seconds/"off"/true/false/"6.0f"等）
+                const string DeathKey = "deathVoiceFrequency";
+                bool hadDeathKey = root.TryGetValue(DeathKey, StringComparison.OrdinalIgnoreCase, out var deathToken);
+                ParseRateControl(deathToken, /*defaultEnabled*/ true, /*defaultInterval*/ 0f,
+                    out bool dvEnabled, out float dvInterval);
+                if (!hadDeathKey)
+                {
+                    root[DeathKey] = "always"; // 写回默认值
+                    needsWriteBack = true;
+                }
+                DeathVoiceEnabled = dvEnabled;
+                DeathVoiceMinInterval = dvInterval;
+
+                // 3) npcGrenadeSurprisedFrequency（同上）
+                const string GrenadeKey = "npcGrenadeSurprisedFrequency";
+                bool hadGrenadeKey = root.TryGetValue(GrenadeKey, StringComparison.OrdinalIgnoreCase, out var grenadeToken);
+                ParseRateControl(grenadeToken, /*defaultEnabled*/ true, /*defaultInterval*/ 0f,
+                    out bool gvEnabled, out float gvInterval);
+                if (!hadGrenadeKey)
+                {
+                    root[GrenadeKey] = "always";
+                    needsWriteBack = true;
+                }
+                NPCGrenadeSurprisedEnabled = gvEnabled;
+                NPCGrenadeSurprisedMinInterval = gvInterval;
+
+                // 统一写回：仅当文件原本不存在或新增键需要补充
+                if (!exists || needsWriteBack)
                 {
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}键 overrideExtractionBGM={OverrideExtractionBGM}");
+                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}");
                     }
                     catch (Exception ex)
                     {
@@ -68,6 +105,82 @@ namespace DuckovCustomSounds
             {
                 Log.Warning($"ModSettings.Initialize 异常：{ex.Message}");
             }
+        }
+
+        // 解析频率控制：
+        // - null: 使用默认
+        // - bool: true=always（启用且0秒间隔），false=off
+        // - number: 启用，间隔=该数值（秒，<0 则视为0）
+        // - string: "always"/"off" 等；或可解析为浮点数（接受后缀 f/F/s/秒），无法解析则回退默认
+        private static void ParseRateControl(JToken token, bool defaultEnabled, float defaultInterval,
+            out bool enabled, out float interval)
+        {
+            enabled = defaultEnabled;
+            interval = defaultInterval;
+
+            try
+            {
+                if (token == null || token.Type == JTokenType.Null || token.Type == JTokenType.Undefined)
+                {
+                    return;
+                }
+
+                switch (token.Type)
+                {
+                    case JTokenType.Boolean:
+                        enabled = token.Value<bool>();
+                        interval = 0f;
+                        return;
+                    case JTokenType.Integer:
+                    case JTokenType.Float:
+                        enabled = true;
+                        interval = Math.Max(0f, token.Value<float>());
+                        return;
+                    case JTokenType.String:
+                        var s = (token.Value<string>() ?? string.Empty).Trim();
+                        if (string.Equals(s, "always", StringComparison.OrdinalIgnoreCase))
+                        {
+                            enabled = true; interval = 0f; return;
+                        }
+                        if (string.Equals(s, "off", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(s, "disabled", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(s, "false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            enabled = false; interval = 0f; return;
+                        }
+                        // 提取可解析的数值（忽略末尾常见后缀，如 f/F/s/sec/秒）
+                        string cleaned = CleanFloatString(s);
+                        if (float.TryParse(cleaned, NumberStyles.Float, CultureInfo.InvariantCulture, out var sec))
+                        {
+                            enabled = true;
+                            interval = Math.Max(0f, sec);
+                            return;
+                        }
+                        // 解析失败：使用默认
+                        return;
+                    default:
+                        return; // 使用默认
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"ParseRateControl 解析异常，使用默认：{ex.Message}");
+            }
+        }
+
+        private static string CleanFloatString(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return "";
+            // 保留数字、点号和负号，忽略其余字符
+            char[] buf = new char[s.Length];
+            int j = 0;
+            for (int i = 0; i < s.Length; i++)
+            {
+                char c = s[i];
+                if ((c >= '0' && c <= '9') || c == '.' || c == '-')
+                    buf[j++] = c;
+            }
+            return new string(buf, 0, j);
         }
     }
 }
