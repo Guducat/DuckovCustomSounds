@@ -233,6 +233,10 @@ namespace DuckovCustomSounds.CustomBGM
                 {
                     if (!string.Equals(key, "stg_map_base", StringComparison.OrdinalIgnoreCase))
                         return true; // 仅拦截过渡期 Stinger
+                    // 改为 Postfix 方案（HomeStingerPatches）处理 stg_map_base：此处放行原始 PlayStringer
+                    try { BGMLogger.Debug("[Intercept] stg_map_base: 已切换为 Postfix 路由处理，放行原 PlayStringer"); } catch { }
+                    return true;
+
 
                     // 定位自定义文件
                     string startPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "start.mp3");
@@ -464,17 +468,18 @@ namespace DuckovCustomSounds.CustomBGM
             {
                 try
                 {
-                    if (!string.Equals(key, "stg_map_zero", StringComparison.OrdinalIgnoreCase) && 
+                    if (!string.Equals(key, "stg_map_zero", StringComparison.OrdinalIgnoreCase) &&
                         !string.Equals(key, "stg_map_farm", StringComparison.OrdinalIgnoreCase))
                         return true;
 
-                    // 配置控制：默认 false 使用原版撤离BGM；true 时拦截原版，不再播放自定义 BGM（撤离音效由 ExtractionSounds 负责）
-                    if (!DuckovCustomSounds.ModSettings.OverrideExtractionBGM)
-                        return true; // 放行原版
-                    else
-                        return false; // 直接阻止原版 Stinger
+                    // 配置控制：true=使用“新逻辑”（ExtractionSounds 倒计时触发）；false=使用“旧逻辑”（TitleBGM/extraction.mp3）
+                    if (DuckovCustomSounds.ModSettings.OverrideExtractionBGM)
+                    {
+                        // 新逻辑：拦截原版 Stinger，交由 ExtractionSounds 在倒计时<=5s 时播放
+                        return false; // 阻止原始 Stinger
+                    }
 
-                    // 以下旧逻辑（播放自定义 extraction.mp3）默认不再触发，仅保留以便回退/手动启用
+                    // 旧逻辑：继续尝试播放 TitleBGM/extraction.mp3，若失败再放行原版
                     string exfilPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "extraction.mp3");
                     if (!File.Exists(exfilPath))
                     {

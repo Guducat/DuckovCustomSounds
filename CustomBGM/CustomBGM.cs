@@ -219,7 +219,7 @@ namespace DuckovCustomSounds.CustomBGM
 
             // 开启自动切歌（仅 HomeBGM）
             s_StopRequested = false;
-            s_AutoAdvanceEnabled = true;
+            s_AutoAdvanceEnabled = DuckovCustomSounds.ModSettings.HomeBgmAutoPlayNext;
 
             // 预热一次总线句柄，尽量让路由在首次就命中 Studio 总线
             ModBehaviour.KickBusWarmup(2f, 0.1f);
@@ -235,7 +235,8 @@ namespace DuckovCustomSounds.CustomBGM
             }
 
             // 兜底：无法启动协程时，直接立即播放
-            PlaySoundImmediate(songToPlay);
+            var ch = PlaySoundImmediate(songToPlay);
+            try { ApplyHomeLoopMode(); } catch { }
             BGMLogger.Debug($"正在播放索引 {currentHomeBGMIndex}，曲目句柄有效: {songToPlay.hasHandle()} -> {info.Name} - {info.Author}");
         }
 
@@ -294,6 +295,28 @@ namespace DuckovCustomSounds.CustomBGM
                 BGMLogger.Info($"自定义BGM播放失败: {result}");
             }
             return currentBGMChannel;
+        }
+
+        // 根据设置应用 Home BGM 的循环模式：
+        // - true: 关闭循环，允许 BGMRouteGuard 在播放结束时推进到下一首
+        // - false: 开启单曲循环，播放在通道层面无限循环
+        private static void ApplyHomeLoopMode()
+        {
+            try
+            {
+                if (!currentBGMChannel.hasHandle()) return;
+                if (DuckovCustomSounds.ModSettings.HomeBgmAutoPlayNext)
+                {
+                    try { currentBGMChannel.setMode(MODE.LOOP_OFF); } catch { }
+                    try { currentBGMChannel.setLoopCount(0); } catch { }
+                }
+                else
+                {
+                    try { currentBGMChannel.setMode(MODE.LOOP_NORMAL); } catch { }
+                    try { currentBGMChannel.setLoopCount(-1); } catch { }
+                }
+            }
+            catch { }
         }
 
         private static bool TryResolveMusicGroup(out FMOD.ChannelGroup cg)
@@ -491,6 +514,10 @@ namespace DuckovCustomSounds.CustomBGM
             if (sound.hasHandle())
             {
                 PlaySoundImmediate(sound);
+                if (!isTitle)
+                {
+                    try { ApplyHomeLoopMode(); } catch { }
+                }
             }
         }
 

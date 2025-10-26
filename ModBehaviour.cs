@@ -7,6 +7,9 @@ using Debug = UnityEngine.Debug;
 using Duckov; // AudioManager, AICharacterController, AudioObject, CharacterMainControl
 using DuckovCustomSounds.CustomEnemySounds;
 using DuckovCustomSounds.Logging;
+using Duckov.ItemUsage; // FoodDrink
+using ItemStatsSystem; // Item
+
 
 
 
@@ -104,6 +107,17 @@ namespace DuckovCustomSounds
                                     CoreLog.Info($"PatchStatus {name}: exception {ex.Message}");
                                 }
                             }
+
+
+	                            // Check FoodDrink.OnUse(Item, object)
+	                            var foodOnUse = typeof(FoodDrink).GetMethod(
+	                                "OnUse",
+	                                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic,
+	                                null,
+	                                new Type[] { typeof(Item), typeof(object) },
+	                                null
+	                            );
+	                            logStatus("FoodDrink.OnUse", foodOnUse);
 
                             logStatus("AudioManager.PostQuak", amPostQuak);
                             logStatus("AICharacterController.Init", aiInit);

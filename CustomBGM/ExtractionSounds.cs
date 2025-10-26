@@ -47,6 +47,9 @@ namespace DuckovCustomSounds.CustomBGM
         {
             try
             {
+                if (!DuckovCustomSounds.ModSettings.OverrideExtractionBGM)
+                    return; // 仅在 override=true 时启用倒计时音效逻辑
+
                 _currentAreaRef = new WeakReference(countDownArea);
                 _startedThisRound = false;
                 Log.Debug("撤离倒计时开始：等待剩余<=5s触发音效...");
@@ -88,6 +91,7 @@ namespace DuckovCustomSounds.CustomBGM
         {
             try
             {
+                if (!DuckovCustomSounds.ModSettings.OverrideExtractionBGM) return; // 仅在 override=true 时生效
                 if (_startedThisRound) return;
                 if (!ReferenceEqualsFromWeak(_currentAreaRef, countDownArea)) return;
                 if (remainingSeconds > 5.0f) return;

@@ -32,6 +32,10 @@ namespace DuckovCustomSounds
 
         public static bool EnableAmbientIntercept { get; private set; } = false;
 
+        // 控制 Home BGM 的播完后行为：
+        // true 表示自动播放下一首；false 表示单曲循环当前曲目。
+        public static bool HomeBgmAutoPlayNext { get; private set; } = true;
+
         public static void Initialize()
         {
             try
@@ -122,6 +126,17 @@ namespace DuckovCustomSounds
                     needsWriteBack = true;
                 }
                 EnableAmbientIntercept = ambientVal;
+
+                // 7) homeBgmAutoPlayNext：控制 Home BGM 是自动切歌还是单曲循环（默认 true 自动切歌）
+                const string HomeBgmAutoNextKey = "homeBgmAutoPlayNext";
+                bool hadHomeBgmAutoNext = root.TryGetValue(HomeBgmAutoNextKey, StringComparison.OrdinalIgnoreCase, out var homeAutoNextToken);
+                bool homeAutoNextVal = homeAutoNextToken?.Type == JTokenType.Boolean ? homeAutoNextToken.Value<bool>() : true;
+                if (!hadHomeBgmAutoNext)
+                {
+                    root[HomeBgmAutoNextKey] = homeAutoNextVal;
+                    needsWriteBack = true;
+                }
+                HomeBgmAutoPlayNext = homeAutoNextVal;
 
 
                 LevelLoadLoggerEnabled = loggerVal;
