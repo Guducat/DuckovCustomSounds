@@ -22,6 +22,20 @@ namespace DuckovCustomSounds.CustomEnemySounds
             if (_config == null) return false;
 
             CESLogger.Debug($"[CES:Rule] ctx.team={ (ctx!=null? ctx.GetTeamNormalized() : "null") }, rank={ (ctx!=null? ctx.GetRank() : "null") }");
+                try
+                {
+                    var ctxDto = DuckovCustomSounds.API.ExternalRouter.FromInternal(ctx, voiceType);
+                    if (ctxDto.IsValid)
+                    {
+                        if (DuckovCustomSounds.API.ExternalRouter.TryResolve(ctxDto, soundKey, voiceType.ToString(), out var extPath)
+                            && !string.IsNullOrEmpty(extPath))
+                        {
+                            route = new VoiceRoute { UseCustom = true, FileFullPath = extPath, MatchRule = "<external-provider>", TriedPaths = new List<string>() };
+                            return true; 
+                        }
+                    }
+                }
+                catch { }
 
             // 0) SimpleRules（若启用则优先并且不再回退到复杂规则）
             if (_config.UseSimpleRules)
@@ -32,6 +46,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     return true;
                 }
                 // 简化模式下未命中：直接返回不使用自定义（保留原声），不进入复杂规则
+                CESLogger.Info("[CES:Rule] 未匹配到自定义，使用原声");
                 route = new VoiceRoute { UseCustom = false, FileFullPath = null, MatchRule = "<simple-none>", TriedPaths = new List<string>() };
                 return false;
             }
@@ -124,17 +139,59 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     var iconPrefix = string.IsNullOrEmpty(r.IconType) ? "normal" : NormalizeIcon(r.IconType);
                     var pattern = $"{root.TrimEnd('/', '\\')}/{iconPrefix}_{{voiceType}}_{{soundKey}}{{ext}}";
 
-                    CESLogger.Debug($"[CES:Rule] Simple 使用模板: {pattern}, vt={voiceType}, soundKey={soundKey}, nameKey={nk}");
+                    // 提取 nameKey 的后半部分作为备选 voiceType（不强制回退为原始vt，避免重复）
+                    var nameKeyParts = nk.Split('_');
+                    string fallbackVTText = nameKeyParts.Length > 1 ? nameKeyParts[1] : null;
+                    var vtOrigStr = voiceType.ToString();
 
-                    var cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
-                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
+                    CESLogger.Debug($"[CES:Rule] Simple 使用模板: {pattern}, vt={voiceType}, soundKey={soundKey}, nameKey={nk}, fallbackVT={(fallbackVTText ?? "<none>")}");
+
+                    // 1) 优先尝试 fallbackVT（如果与原始vt不同）
+                    IEnumerable<string> cands = null;
+                    string chosen;
+                    List<string> tried;
+                    if (!string.IsNullOrEmpty(fallbackVTText) && !string.Equals(fallbackVTText, vtOrigStr, StringComparison.OrdinalIgnoreCase))
                     {
-                        CESLogger.Info($"[CES:Rule] Simple 命中: {chosen}");
+                        // 支持既能解析为枚举，也能按原样字符串替换
+                        if (Enum.TryParse<AudioManager.VoiceType>(fallbackVTText, true, out var fbEnum))
+                        {
+                            cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, fbEnum, _config.Fallback.PreferredExtensions, true);
+                        }
+                        else
+                        {
+                            cands = PathBuilder.BuildCandidatesWithVoiceTypeString(pattern, ctx, soundKey, fallbackVTText, _config.Fallback.PreferredExtensions, true);
+                        }
+
+                        if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out chosen, out tried))
+                        {
+                            CESLogger.Info($"[CES:Rule] Simple 命中(使用fallbackVT): {chosen}");
+                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}:{fallbackVTText}>", TriedPaths = tried };
+                            return true;
+                        }
+
+                        // 如果没命中，再尝试原始 voiceType
+                        CESLogger.Debug($"[CES:Rule] Simple fallbackVT未命中，尝试原始vt: {voiceType}");
+                    }
+
+                    // 2) 回退到原始 vt（仅当与 fallbackVT 不重复时会执行到这里）
+                    cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
+                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out chosen, out tried))
+                    {
+                        CESLogger.Info($"[CES:Rule] Simple 命中(使用原始vt): {chosen}");
                         route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried };
                         return true;
                     }
                     else
                     {
+                        CESLogger.Info($"[CES:Rule] Simple 未命中，尝试的路径数: {tried?.Count ?? 0}");
+                        if (tried != null)
+                        {
+                            for (int i = 0; i < tried.Count; i++)
+                            {
+                                CESLogger.Info($"[CES:Rule] Simple 尝试路径[{i}]: {tried[i]}");
+                            }
+                        }
+                        
                         // Fallback：忽略 voiceType，尝试 {iconPrefix}_*_{soundKey}{ext}
                         try
                         {

@@ -63,6 +63,58 @@ namespace DuckovCustomSounds.CustomEnemySounds
             }
         }
 
+        /// <summary>
+        /// 与 BuildCandidates 一致，但允许以原样字符串覆盖 {voiceType}（即无需受枚举限制）。
+        /// </summary>
+        public static IEnumerable<string> BuildCandidatesWithVoiceTypeString(
+            string pattern,
+            EnemyContext ctx,
+            string soundKey,
+            string voiceTypeString,
+            IEnumerable<string> preferredExts,
+            bool includePatternWithoutSoundKey)
+        {
+            if (string.IsNullOrEmpty(pattern)) yield break;
+            var team = ctx.GetTeamNormalized();
+            var rank = ctx.GetRank();
+            var enemyType = Safe(ctx.EnemyType);
+            var vt = voiceTypeString ?? string.Empty; // 按原样使用
+            var sk = Safe(soundKey);
+
+            foreach (var ext in preferredExts)
+            {
+                var pathStr = pattern
+                    .Replace("{enemyType}", enemyType)
+                    .Replace("{team}", team)
+                    .Replace("{rank}", rank)
+                    .Replace("{voiceType}", vt)
+                    .Replace("{soundKey}", sk)
+                    .Replace("{ext}", ext);
+                var full1 = EnsureRooted(pathStr);
+                CESLogger.Debug($"[CES:Path] cand: {full1}");
+                yield return full1;
+            }
+
+            if (includePatternWithoutSoundKey)
+            {
+                foreach (var ext in preferredExts)
+                {
+                    var pathStr = pattern
+                        .Replace("_{soundKey}", "")
+                        .Replace("{soundKey}_", "")
+                        .Replace("{soundKey}", "")
+                        .Replace("{enemyType}", enemyType)
+                        .Replace("{team}", team)
+                        .Replace("{rank}", rank)
+                        .Replace("{voiceType}", vt)
+                        .Replace("{ext}", ext);
+                    var full2 = EnsureRooted(pathStr);
+                    CESLogger.Debug($"[CES:Path] fallback-cand: {full2}");
+                    yield return full2;
+                }
+            }
+        }
+
         public static bool TryResolveExisting(IEnumerable<string> candidates, bool validateExists, int ownerId, out string chosen, out List<string> tried)
         {
             tried = new List<string>();
@@ -83,6 +135,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     {
                         // 基础文件存在，尝试查找随机变体
                         var final = ChooseRandomVariant(normalized, ownerId, out var _);
+                        CESLogger.Debug($"[CES:Path] 选择文件: {final}");
                         chosen = final;
                         return true;
                     }

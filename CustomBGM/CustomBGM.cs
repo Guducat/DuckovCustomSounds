@@ -239,10 +239,23 @@ namespace DuckovCustomSounds.CustomBGM
             BGMLogger.Debug($"正在播放索引 {currentHomeBGMIndex}，曲目句柄有效: {songToPlay.hasHandle()} -> {info.Name} - {info.Author}");
         }
 
-        // 播放下一首
+        // 播放下一首（改为复用 BaseBGMSelector.Set 流程，确保与原版生命周期一致）
         public static void PlayNextHomeBGM()
         {
             if (!HasHomeSongs) return;
+            try
+            {
+                var selector = UnityEngine.Object.FindObjectOfType<BaseBGMSelector>();
+                if (selector != null)
+                {
+                    int target = currentHomeBGMIndex + 1;
+                    selector.Set(target, false, true); // showInfo=false, play=true
+                    BGMLogger.Debug($"自动切歌：通过 BaseBGMSelector.Set 触发 → index={target} (showInfo=false, play=true)");
+                    return;
+                }
+            }
+            catch { }
+            // 兜底：找不到 BaseBGMSelector 时，仍然走旧逻辑
             PlayHomeBGM(currentHomeBGMIndex + 1);
         }
 

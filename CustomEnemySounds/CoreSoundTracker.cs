@@ -93,6 +93,24 @@ namespace DuckovCustomSounds.CustomEnemySounds
             return true;
         }
 
+        /// <summary>
+        /// 按所有者 InstanceID 停止当前正在跟踪的自定义声音（若有）。
+        /// </summary>
+        public static void StopByOwner(int ownerId)
+        {
+            try
+            {
+                if (_byOwner.TryGetValue(ownerId, out var e))
+                {
+                    try { e.Channel.stop(); } catch { }
+                    try { e.Sound.release(); } catch { }
+                    _byOwner.Remove(ownerId);
+                }
+            }
+            catch { }
+        }
+
+
         public static void StopAndClear()
         {
             _running = false;

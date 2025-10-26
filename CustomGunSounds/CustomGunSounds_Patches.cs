@@ -2,6 +2,8 @@
 using Duckov; // AudioManager
 using System;
 using System.IO;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using FMOD;
 using FMODUnity;
@@ -28,15 +30,81 @@ namespace DuckovCustomSounds.CustomGunSounds
                 string soundKey = eventName.Substring(ShootPrefix.Length);
                 if (string.IsNullOrWhiteSpace(soundKey)) return true;
 
-                // 文件查找策略：优先 <soundKey>.mp3 ，其次 default.mp3
+                // 双层查找策略：若可获取到 ItemAgent_Gun，则优先按 TypeID（含 _mute 变体）→ 再按 soundKey → 最后 default.mp3
+                // 若无法获取到 ItemAgent_Gun，则回退为：soundKey → default.mp3
                 string dir = Path.Combine(ModBehaviour.ModFolderName, "CustomGunSounds");
-                string filePath = Path.Combine(dir, soundKey + ".mp3");
-                if (!File.Exists(filePath))
+
+                // 记录旧逻辑首选路径（用于保留原有未找到时的日志输出）
+                string legacySoundKeyPath = Path.Combine(dir, soundKey + ".mp3");
+
+                // 捕获枪械组件（安全 null 检查 + 向父节点回溯）
+                ItemAgent_Gun gun = null;
+                try
+                {
+                    if (gameObject != null)
+                        gun = gameObject.GetComponent<ItemAgent_Gun>() ?? gameObject.GetComponentInParent<ItemAgent_Gun>();
+                }
+                catch { }
+
+                string typeIdStr = string.Empty;
+                bool silenced = false;
+                bool silencedByKey = soundKey.EndsWith("_mute", StringComparison.OrdinalIgnoreCase);
+                try { if (gun != null) { silenced = gun.Silenced; } } catch { }
+                if (silencedByKey) silenced = true; // 以事件名包含 _mute 为准，确保一致
+                try { if (gun?.Item != null) typeIdStr = gun.Item.TypeID.ToString(); } catch { }
+
+                var attempts = new List<string>();
+                if (gun != null && !string.IsNullOrWhiteSpace(typeIdStr))
+                {
+                    if (silenced) attempts.Add(Path.Combine(dir, typeIdStr + "_mute.mp3"));
+                    attempts.Add(Path.Combine(dir, typeIdStr + ".mp3"));
+                    attempts.Add(legacySoundKeyPath); // 含 _mute 后缀的 soundKey（由事件名给出）
+
+                    // 详细日志：TypeID、soundKey、Silenced 与完整查找链条
+                    string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
+                    GunLogger.Debug($"[GunShoot] TypeID={typeIdStr}, soundKey={soundKey}, Silenced={silenced}, 查找顺序: {chain}");
+                }
+                else
+                {
+                    GunLogger.Debug($"[GunShoot] 未捕获到 ItemAgent_Gun 组件，回退到 soundKey 查找模式");
+                    attempts.Add(legacySoundKeyPath);
+                }
+
+                string filePath = null;
+                foreach (var p in attempts)
+                {
+                    if (File.Exists(p)) { filePath = p; break; }
+                }
+                if (filePath == null)
                 {
                     string fallback = Path.Combine(dir, "default.mp3");
-                    if (File.Exists(fallback)) filePath = fallback; else {
-                        GunLogger.Debug($"[GunShoot] 未找到自定义文件，放行原始事件: {eventName} (查找: {filePath})");
+                    if (File.Exists(fallback))
+                    {
+                        filePath = fallback;
+                        // 在成功命中 default 回退时，也补足最终选择日志
+                        string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
+                        if (gun != null && !string.IsNullOrWhiteSpace(typeIdStr))
+                            GunLogger.Debug($"[GunShoot] TypeID={typeIdStr}, soundKey={soundKey}, Silenced={silenced}, 查找顺序: {chain}, 最终使用: {filePath}");
+                    }
+                    else
+                    {
+                        // 兼容：保留原有未找到日志
+                        GunLogger.Debug($"[GunShoot] 未找到自定义文件，放行原始事件: {eventName} (查找: {legacySoundKeyPath})");
+                        if (gun != null && !string.IsNullOrWhiteSpace(typeIdStr))
+                        {
+                            string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
+                            GunLogger.Debug($"[GunShoot] TypeID={typeIdStr}, soundKey={soundKey}, Silenced={silenced}, 查找顺序: {chain}, 最终使用: 未找到自定义文件");
+                        }
                         return true;
+                    }
+                }
+                else
+                {
+                    // 命中自定义文件时输出“最终使用”日志（在已有“替换 ... → ...”日志之外，保留）
+                    if (gun != null && !string.IsNullOrWhiteSpace(typeIdStr))
+                    {
+                        string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
+                        GunLogger.Debug($"[GunShoot] TypeID={typeIdStr}, soundKey={soundKey}, Silenced={silenced}, 查找顺序: {chain}, 最终使用: {filePath}");
                     }
                 }
 

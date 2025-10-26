@@ -464,9 +464,8 @@ namespace DuckovCustomSounds.CustomBGM
             {
                 try
                 {
-                    if (!string.Equals(key, "stg_map_zero", StringComparison.OrdinalIgnoreCase))
-                        return true; // 仅拦截撤离成功
-                    if (!string.Equals(key, "stg_map_farm", StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(key, "stg_map_zero", StringComparison.OrdinalIgnoreCase) && 
+                        !string.Equals(key, "stg_map_farm", StringComparison.OrdinalIgnoreCase))
                         return true;
 
                     // 配置控制：默认 false 使用原版撤离BGM；true 时拦截原版，不再播放自定义 BGM（撤离音效由 ExtractionSounds 负责）

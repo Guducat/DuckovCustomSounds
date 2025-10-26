@@ -86,7 +86,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         return;
                     }
 
-                    CESLogger.Info($"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, ctx.VoiceType={ctx.VoiceType}");
+                    CESLogger.Info($"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, ctx.VoiceType={ctx.VoiceType}, nameKey={ctx.NameKey}");
                     VoiceRoute route = null;
                     bool matched = CustomEnemySounds.Engine != null && CustomEnemySounds.Engine.TryRoute(ctx, soundKey, ctx.VoiceType, out route);
                     var routeInfo = route != null ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")}") : "null";
@@ -157,6 +157,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
                             var fpos = ToFMODVector(pos);
                             var fvel = ToFMODVector(Vector3.zero);
                             try { ch.set3DAttributes(ref fpos, ref fvel); } catch { }
+                            try { ch.set3DMinMaxDistance(min, max); } catch { }
+                            try { ch.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
                             try { ch.setPaused(false); } catch { }
 
                             try { CoreSoundTracker.Track(ownerId, sound, ch, route.FileFullPath, soundKey, newPriority, tr); CESLogger.Debug("[CES:Hook] Postfix: 已加入跟踪"); } catch { }
@@ -249,6 +251,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         var fpos = ToFMODVector(pos);
                         var fvel = ToFMODVector(Vector3.zero);
                         try { ch.set3DAttributes(ref fpos, ref fvel); } catch { }
+                        try { ch.set3DMinMaxDistance(min, max); } catch { }
+                        try { ch.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
                         try { ch.setPaused(false); } catch { }
                         _lastDeathGlobalTime = Time.realtimeSinceStartup;
 
@@ -308,12 +312,12 @@ namespace DuckovCustomSounds.CustomEnemySounds
             try
             {
                 var ext = System.IO.Path.GetExtension(path)?.ToLowerInvariant();
-                var baseMode = MODE._3D | MODE.LOOP_OFF;
+                var baseMode = MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF;
                 if (ext == ".mp3" || ext == ".ogg" || ext == ".flac")
                     return baseMode | MODE.CREATESTREAM;
                 return baseMode; // wav/aiff 使用内存sample
             }
-            catch { return MODE._3D | MODE.LOOP_OFF; }
+            catch { return MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF; }
         }
 
         private static bool TryGetEvent3DDistances(string soundKey, AudioManager.VoiceType voiceType, out float min, out float max)
