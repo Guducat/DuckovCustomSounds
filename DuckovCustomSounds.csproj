@@ -30,6 +30,5 @@
         <Compile Include="assets\FoodDrink.cs" />
         <Content Include="assets\**\*.*" />
         <Compile Remove="assets\**\*.cs" />
-        <Compile Remove="CustomGrenadeSounds\GrenadeSoundUtils.cs" />
     </ItemGroup>
 </Project>

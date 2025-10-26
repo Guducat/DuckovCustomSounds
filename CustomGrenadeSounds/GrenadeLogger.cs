@@ -1,0 +1,36 @@
+using System;
+using UnityEngine;
+using DuckovCustomSounds.Logging;
+
+namespace DuckovCustomSounds.CustomGrenadeSounds
+{
+    internal static class GrenadeLogger
+    {
+        private const string ModuleName = "CustomGrenadeSounds";
+
+        public static void Info(string msg)
+        {
+            if (!LogManager.ShouldLog(ModuleName, LogLevel.Info)) return;
+            UnityEngine.Debug.Log("[CustomSounds:Grenade] " + msg);
+        }
+
+        public static void Debug(string msg)
+        {
+            if (!LogManager.ShouldLog(ModuleName, LogLevel.Debug)) return;
+            UnityEngine.Debug.Log("[CustomSounds:Grenade] " + msg);
+        }
+
+        public static void Warn(string msg)
+        {
+            if (!LogManager.ShouldLog(ModuleName, LogLevel.Warning)) return;
+            UnityEngine.Debug.LogWarning("[CustomSounds:Grenade] " + msg);
+        }
+
+        public static void Error(string msg, Exception? ex = null)
+        {
+            if (!LogManager.ShouldLog(ModuleName, LogLevel.Error)) return;
+            UnityEngine.Debug.LogError("[CustomSounds:Grenade] " + msg + (ex != null ? ("\n" + ex) : string.Empty));
+        }
+    }
+}
+
