@@ -130,18 +130,36 @@ namespace DuckovCustomSounds.CustomMeleeSounds
                 }
                 catch { }
 
+                // Determine 2D/3D from original event description
+                bool is3D = true;
+                try
+                {
+                    if (__result.HasValue && __result.Value.isValid())
+                    {
+                        if (__result.Value.getDescription(out FMOD.Studio.EventDescription d2) == RESULT.OK)
+                        {
+                            bool tmp3D = true;
+                            try { d2.is3D(out tmp3D); } catch { }
+                            is3D = tmp3D;
+                        }
+                    }
+                }
+                catch { }
+
                 // 选择合适的创建模式（mp3/ogg 用 STREAM）
                 string fullPath = filePath;
                 try { fullPath = System.IO.Path.GetFullPath(filePath); } catch { }
                 string ext = null; try { ext = Path.GetExtension(fullPath)?.ToLowerInvariant(); } catch { }
-                var mode = ((ext == ".mp3" || ext == ".ogg" || ext == ".oga") ? MODE.CREATESTREAM : MODE.CREATESAMPLE) | MODE._3D | MODE.LOOP_OFF;
+                var baseMode = MODE.LOOP_OFF;
+                if (is3D) baseMode |= MODE._3D | MODE._3D_LINEARROLLOFF;
+                var mode = ((ext == ".mp3" || ext == ".ogg" || ext == ".oga") ? MODE.CREATESTREAM : MODE.CREATESAMPLE) | baseMode;
                 var r1 = RuntimeManager.CoreSystem.createSound(fullPath, mode, out Sound sound);
                 if (r1 != RESULT.OK || !sound.hasHandle())
                 {
                     GunLogger.Info($"[MeleeAttack] createSound 失败({r1})，跳过自定义音效");
                     return;
                 }
-                try { sound.set3DMinMaxDistance(min, max); } catch { }
+                if (is3D) try { sound.set3DMinMaxDistance(min, max); } catch { }
 
                 ChannelGroup group = default;
                 try { if (ModBehaviour.SfxGroup.hasHandle()) group = ModBehaviour.SfxGroup; } catch { }
@@ -164,13 +182,16 @@ namespace DuckovCustomSounds.CustomMeleeSounds
                 try { pos = melee?.transform?.position ?? gameObject?.transform?.position ?? Vector3.zero; } catch { }
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-                try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
-                try { channel.set3DMinMaxDistance(min, max); } catch { }
-                try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
+                if (is3D)
+                {
+                    try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                    try { channel.set3DMinMaxDistance(min, max); } catch { }
+                    try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
+                }
                 try { channel.setPaused(false); } catch { }
 
-                GunLogger.Debug($"[MeleeAttack] 覆盖 {eventName} → {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
-                try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, 6f)); } catch { }
+                GunLogger.Debug($"[MeleeAttack] 覆盖 {eventName} → {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1}), 模式={(is3D ? "3D" : "2D")} ");
+                try { ModBehaviour.Instance?.StartCoroutine(FollowAndCleanup(melee?.transform ?? gameObject?.transform, is3D, sound, channel, 6f)); } catch { }
             }
             catch (Exception ex)
             {
@@ -178,7 +199,7 @@ namespace DuckovCustomSounds.CustomMeleeSounds
             }
         }
 
-        private static System.Collections.IEnumerator Cleanup(Sound sound, Channel channel, float maxSec)
+        private static System.Collections.IEnumerator FollowAndCleanup(Transform follow, bool is3D, Sound sound, Channel channel, float maxSec)
         {
             float end = Time.realtimeSinceStartup + Mathf.Max(1f, maxSec);
             try
@@ -188,7 +209,17 @@ namespace DuckovCustomSounds.CustomMeleeSounds
                     bool playing = false;
                     try { if (channel.hasHandle()) channel.isPlaying(out playing); } catch { }
                     if (!playing) break;
-                    yield return new WaitForSeconds(0.05f);
+
+                    if (is3D)
+                    {
+                        Vector3 pos = Vector3.zero;
+                        try { if (follow != null) pos = follow.position; } catch { }
+                        var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
+                        var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
+                        try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                    }
+
+                    yield return null;
                 }
             }
             finally

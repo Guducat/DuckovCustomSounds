@@ -30,6 +30,8 @@ namespace DuckovCustomSounds
 
         public static bool AudioPostLoggerEnabled { get; private set; } = false;
 
+        public static bool EnableAmbientIntercept { get; private set; } = false;
+
         public static void Initialize()
         {
             try
@@ -110,6 +112,18 @@ namespace DuckovCustomSounds
                 }
                 AudioPostLoggerEnabled = audioLoggerVal;
 
+                // 6) enableAmbientIntercept（内部测试开关，默认 false）
+                const string AmbientInterceptKey = "enableAmbientIntercept";
+                bool hadAmbientKey = root.TryGetValue(AmbientInterceptKey, StringComparison.OrdinalIgnoreCase, out var ambientToken);
+                bool ambientVal = ambientToken?.Type == JTokenType.Boolean ? ambientToken.Value<bool>() : false;
+                if (!hadAmbientKey)
+                {
+                    root[AmbientInterceptKey] = ambientVal;
+                    needsWriteBack = true;
+                }
+                EnableAmbientIntercept = ambientVal;
+
+
                 LevelLoadLoggerEnabled = loggerVal;
 
                 NPCGrenadeSurprisedEnabled = gvEnabled;
@@ -121,7 +135,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}");
+                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}");
                     }
                     catch (Exception ex)
                     {

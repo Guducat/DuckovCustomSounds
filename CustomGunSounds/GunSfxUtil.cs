@@ -186,17 +186,35 @@ namespace DuckovCustomSounds.CustomGunSounds
                 }
                 catch { }
 
+                // Determine 2D/3D from original event description
+                bool is3D = true;
+                try
+                {
+                    if (__result.HasValue && __result.Value.isValid())
+                    {
+                        if (__result.Value.getDescription(out FMOD.Studio.EventDescription d2) == RESULT.OK)
+                        {
+                            bool tmp3D = true;
+                            try { d2.is3D(out tmp3D); } catch { }
+                            is3D = tmp3D;
+                        }
+                    }
+                }
+                catch { }
+
                 // Play custom core sound (choose mode by file type)
                 string fullPath = filePath;
                 try { fullPath = System.IO.Path.GetFullPath(filePath); } catch { }
-                var mode = ComputeModeForFile(fullPath) | MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF;
+                var baseMode = MODE.LOOP_OFF;
+                if (is3D) baseMode |= MODE._3D | MODE._3D_LINEARROLLOFF;
+                var mode = ComputeModeForFile(fullPath) | baseMode;
                 var r1 = RuntimeManager.CoreSystem.createSound(fullPath, mode, out Sound sound);
                 if (r1 != RESULT.OK || !sound.hasHandle())
                 {
                     GunLogger.Info($"[GunShoot] createSound 失败({r1})，放弃自定义音效");
                     return;
                 }
-                try { sound.set3DMinMaxDistance(min, max); } catch { }
+                if (is3D) try { sound.set3DMinMaxDistance(min, max); } catch { }
 
                 ChannelGroup group = AcquireSfxChannelGroup();
                 var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
@@ -211,12 +229,15 @@ namespace DuckovCustomSounds.CustomGunSounds
                 try { pos = gameObject?.transform?.position ?? Vector3.zero; } catch { }
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-                try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
-                try { channel.set3DMinMaxDistance(min, max); } catch { }
-                try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
+                if (is3D)
+                {
+                    try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                    try { channel.set3DMinMaxDistance(min, max); } catch { }
+                    try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
+                }
                 try { channel.setPaused(false); } catch { }
 
-                GunLogger.Debug($"[GunShoot] 覆盖播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
+                GunLogger.Debug($"[GunShoot] 覆盖播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1}), 模式={(is3D ? "3D" : "2D")} ");
                 try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds)); } catch { }
             }
             catch (Exception ex)
@@ -304,17 +325,35 @@ namespace DuckovCustomSounds.CustomGunSounds
                 }
                 catch { }
 
+                // Determine 2D/3D from original event description
+                bool is3D = true;
+                try
+                {
+                    if (__result.HasValue && __result.Value.isValid())
+                    {
+                        if (__result.Value.getDescription(out FMOD.Studio.EventDescription d2) == RESULT.OK)
+                        {
+                            bool tmp3D = true;
+                            try { d2.is3D(out tmp3D); } catch { }
+                            is3D = tmp3D;
+                        }
+                    }
+                }
+                catch { }
+
                 // Play custom core sound (choose mode by file type)
                 string fullPath = filePath;
                 try { fullPath = System.IO.Path.GetFullPath(filePath); } catch { }
-                var mode = ComputeModeForFile(fullPath) | MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF;
+                var baseMode = MODE.LOOP_OFF;
+                if (is3D) baseMode |= MODE._3D | MODE._3D_LINEARROLLOFF;
+                var mode = ComputeModeForFile(fullPath) | baseMode;
                 var r1 = RuntimeManager.CoreSystem.createSound(fullPath, mode, out Sound sound);
                 if (r1 != RESULT.OK || !sound.hasHandle())
                 {
                     GunLogger.Info($"[GunReload] createSound 失败({r1})，放弃自定义音效");
                     return;
                 }
-                try { sound.set3DMinMaxDistance(min, max); } catch { }
+                if (is3D) try { sound.set3DMinMaxDistance(min, max); } catch { }
 
                 ChannelGroup group = AcquireSfxChannelGroup();
                 var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
@@ -329,12 +368,15 @@ namespace DuckovCustomSounds.CustomGunSounds
                 try { pos = gameObject?.transform?.position ?? Vector3.zero; } catch { }
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-                try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
-                try { channel.set3DMinMaxDistance(min, max); } catch { }
-                try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
+                if (is3D)
+                {
+                    try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                    try { channel.set3DMinMaxDistance(min, max); } catch { }
+                    try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
+                }
                 try { channel.setPaused(false); } catch { }
 
-                GunLogger.Debug($"[GunReload] 覆盖播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
+                GunLogger.Debug($"[GunReload] 覆盖播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1}), 模式={(is3D ? "3D" : "2D")} ");
                 try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds)); } catch { }
             }
             catch (Exception ex)
