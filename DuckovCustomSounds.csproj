@@ -30,5 +30,10 @@
         <Compile Include="assets\FoodDrink.cs" />
         <Content Include="assets\**\*.*" />
         <Compile Remove="assets\**\*.cs" />
+
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="assets\Debug\" />
     </ItemGroup>
 </Project>

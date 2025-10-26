@@ -2,6 +2,8 @@
 using System;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
+
 using UnityEngine;
 using FMOD;
 using FMODUnity;
@@ -16,6 +18,19 @@ namespace DuckovCustomSounds.CustomFoodSounds
     [HarmonyPatch(typeof(FoodDrink))]
     public static class FoodDrink_OnUse_PlayCustomSfx
     {
+        private static readonly string[] Exts = new[] { ".mp3", ".wav", ".ogg", ".oga" };
+        private static IEnumerable<string> ExpandCandidates(string dir, params string[] namesNoExt)
+        {
+            foreach (var name in namesNoExt)
+            {
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                foreach (var ext in Exts)
+                {
+                    yield return Path.Combine(dir, name + ext);
+                }
+            }
+        }
+
         [HarmonyPatch("OnUse", new Type[] { typeof(Item), typeof(object) })]
         [HarmonyPostfix]
         public static void Postfix(FoodDrink __instance, Item item, object user)
@@ -30,7 +45,7 @@ namespace DuckovCustomSounds.CustomFoodSounds
 
                 string dir = Path.Combine(ModBehaviour.ModFolderName, "CustomFoodSounds");
 
-                // 仅按 item.TypeID 匹配，失败则放弃（不再使用 default.mp3 回退）
+                // 仅按 item.TypeID 匹配，失败则放弃
                 string typeIdStr = string.Empty;
                 try { typeIdStr = item.TypeID.ToString(); } catch { }
 
@@ -40,19 +55,28 @@ namespace DuckovCustomSounds.CustomFoodSounds
                     return;
                 }
 
-                string filePath = Path.Combine(dir, typeIdStr + ".mp3");
-                if (!File.Exists(filePath))
+                var attempts = new List<string>(ExpandCandidates(dir, typeIdStr));
+                var chain = string.Join(" → ", attempts.Select(p => $"[{p}]"));
+                string filePath = attempts.FirstOrDefault(File.Exists);
+                if (filePath == null)
                 {
-                    GunLogger.Debug($"[FoodUse] 未找到文件: {filePath}，跳过播放");
+                    GunLogger.Debug($"[FoodUse] TypeID={typeIdStr}, 查找顺序: {chain}, 最终使用: 未找到自定义文件");
                     return;
+                }
+                else
+                {
+                    GunLogger.Debug($"[FoodUse] TypeID={typeIdStr}, 查找顺序: {chain}, 最终使用: {filePath}");
                 }
 
                 // FMOD 就绪性
                 try { if (!RuntimeManager.IsInitialized) { GunLogger.Info("[FoodUse] FMOD 未初始化，跳过自定义音效"); return; } } catch { }
 
-                // 创建 3D 声音并路由至 SFX
-                var mode = MODE.CREATESAMPLE | MODE._3D | MODE.LOOP_OFF;
-                var r1 = RuntimeManager.CoreSystem.createSound(filePath, mode, out Sound sound);
+                // 创建 3D 声音并路由至 SFX（按扩展名选择 STREAM/SAMPLE）
+                string fullPath = filePath;
+                try { fullPath = System.IO.Path.GetFullPath(filePath); } catch { }
+                string ext = null; try { ext = Path.GetExtension(fullPath)?.ToLowerInvariant(); } catch { }
+                var mode = ((ext == ".mp3" || ext == ".ogg" || ext == ".oga") ? MODE.CREATESTREAM : MODE.CREATESAMPLE) | MODE._3D | MODE.LOOP_OFF;
+                var r1 = RuntimeManager.CoreSystem.createSound(fullPath, mode, out Sound sound);
                 if (r1 != RESULT.OK || !sound.hasHandle())
                 {
                     GunLogger.Info($"[FoodUse] createSound 失败({r1})，跳过自定义音效");
@@ -87,6 +111,8 @@ namespace DuckovCustomSounds.CustomFoodSounds
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
                 try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                try { channel.set3DMinMaxDistance(1f, 25f); } catch { }
+                try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
                 try { channel.setPaused(false); } catch { }
 
                 GunLogger.Debug($"[FoodUse] 播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");

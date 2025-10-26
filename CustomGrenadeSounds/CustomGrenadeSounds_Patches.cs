@@ -6,6 +6,7 @@ using Duckov;
 using System.IO;
 using System.Collections;
 using System.Collections.Generic;
+using Duckov.ItemUsage;
 using FMOD;
 using FMODUnity;
 using DuckovCustomSounds;
@@ -55,109 +56,109 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
         }
     }
 
-    // 2) 监控手雷碰撞/弹跳
-    [HarmonyPatch(typeof(Grenade))]
-    public static class Grenade_OnCollisionEnter_Monitor
-    {
-        [HarmonyPatch("OnCollisionEnter", new Type[] { typeof(Collision) })]
-        [HarmonyPostfix]
-        public static void Postfix(Grenade __instance, Collision collision)
-        {
-            try
-            {
-                if (__instance == null) return;
-                bool hasCollide = false;
-                string collidePath = null;
-                try
-                {
-                    hasCollide = __instance.hasCollideSound;
-                }
-                catch
-                {
-                }
+    // // 2) 监控手雷碰撞/弹跳
+    // [HarmonyPatch(typeof(Grenade))]
+    // public static class Grenade_OnCollisionEnter_Monitor
+    // {
+    //     [HarmonyPatch("OnCollisionEnter", new Type[] { typeof(Collision) })]
+    //     [HarmonyPostfix]
+    //     public static void Postfix(Grenade __instance, Collision collision)
+    //     {
+    //         try
+    //         {
+    //             if (__instance == null) return;
+    //             bool hasCollide = false;
+    //             string collidePath = null;
+    //             try
+    //             {
+    //                 hasCollide = __instance.hasCollideSound;
+    //             }
+    //             catch
+    //             {
+    //             }
+    //
+    //             try
+    //             {
+    //                 collidePath = __instance.collideSound;
+    //             }
+    //             catch
+    //             {
+    //             }
+    //
+    //             Vector3 pos = Vector3.zero;
+    //             try
+    //             {
+    //                 pos = __instance.transform.position;
+    //             }
+    //             catch
+    //             {
+    //             }
+    //
+    //             GrenadeLogger.Info(
+    //                 $"[GrenadeMonitor] 手雷碰撞 - 音效启用: {hasCollide}, 音效路径: \"{(collidePath ?? string.Empty)}\", 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
+    //         }
+    //     }
+    // }
 
-                try
-                {
-                    collidePath = __instance.collideSound;
-                }
-                catch
-                {
-                }
-
-                Vector3 pos = Vector3.zero;
-                try
-                {
-                    pos = __instance.transform.position;
-                }
-                catch
-                {
-                }
-
-                GrenadeLogger.Info(
-                    $"[GrenadeMonitor] 手雷碰撞 - 音效启用: {hasCollide}, 音效路径: \"{(collidePath ?? string.Empty)}\", 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
-            }
-            catch (Exception ex)
-            {
-                GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
-            }
-        }
-    }
-
-    // 3) 监控手雷爆炸（ExplosionManager.CreateExplosion）
-    [HarmonyPatch(typeof(ExplosionManager))]
-    public static class ExplosionManager_CreateExplosion_Monitor
-    {
-        [HarmonyPatch("CreateExplosion",
-            new Type[]
-            {
-                typeof(Vector3), typeof(float), typeof(DamageInfo), typeof(ExplosionFxTypes), typeof(float),
-                typeof(bool)
-            })]
-        [HarmonyPostfix]
-        public static void Postfix(ExplosionManager __instance, Vector3 center, float radius, DamageInfo dmgInfo,
-            ExplosionFxTypes fxType, float shakeStrength, bool canHurtSelf)
-        {
-            try
-            {
-                string prefabType = fxType.ToString();
-                string prefabName = null;
-                try
-                {
-                    switch (fxType)
-                    {
-                        case ExplosionFxTypes.normal:
-                            prefabName = (__instance != null && __instance.normalFxPfb != null)
-                                ? __instance.normalFxPfb.name
-                                : null;
-                            break;
-                        case ExplosionFxTypes.flash:
-                            prefabName = (__instance != null && __instance.flashFxPfb != null)
-                                ? __instance.flashFxPfb.name
-                                : null;
-                            break;
-                        default:
-                            // custom / others
-                            if (__instance != null)
-                                prefabName = (__instance.normalFxPfb != null)
-                                    ? __instance.normalFxPfb.name
-                                    : (__instance.flashFxPfb != null ? __instance.flashFxPfb.name : null);
-                            break;
-                    }
-                }
-                catch
-                {
-                    /* ignore */
-                }
-
-                GrenadeLogger.Info(
-                    $"[GrenadeMonitor] 手雷爆炸 - 类型: {prefabType}, 中心: ({center.x:F1}, {center.y:F1}, {center.z:F1}), 预制体: {prefabType}{(string.IsNullOrEmpty(prefabName) ? string.Empty : $"({prefabName})")}");
-            }
-            catch (Exception ex)
-            {
-                GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
-            }
-        }
-    }
+    // // 3) 监控手雷爆炸（ExplosionManager.CreateExplosion）
+    // [HarmonyPatch(typeof(ExplosionManager))]
+    // public static class ExplosionManager_CreateExplosion_Monitor
+    // {
+    //     [HarmonyPatch("CreateExplosion",
+    //         new Type[]
+    //         {
+    //             typeof(Vector3), typeof(float), typeof(DamageInfo), typeof(ExplosionFxTypes), typeof(float),
+    //             typeof(bool)
+    //         })]
+    //     [HarmonyPostfix]
+    //     public static void Postfix(ExplosionManager __instance, Vector3 center, float radius, DamageInfo dmgInfo,
+    //         ExplosionFxTypes fxType, float shakeStrength, bool canHurtSelf)
+    //     {
+    //         try
+    //         {
+    //             string prefabType = fxType.ToString();
+    //             string prefabName = null;
+    //             try
+    //             {
+    //                 switch (fxType)
+    //                 {
+    //                     case ExplosionFxTypes.normal:
+    //                         prefabName = (__instance != null && __instance.normalFxPfb != null)
+    //                             ? __instance.normalFxPfb.name
+    //                             : null;
+    //                         break;
+    //                     case ExplosionFxTypes.flash:
+    //                         prefabName = (__instance != null && __instance.flashFxPfb != null)
+    //                             ? __instance.flashFxPfb.name
+    //                             : null;
+    //                         break;
+    //                     default:
+    //                         // custom / others
+    //                         if (__instance != null)
+    //                             prefabName = (__instance.normalFxPfb != null)
+    //                                 ? __instance.normalFxPfb.name
+    //                                 : (__instance.flashFxPfb != null ? __instance.flashFxPfb.name : null);
+    //                         break;
+    //                 }
+    //             }
+    //             catch
+    //             {
+    //                 /* ignore */
+    //             }
+    //
+    //             GrenadeLogger.Info(
+    //                 $"[GrenadeMonitor] 手雷爆炸 - 类型: {prefabType}, 中心: ({center.x:F1}, {center.y:F1}, {center.z:F1}), 预制体: {prefabType}{(string.IsNullOrEmpty(prefabName) ? string.Empty : $"({prefabName})")}");
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             GrenadeLogger.Warn($"[GrenadeMonitor] 监控异常: {ex.Message}");
+    //         }
+    //     }
+    // }
 
     // 4) 监控技能释放音效（包括手雷掷出音效）
     [HarmonyPatch(typeof(SkillBase))]
@@ -170,17 +171,17 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
             try
             {
                 if (__instance == null) return;
-
+    
                 bool hasReleaseSound = false;
                 string soundEventName = null;
                 string skillType = __instance.GetType().Name;
-
+    
                 try { hasReleaseSound = __instance.hasReleaseSound; } catch { }
                 try { soundEventName = __instance.onReleaseSound; } catch { }
-
+    
                 Vector3 charPos = Vector3.zero;
                 try { charPos = from.transform.position; } catch { }
-
+    
                 GrenadeLogger.Info($"[SkillMonitor] 技能释放 - 类型: {skillType}, 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 位置: ({charPos.x:F1}, {charPos.y:F1}, {charPos.z:F1})");
             }
             catch (Exception ex)
@@ -191,50 +192,50 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
     }
 
     // 5) 专门监控手雷技能释放
-    [HarmonyPatch(typeof(Skill_Grenade))]
-    public static class Skill_Grenade_OnRelease_Monitor
-    {
-        [HarmonyPatch("OnRelease")]
-        [HarmonyPrefix]
-        public static void Prefix(Skill_Grenade __instance)
-        {
-            try
-            {
-                if (__instance == null) return;
-
-                bool hasReleaseSound = false;
-                string soundEventName = null;
-                string fromCharacterName = "Unknown";
-                Vector3 position = Vector3.zero;
-
-                try { hasReleaseSound = __instance.hasReleaseSound; } catch { }
-                try { soundEventName = __instance.onReleaseSound; } catch { }
-
-                // 使用反射访问 protected 字段 fromCharacter
-                try
-                {
-                    var fromCharacterField = typeof(SkillBase).GetField("fromCharacter",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    if (fromCharacterField != null)
-                    {
-                        var fromCharacter = fromCharacterField.GetValue(__instance) as CharacterMainControl;
-                        if (fromCharacter != null)
-                        {
-                            fromCharacterName = fromCharacter.name ?? "Unknown";
-                            position = fromCharacter.transform.position;
-                        }
-                    }
-                }
-                catch { }
-
-                GrenadeLogger.Info($"[GrenadeSkillMonitor] 手雷技能释放 - 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 角色: {fromCharacterName}, 位置: ({position.x:F1}, {position.y:F1}, {position.z:F1})");
-            }
-            catch (Exception ex)
-            {
-                GrenadeLogger.Warn($"[GrenadeSkillMonitor] 手雷技能释放监控异常: {ex.Message}");
-            }
-        }
-    }
+    // [HarmonyPatch(typeof(Skill_Grenade))]
+    // public static class Skill_Grenade_OnRelease_Monitor
+    // {
+    //     [HarmonyPatch("OnRelease")]
+    //     [HarmonyPrefix]
+    //     public static void Prefix(Skill_Grenade __instance)
+    //     {
+    //         try
+    //         {
+    //             if (__instance == null) return;
+    //
+    //             bool hasReleaseSound = false;
+    //             string soundEventName = null;
+    //             string fromCharacterName = "Unknown";
+    //             Vector3 position = Vector3.zero;
+    //
+    //             try { hasReleaseSound = __instance.hasReleaseSound; } catch { }
+    //             try { soundEventName = __instance.onReleaseSound; } catch { }
+    //
+    //             // 使用反射访问 protected 字段 fromCharacter
+    //             try
+    //             {
+    //                 var fromCharacterField = typeof(SkillBase).GetField("fromCharacter",
+    //                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+    //                 if (fromCharacterField != null)
+    //                 {
+    //                     var fromCharacter = fromCharacterField.GetValue(__instance) as CharacterMainControl;
+    //                     if (fromCharacter != null)
+    //                     {
+    //                         fromCharacterName = fromCharacter.name ?? "Unknown";
+    //                         position = fromCharacter.transform.position;
+    //                     }
+    //                 }
+    //             }
+    //             catch { }
+    //
+    //             GrenadeLogger.Info($"[GrenadeSkillMonitor] 手雷技能释放 - 音效启用: {hasReleaseSound}, 音效事件: \"{(soundEventName ?? "null")}\", 角色: {fromCharacterName}, 位置: ({position.x:F1}, {position.y:F1}, {position.z:F1})");
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             GrenadeLogger.Warn($"[GrenadeSkillMonitor] 手雷技能释放监控异常: {ex.Message}");
+    //         }
+    //     }
+    // }
 
     // 6) 通用监控所有 AudioManager.Post 调用
     [HarmonyPatch(typeof(AudioManager))]
@@ -260,6 +261,8 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                         objType = "Character";
                     else if (gameObject.GetComponent<Skill_Grenade>() != null)
                         objType = "Skill_Grenade";
+                    else if (gameObject.GetComponent<FoodDrink>() != null)
+                        objType = "FoodDrink";
                 }
 
                 Vector3 pos = Vector3.zero;
@@ -275,46 +278,46 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
     }
 
     // 7) 监控所有 SFX/Combat/Explosive/ 下的音效（包括可能的掷出手雷音效）
-    [HarmonyPatch(typeof(AudioManager))]
-    public static class AudioManager_Post_Explosive_Monitor
-    {
-        private static int explosiveCallCount = 0;
-
-        [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
-        [HarmonyPrefix]
-        public static void Prefix(string eventName, GameObject gameObject)
-        {
-            try
-            {
-                // 只监控 SFX/Combat/Explosive/ 下的音效
-                if (!eventName.StartsWith("SFX/Combat/Explosive/", StringComparison.OrdinalIgnoreCase))
-                    return;
-
-                explosiveCallCount++;
-                string objName = gameObject?.name ?? "null";
-                string objType = "Unknown";
-
-                if (gameObject != null)
-                {
-                    if (gameObject.GetComponent<Grenade>() != null)
-                        objType = "Grenade";
-                    else if (gameObject.GetComponent<CharacterMainControl>() != null)
-                        objType = "Character";
-                    else if (gameObject.GetComponent<Skill_Grenade>() != null)
-                        objType = "Skill_Grenade";
-                }
-
-                Vector3 pos = Vector3.zero;
-                try { pos = gameObject?.transform.position ?? Vector3.zero; } catch { }
-
-                GrenadeLogger.Info($"[ExplosiveMonitor] #{explosiveCallCount} 爆炸音效 - 事件: \"{eventName}\", 对象: {objName}({objType}), 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
-            }
-            catch (Exception ex)
-            {
-                GrenadeLogger.Warn($"[ExplosiveMonitor] 爆炸音效监控异常: {ex.Message}");
-            }
-        }
-    }
+    // [HarmonyPatch(typeof(AudioManager))]
+    // public static class AudioManager_Post_Explosive_Monitor
+    // {
+    //     private static int explosiveCallCount = 0;
+    //
+    //     [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
+    //     [HarmonyPrefix]
+    //     public static void Prefix(string eventName, GameObject gameObject)
+    //     {
+    //         try
+    //         {
+    //             // 只监控 SFX/Combat/Explosive/ 下的音效
+    //             if (!eventName.StartsWith("SFX/Combat/Explosive/", StringComparison.OrdinalIgnoreCase))
+    //                 return;
+    //
+    //             explosiveCallCount++;
+    //             string objName = gameObject?.name ?? "null";
+    //             string objType = "Unknown";
+    //
+    //             if (gameObject != null)
+    //             {
+    //                 if (gameObject.GetComponent<Grenade>() != null)
+    //                     objType = "Grenade";
+    //                 else if (gameObject.GetComponent<CharacterMainControl>() != null)
+    //                     objType = "Character";
+    //                 else if (gameObject.GetComponent<Skill_Grenade>() != null)
+    //                     objType = "Skill_Grenade";
+    //             }
+    //
+    //             Vector3 pos = Vector3.zero;
+    //             try { pos = gameObject?.transform.position ?? Vector3.zero; } catch { }
+    //
+    //             GrenadeLogger.Info($"[ExplosiveMonitor] #{explosiveCallCount} 爆炸音效 - 事件: \"{eventName}\", 对象: {objName}({objType}), 位置: ({pos.x:F1}, {pos.y:F1}, {pos.z:F1})");
+    //         }
+    //         catch (Exception ex)
+    //         {
+    //             GrenadeLogger.Warn($"[ExplosiveMonitor] 爆炸音效监控异常: {ex.Message}");
+    //         }
+    //     }
+    // }
 }
 
 namespace DuckovCustomSounds.CustomGrenadeSounds

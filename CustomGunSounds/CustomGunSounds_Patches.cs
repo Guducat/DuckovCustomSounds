@@ -17,20 +17,17 @@ namespace DuckovCustomSounds.CustomGunSounds
         private const string ShootPrefix = "SFX/Combat/Gun/Shoot/";
 
         [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
-        [HarmonyPrefix]
-        public static bool Prefix(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
+        [HarmonyPostfix]
+        public static void Postfix(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
         {
             try
             {
-                // 复用公共逻辑（保持射击行为与命名兼容）
-                if (GunSfxUtil.TryOverrideShoot(ref __result, eventName, gameObject))
-                    return false; // 已替换并播放
-                return true;      // 放行原事件
+                // Postfix 覆盖：静音原 Studio 事件并以 Core 播放自定义音频（保持射击命名兼容）
+                GunSfxUtil.PostfixOverrideShoot_Safe(ref __result, eventName, gameObject);
             }
             catch (Exception ex)
             {
-                GunLogger.Warn($"[GunShoot] Prefix 异常，放行原始事件: {ex.Message}");
-                return true;
+                GunLogger.Warn($"[GunShoot] Postfix 异常: {ex.Message}");
             }
         }
 
@@ -62,36 +59,18 @@ namespace DuckovCustomSounds.CustomGunSounds
         private const string ReloadPrefix = "SFX/Combat/Gun/Reload/";
 
         [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
-        [HarmonyPrefix]
-        public static bool Prefix(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
+        [HarmonyPostfix]
+        public static void Postfix(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
         {
             try
             {
-                if (GunSfxUtil.TryOverrideReload(ref __result, eventName, gameObject))
-                    return false; // 已替换并播放
-                return true;      // 放行原事件
+                // Postfix 覆盖：静音原 Studio 事件并以 Core 播放自定义音频（保持细粒度 _start/_end 命名与回退链）
+                GunSfxUtil.PostfixOverrideReload_Safe(ref __result, eventName, gameObject);
             }
             catch (Exception ex)
             {
-                GunLogger.Warn($"[GunReload] Prefix 异常，放行原始事件: {ex.Message}");
-                return true;
+                GunLogger.Warn($"[GunReload] Postfix 异常: {ex.Message}");
             }
-        }
-    }
-
-    internal static class GunChamberPatch_Template
-    {
-        // [HarmonyPatch(typeof(AudioManager))]
-        // [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
-        // [HarmonyPrefix]
-        public static bool DebugOnly_LogChamber(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
-        {
-            if (string.IsNullOrEmpty(eventName)) return true;
-            if (eventName.Contains("Gun") && eventName.Contains("chamber"))
-            {
-                GunLogger.Debug($"[GunChamber:Debug] 捕获可能的上膛事件: {eventName}");
-            }
-            return true; // 放行
         }
     }
 }

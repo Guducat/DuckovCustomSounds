@@ -1,8 +1,7 @@
-using System;
+using Duckov;
 using HarmonyLib;
-using Duckov; // Game's AudioManager/CountDownArea lives in Duckov assembly
 
-namespace DuckovCustomSounds
+namespace DuckovCustomSounds.CustomBGM
 {
     /// <summary>
     /// Harmony hooks: 仅负责与游戏方法对接并转发到 ExtractionSounds

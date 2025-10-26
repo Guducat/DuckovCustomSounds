@@ -6,7 +6,7 @@ using FMOD;
 using FMODUnity;
 using UnityEngine;
 
-namespace DuckovCustomSounds
+namespace DuckovCustomSounds.CustomBGM
 {
     /// <summary>
     /// 撤离音效（SFX 层，2D）控制器：

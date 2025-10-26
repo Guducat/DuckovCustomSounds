@@ -25,6 +25,11 @@ namespace DuckovCustomSounds
 
         public static bool OverrideExtractionBGM { get; private set; } = false;
 
+        public static bool LevelLoadLoggerEnabled { get; private set; } = false;
+
+
+        public static bool AudioPostLoggerEnabled { get; private set; } = false;
+
         public static void Initialize()
         {
             try
@@ -84,6 +89,29 @@ namespace DuckovCustomSounds
                     root[GrenadeKey] = "always";
                     needsWriteBack = true;
                 }
+
+                // 4) enableLevelLoadLogger（仅调试用途，默认 false）
+                const string LoggerKey = "enableLevelLoadLogger";
+                bool hadLoggerKey = root.TryGetValue(LoggerKey, StringComparison.OrdinalIgnoreCase, out var loggerToken);
+                bool loggerVal = loggerToken?.Type == JTokenType.Boolean ? loggerToken.Value<bool>() : false;
+                if (!hadLoggerKey)
+                {
+                    root[LoggerKey] = loggerVal;
+                    needsWriteBack = true;
+                }
+                // 5) enableAudioPostLogger（捕获所有 AudioManager.Post/AudioObject.Post 调用，默认 false）
+                const string AudioLoggerKey = "enableAudioPostLogger";
+                bool hadAudioLoggerKey = root.TryGetValue(AudioLoggerKey, StringComparison.OrdinalIgnoreCase, out var audioLoggerToken);
+                bool audioLoggerVal = audioLoggerToken?.Type == JTokenType.Boolean ? audioLoggerToken.Value<bool>() : false;
+                if (!hadAudioLoggerKey)
+                {
+                    root[AudioLoggerKey] = audioLoggerVal;
+                    needsWriteBack = true;
+                }
+                AudioPostLoggerEnabled = audioLoggerVal;
+
+                LevelLoadLoggerEnabled = loggerVal;
+
                 NPCGrenadeSurprisedEnabled = gvEnabled;
                 NPCGrenadeSurprisedMinInterval = gvInterval;
 
@@ -93,7 +121,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}");
+                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}");
                     }
                     catch (Exception ex)
                     {

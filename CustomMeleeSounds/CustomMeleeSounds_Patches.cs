@@ -16,24 +16,36 @@ namespace DuckovCustomSounds.CustomMeleeSounds
     public static class AudioManager_Post_MeleeAttackReplace
     {
         private const string MeleeAttackPrefix = "SFX/Combat/Melee/attack_";
+        private static readonly string[] Exts = new[] { ".mp3", ".wav", ".ogg", ".oga" };
+        private static IEnumerable<string> ExpandCandidates(string dir, params string[] namesNoExt)
+        {
+            foreach (var name in namesNoExt)
+            {
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                foreach (var ext in Exts)
+                {
+                    yield return Path.Combine(dir, name + ext);
+                }
+            }
+        }
+
 
         [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
-        [HarmonyPrefix]
-        public static bool Prefix(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
+        [HarmonyPostfix]
+        public static void Postfix(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
         {
             try
             {
-                if (string.IsNullOrEmpty(eventName)) return true;
-                if (!eventName.StartsWith(MeleeAttackPrefix, StringComparison.OrdinalIgnoreCase)) return true; // 非近战攻击事件 → 放行
+                if (string.IsNullOrEmpty(eventName)) return;
+                if (!eventName.StartsWith(MeleeAttackPrefix, StringComparison.OrdinalIgnoreCase)) return; // 非近战攻击事件 → 忽略
 
                 // 解析 soundKey（CA_Attack 里为 attack_ + meleeWeapon.SoundKey.ToLower()）
                 string soundKey = eventName.Substring(MeleeAttackPrefix.Length);
-                if (string.IsNullOrWhiteSpace(soundKey)) return true;
+                if (string.IsNullOrWhiteSpace(soundKey)) return;
 
                 string dir = Path.Combine(ModBehaviour.ModFolderName, "CustomMeleeSounds");
-                string legacyPath = Path.Combine(dir, soundKey + ".mp3");
 
-                // 捕获近战组件，优先尝试按 TypeID 定位资源，其次回退到 soundKey，最后 default.mp3
+                // 捕获近战组件，优先尝试按 TypeID 定位资源，其次回退到 soundKey，最后 default.*
                 ItemAgent_MeleeWeapon melee = null;
                 // 优先：从角色对象拿 CharacterMainControl 再取当前持有的近战武器
                 try
@@ -68,56 +80,68 @@ namespace DuckovCustomSounds.CustomMeleeSounds
                 var attempts = new List<string>();
                 if (!string.IsNullOrWhiteSpace(typeIdStr))
                 {
-                    attempts.Add(Path.Combine(dir, typeIdStr + ".mp3"));
-                    attempts.Add(legacyPath);
-                    string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
-                    GunLogger.Debug($"[MeleeAttack] TypeID={typeIdStr}, soundKey={soundKey}, 查找顺序: {chain}");
+                    attempts.AddRange(ExpandCandidates(dir, typeIdStr));
+                    attempts.AddRange(ExpandCandidates(dir, soundKey));
                 }
                 else
                 {
                     GunLogger.Debug($"[MeleeAttack] 未捕获到 ItemAgent_MeleeWeapon，回退到 soundKey 查找模式");
-                    attempts.Add(legacyPath);
+                    attempts.AddRange(ExpandCandidates(dir, soundKey));
                 }
 
-                string filePath = null;
-                foreach (var p in attempts) { if (File.Exists(p)) { filePath = p; break; } }
+                var chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
+                string filePath = attempts.FirstOrDefault(File.Exists);
                 if (filePath == null)
                 {
-                    string fallback = Path.Combine(dir, "default.mp3");
-                    if (File.Exists(fallback))
+                    var fallbacks = ExpandCandidates(dir, "default");
+                    filePath = fallbacks.FirstOrDefault(File.Exists);
+                    if (filePath == null)
                     {
-                        filePath = fallback;
-                        if (!string.IsNullOrWhiteSpace(typeIdStr))
-                        {
-                            string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
-                            GunLogger.Debug($"[MeleeAttack] TypeID={typeIdStr}, soundKey={soundKey}, 查找顺序: {chain}, 最终使用: {filePath}");
-                        }
+                        GunLogger.Debug($"[MeleeAttack] 查找顺序: {chain}, 最终使用: 未找到自定义文件");
+                        return;
                     }
-                    else
-                    {
-                        GunLogger.Debug($"[MeleeAttack] 未找到自定义文件，放行原始事件: {eventName} (查找: {legacyPath})");
-                        return true;
-                    }
+                }
+
+                if (!string.IsNullOrWhiteSpace(typeIdStr))
+                {
+                    GunLogger.Debug($"[MeleeAttack] TypeID={typeIdStr}, soundKey={soundKey}, 查找顺序: {chain}, 最终使用: {filePath}");
                 }
                 else
                 {
-                    if (!string.IsNullOrWhiteSpace(typeIdStr))
+                    GunLogger.Debug($"[MeleeAttack] 查找顺序: {chain}, 最终使用: {filePath}");
+                }
+
+                try { if (!RuntimeManager.IsInitialized) { GunLogger.Info($"[MeleeAttack] FMOD 未初始化，跳过自定义音效"); return; } } catch { }
+
+                // 静音原 Studio 事件（若存在）
+                try { if (__result.HasValue) { var ev = __result.Value; ev.setVolume(0f); } } catch { }
+
+                // 继承原事件 3D 距离（若可用）
+                float min = 1f, max = 50f;
+                try
+                {
+                    if (__result.HasValue && __result.Value.isValid())
                     {
-                        string chain = string.Join(" → ", attempts.Select(p => $"[{p}]").ToArray());
-                        GunLogger.Debug($"[MeleeAttack] TypeID={typeIdStr}, soundKey={soundKey}, 查找顺序: {chain}, 最终使用: {filePath}");
+                        if (__result.Value.getDescription(out FMOD.Studio.EventDescription desc) == RESULT.OK)
+                        {
+                            try { desc.getMinMaxDistance(out min, out max); } catch { }
+                        }
                     }
                 }
+                catch { }
 
-                try { if (!RuntimeManager.IsInitialized) { GunLogger.Info($"[MeleeAttack] FMOD 未初始化，放行原始事件: {eventName}"); return true; } } catch { }
-
-                var mode = MODE.CREATESAMPLE | MODE._3D | MODE.LOOP_OFF;
-                var r1 = RuntimeManager.CoreSystem.createSound(filePath, mode, out Sound sound);
+                // 选择合适的创建模式（mp3/ogg 用 STREAM）
+                string fullPath = filePath;
+                try { fullPath = System.IO.Path.GetFullPath(filePath); } catch { }
+                string ext = null; try { ext = Path.GetExtension(fullPath)?.ToLowerInvariant(); } catch { }
+                var mode = ((ext == ".mp3" || ext == ".ogg" || ext == ".oga") ? MODE.CREATESTREAM : MODE.CREATESAMPLE) | MODE._3D | MODE.LOOP_OFF;
+                var r1 = RuntimeManager.CoreSystem.createSound(fullPath, mode, out Sound sound);
                 if (r1 != RESULT.OK || !sound.hasHandle())
                 {
-                    GunLogger.Info($"[MeleeAttack] createSound 失败({r1})，放行原始事件: {eventName}");
-                    return true;
+                    GunLogger.Info($"[MeleeAttack] createSound 失败({r1})，跳过自定义音效");
+                    return;
                 }
-                try { sound.set3DMinMaxDistance(1f, 50f); } catch { }
+                try { sound.set3DMinMaxDistance(min, max); } catch { }
 
                 ChannelGroup group = default;
                 try { if (ModBehaviour.SfxGroup.hasHandle()) group = ModBehaviour.SfxGroup; } catch { }
@@ -131,9 +155,9 @@ namespace DuckovCustomSounds.CustomMeleeSounds
                 var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
                 if (r2 != RESULT.OK || !channel.hasHandle())
                 {
-                    GunLogger.Info($"[MeleeAttack] playSound 失败({r2})，放行原始事件: {eventName}");
+                    GunLogger.Info($"[MeleeAttack] playSound 失败({r2})，跳过自定义音效");
                     try { if (sound.hasHandle()) sound.release(); } catch { }
-                    return true;
+                    return;
                 }
 
                 Vector3 pos = Vector3.zero;
@@ -141,18 +165,16 @@ namespace DuckovCustomSounds.CustomMeleeSounds
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
                 try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                try { channel.set3DMinMaxDistance(min, max); } catch { }
+                try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
                 try { channel.setPaused(false); } catch { }
 
-                GunLogger.Debug($"[MeleeAttack] 替换 {eventName} → {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
+                GunLogger.Debug($"[MeleeAttack] 覆盖 {eventName} → {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
                 try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, 6f)); } catch { }
-
-                __result = new FMOD.Studio.EventInstance?();
-                return false; // 阻止原事件
             }
             catch (Exception ex)
             {
-                GunLogger.Warn($"[MeleeAttack] Prefix 异常，放行原始事件: {ex.Message}");
-                return true;
+                GunLogger.Warn($"[MeleeAttack] Postfix 异常: {ex.Message}");
             }
         }
 
