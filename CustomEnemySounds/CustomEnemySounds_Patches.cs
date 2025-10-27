@@ -1,5 +1,6 @@
 using HarmonyLib;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Duckov; // AudioManager, CharacterMainControl, AICharacterController
 using FMOD;
@@ -15,9 +16,15 @@ namespace DuckovCustomSounds.CustomEnemySounds
     {
         // 1) AI 初始化时注册上下文
         [HarmonyPatch(typeof(AICharacterController))]
-        [HarmonyPatch("Init", new Type[] { typeof(CharacterMainControl), typeof(Vector3), typeof(AudioManager.VoiceType), typeof(AudioManager.FootStepMaterialType) })]
+        [HarmonyPatch("Init",
+            new Type[]
+            {
+                typeof(CharacterMainControl), typeof(Vector3), typeof(AudioManager.VoiceType),
+                typeof(AudioManager.FootStepMaterialType)
+            })]
         [HarmonyPostfix]
-        private static void AI_Init_Postfix(CharacterMainControl _characterMainControl, Vector3 patrolCenter, AudioManager.VoiceType voiceType, AudioManager.FootStepMaterialType footStepMatType)
+        private static void AI_Init_Postfix(CharacterMainControl _characterMainControl, Vector3 patrolCenter,
+            AudioManager.VoiceType voiceType, AudioManager.FootStepMaterialType footStepMatType)
         {
             try
             {
@@ -36,9 +43,16 @@ namespace DuckovCustomSounds.CustomEnemySounds
         [HarmonyPatch(typeof(CharacterMainControl))]
         [HarmonyPatch("set_AudioVoiceType")]
         [HarmonyPostfix]
-        private static void CharacterMainControl_set_AudioVoiceType_Postfix(CharacterMainControl __instance, AudioManager.VoiceType value)
+        private static void CharacterMainControl_set_AudioVoiceType_Postfix(CharacterMainControl __instance,
+            AudioManager.VoiceType value)
         {
-            try { EnemyContextRegistry.UpdateVoiceType(__instance?.gameObject, value); } catch { }
+            try
+            {
+                EnemyContextRegistry.UpdateVoiceType(__instance?.gameObject, value);
+            }
+            catch
+            {
+            }
         }
 
         // 3) 销毁时清理
@@ -47,7 +61,13 @@ namespace DuckovCustomSounds.CustomEnemySounds
         [HarmonyPostfix]
         private static void CharacterMainControl_OnDestroy_Postfix(CharacterMainControl __instance)
         {
-            try { EnemyContextRegistry.Remove(__instance?.gameObject); } catch { }
+            try
+            {
+                EnemyContextRegistry.Remove(__instance?.gameObject);
+            }
+            catch
+            {
+            }
         }
 
         // 4) Postfix 拦截 AudioObject.PostQuak：保留原事件生命周期，替换为自定义3D播放
@@ -56,14 +76,16 @@ namespace DuckovCustomSounds.CustomEnemySounds
         {
             [HarmonyPatch("PostQuak", new Type[] { typeof(string) })]
             [HarmonyPostfix]
-            private static void Postfix(AudioObject __instance, string soundKey, ref FMOD.Studio.EventInstance? __result)
+            private static void Postfix(AudioObject __instance, string soundKey,
+                ref FMOD.Studio.EventInstance? __result)
             {
                 try
                 {
                     CustomEnemySounds.EnsureLoaded();
                     var go = __instance != null ? __instance.gameObject : null;
                     var evValid = __result.HasValue && __result.Value.isValid();
-                    CESLogger.Debug($"[CES:Hook] AudioObject.PostQuak Postfix ENTER: soundKey={soundKey}, 原始EventInstance有效={evValid}");
+                    CESLogger.Debug(
+                        $"[CES:Hook] AudioObject.PostQuak Postfix ENTER: soundKey={soundKey}, 原始EventInstance有效={evValid}");
 
                     // 绑定/获取敌人上下文
                     EnemyContext ctx = null;
@@ -75,11 +97,15 @@ namespace DuckovCustomSounds.CustomEnemySounds
                             {
                                 var cmc = go.GetComponent<CharacterMainControl>();
                                 if (cmc != null)
-                                    ctx = EnemyContextRegistry.Register(cmc, cmc.AudioVoiceType, cmc.FootStepMaterialType);
+                                    ctx = EnemyContextRegistry.Register(cmc, cmc.AudioVoiceType,
+                                        cmc.FootStepMaterialType);
                             }
-                            catch { }
+                            catch
+                            {
+                            }
                         }
                     }
+
                     if (ctx == null)
                     {
                         CESLogger.Info("[CES:Hook] Postfix: ctx==null，保留原声");
@@ -87,10 +113,14 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     }
 
                     // richer context logging
-                    CESLogger.Info($"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, icon={ctx.IconType}, nameKey={ctx.NameKey}, footMat={ctx.FootStepMaterialType}");
+                    CESLogger.Info(
+                        $"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, icon={ctx.IconType}, nameKey={ctx.NameKey}, footMat={ctx.FootStepMaterialType}");
                     VoiceRoute route = null;
-                    bool matched = CustomEnemySounds.Engine != null && CustomEnemySounds.Engine.TryRoute(ctx, soundKey, ctx.VoiceType, out route);
-                    var routeInfo = route != null ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")} ") : "null";
+                    bool matched = CustomEnemySounds.Engine != null &&
+                                   CustomEnemySounds.Engine.TryRoute(ctx, soundKey, ctx.VoiceType, out route);
+                    var routeInfo = route != null
+                        ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")} ")
+                        : "null";
                     CESLogger.Info($"[CES:Hook] Postfix: 匹配结果: matched={matched}, route={routeInfo}");
                     if (!matched || route == null || !(route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                     {
@@ -115,9 +145,17 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         {
                             CESLogger.Debug("[CES:Hook] Postfix: 原始事件静音");
                             var ev = __result.Value;
-                            try { ev.setVolume(0f); } catch { }
+                            try
+                            {
+                                ev.setVolume(0f);
+                            }
+                            catch
+                            {
+                            }
                         }
-                        catch { }
+                        catch
+                        {
+                        }
                     }
 
                     // 从原事件描述继承3D距离（若失败则尝试通过TryCreateEventInstance获取）
@@ -129,7 +167,13 @@ namespace DuckovCustomSounds.CustomEnemySounds
                             FMOD.Studio.EventDescription desc;
                             if (__result.Value.getDescription(out desc) == RESULT.OK)
                             {
-                                try { desc.getMinMaxDistance(out min, out max); } catch { }
+                                try
+                                {
+                                    desc.getMinMaxDistance(out min, out max);
+                                }
+                                catch
+                                {
+                                }
                             }
                         }
                         else
@@ -137,7 +181,9 @@ namespace DuckovCustomSounds.CustomEnemySounds
                             TryGetEvent3DDistances(soundKey, ctx.VoiceType, out min, out max);
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                    }
 
                     // 使用 Core API 播放自定义3D声音
                     var mode = ComputeModeForFile(route.FileFullPath);
@@ -146,7 +192,13 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     if (res == RESULT.OK && sound.hasHandle())
                     {
                         var group = ResolveSfxGroupSafe();
-                        try { sound.set3DMinMaxDistance(min, max); } catch { }
+                        try
+                        {
+                            sound.set3DMinMaxDistance(min, max);
+                        }
+                        catch
+                        {
+                        }
 
                         var playRes = FMODUnity.RuntimeManager.CoreSystem.playSound(sound, group, true, out var ch);
                         CESLogger.Debug($"[CES:Hook] Postfix: playSound 结果={playRes}");
@@ -154,20 +206,71 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         {
                             Vector3 pos = Vector3.zero;
                             Transform tr = null;
-                            try { tr = go != null ? go.transform : null; pos = tr != null ? tr.position : Vector3.zero; } catch { }
+                            try
+                            {
+                                tr = go != null ? go.transform : null;
+                                pos = tr != null ? tr.position : Vector3.zero;
+                            }
+                            catch
+                            {
+                            }
+
                             var fpos = ToFMODVector(pos);
                             var fvel = ToFMODVector(Vector3.zero);
-                            try { ch.set3DAttributes(ref fpos, ref fvel); } catch { }
-                            try { ch.set3DMinMaxDistance(min, max); } catch { }
-                            try { ch.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
-                            try { ch.setPaused(false); } catch { }
+                            try
+                            {
+                                ch.set3DAttributes(ref fpos, ref fvel);
+                            }
+                            catch
+                            {
+                            }
 
-                            try { CoreSoundTracker.Track(ownerId, sound, ch, route.FileFullPath, soundKey, newPriority, tr); CESLogger.Debug("[CES:Hook] Postfix: 已加入跟踪"); } catch { }
-                            CESLogger.Info($"[CES:Hook] 已替换为自定义3D语音 -> {route.FileFullPath} (min={min:F1}, max={max:F1})");
+                            try
+                            {
+                                ch.set3DMinMaxDistance(min, max);
+                            }
+                            catch
+                            {
+                            }
+
+                            try
+                            {
+                                ch.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF);
+                            }
+                            catch
+                            {
+                            }
+
+                            try
+                            {
+                                ch.setPaused(false);
+                            }
+                            catch
+                            {
+                            }
+
+                            try
+                            {
+                                CoreSoundTracker.Track(ownerId, sound, ch, route.FileFullPath, soundKey, newPriority,
+                                    tr);
+                                CESLogger.Debug("[CES:Hook] Postfix: 已加入跟踪");
+                            }
+                            catch
+                            {
+                            }
+
+                            CESLogger.Info(
+                                $"[CES:Hook] 已替换为自定义3D语音 -> {route.FileFullPath} (min={min:F1}, max={max:F1})");
                         }
                         else
                         {
-                            try { sound.release(); } catch { }
+                            try
+                            {
+                                sound.release();
+                            }
+                            catch
+                            {
+                            }
                         }
                     }
                 }
@@ -179,7 +282,9 @@ namespace DuckovCustomSounds.CustomEnemySounds
         }
 
         // 5) 死亡语音兜底（某些流程不经由 PostQuak 时）
-        private static readonly System.Collections.Generic.HashSet<int> _deathPlayed = new System.Collections.Generic.HashSet<int>();
+        private static readonly System.Collections.Generic.HashSet<int> _deathPlayed =
+            new System.Collections.Generic.HashSet<int>();
+
         private static float _lastDeathGlobalTime = -999f;
 
         private static void TryPlayDeathVoice(UnityEngine.GameObject go)
@@ -195,17 +300,20 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 float __now = Time.realtimeSinceStartup;
                 float __min = DuckovCustomSounds.ModSettings.DeathVoiceMinInterval;
                 if (__min > 0f && (__now - _lastDeathGlobalTime) < __min) return;
-
                 EnemyContext ctx = null;
                 if (!EnemyContextRegistry.TryGet(go, out ctx) || ctx == null)
                 {
                     try
                     {
                         var cmc = go.GetComponent<CharacterMainControl>();
-                        if (cmc != null) ctx = EnemyContextRegistry.Register(cmc, cmc.AudioVoiceType, cmc.FootStepMaterialType);
+                        if (cmc != null)
+                            ctx = EnemyContextRegistry.Register(cmc, cmc.AudioVoiceType, cmc.FootStepMaterialType);
                     }
-                    catch { }
+                    catch
+                    {
+                    }
                 }
+
                 if (ctx == null)
                 {
                     CESLogger.Info("[CES:Hook] Death: ctx==null，跳过");
@@ -214,8 +322,11 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
                 CESLogger.Info($"[CES:Hook] Death: 开始规则匹配: soundKey=death, ctx.VoiceType={ctx.VoiceType}");
                 VoiceRoute route = null;
-                bool matched = CustomEnemySounds.Engine != null && CustomEnemySounds.Engine.TryRoute(ctx, "death", ctx.VoiceType, out route);
-                var routeInfo = route != null ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")}") : "null";
+                bool matched = CustomEnemySounds.Engine != null &&
+                               CustomEnemySounds.Engine.TryRoute(ctx, "death", ctx.VoiceType, out route);
+                var routeInfo = route != null
+                    ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")}")
+                    : "null";
                 CESLogger.Debug($"[CES:Hook] Death: 匹配结果: matched={matched}, route={routeInfo}");
                 if (!matched || route == null || !(route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                 {
@@ -232,7 +343,13 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
                 // 继承原事件3D距离
                 float min = 1.5f, max = 25f;
-                try { TryGetEvent3DDistances("death", ctx.VoiceType, out min, out max); } catch { }
+                try
+                {
+                    TryGetEvent3DDistances("death", ctx.VoiceType, out min, out max);
+                }
+                catch
+                {
+                }
 
                 var mode = ComputeModeForFile(route.FileFullPath);
                 var res = FMODUnity.RuntimeManager.CoreSystem.createSound(route.FileFullPath, mode, out var sound);
@@ -240,30 +357,83 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 if (res == RESULT.OK && sound.hasHandle())
                 {
                     var group = ResolveSfxGroupSafe();
-                    try { sound.set3DMinMaxDistance(min, max); } catch { }
+                    try
+                    {
+                        sound.set3DMinMaxDistance(min, max);
+                    }
+                    catch
+                    {
+                    }
 
                     var playRes = FMODUnity.RuntimeManager.CoreSystem.playSound(sound, group, true, out var ch);
                     CESLogger.Debug($"[CES:Hook] Death: playSound 结果={playRes}");
                     if (playRes == RESULT.OK)
                     {
                         _deathPlayed.Add(id);
-                        Vector3 pos = Vector3.zero; Transform tr = null;
-                        try { tr = go.transform; pos = tr.position; } catch { }
+                        Vector3 pos = Vector3.zero;
+                        Transform tr = null;
+                        try
+                        {
+                            tr = go.transform;
+                            pos = tr.position;
+                        }
+                        catch
+                        {
+                        }
+
                         var fpos = ToFMODVector(pos);
                         var fvel = ToFMODVector(Vector3.zero);
-                        try { ch.set3DAttributes(ref fpos, ref fvel); } catch { }
-                        try { ch.set3DMinMaxDistance(min, max); } catch { }
-                        try { ch.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
-                        try { ch.setPaused(false); } catch { }
+                        try
+                        {
+                            ch.set3DAttributes(ref fpos, ref fvel);
+                        }
+                        catch
+                        {
+                        }
+
+                        try
+                        {
+                            ch.set3DMinMaxDistance(min, max);
+                        }
+                        catch
+                        {
+                        }
+
+                        try
+                        {
+                            ch.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF);
+                        }
+                        catch
+                        {
+                        }
+
+                        try
+                        {
+                            ch.setPaused(false);
+                        }
+                        catch
+                        {
+                        }
+
                         _lastDeathGlobalTime = Time.realtimeSinceStartup;
-
-
                         CESLogger.Info($"[CES:Hook] Death: 播放自定义3D语音 -> {route.FileFullPath}");
-                        try { CoreSoundTracker.Track(id, sound, ch, route.FileFullPath, "death", deathPrio, tr); } catch { }
+                        try
+                        {
+                            CoreSoundTracker.Track(id, sound, ch, route.FileFullPath, "death", deathPrio, tr);
+                        }
+                        catch
+                        {
+                        }
                     }
                     else
                     {
-                        try { sound.release(); } catch { }
+                        try
+                        {
+                            sound.release();
+                        }
+                        catch
+                        {
+                        }
                     }
                 }
             }
@@ -275,6 +445,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
         // 更安全的做法：直接订阅 Health.OnDead 静态事件，避免修改/干扰原始调用链参数
         private static bool _deathEventHooked;
+
         internal static void EnableDeathEventHook()
         {
             if (_deathEventHooked) return;
@@ -293,7 +464,14 @@ namespace DuckovCustomSounds.CustomEnemySounds
         internal static void DisableDeathEventHook()
         {
             if (!_deathEventHooked) return;
-            try { Health.OnDead -= OnHealthDead_Handler; } catch { }
+            try
+            {
+                Health.OnDead -= OnHealthDead_Handler;
+            }
+            catch
+            {
+            }
+
             _deathEventHooked = false;
         }
 
@@ -305,7 +483,10 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 var comp = h as UnityEngine.Component;
                 TryPlayDeathVoice(comp != null ? comp.gameObject : null);
             }
-            catch (Exception ex) { CESLogger.Error("OnHealthDead_Handler", ex); }
+            catch (Exception ex)
+            {
+                CESLogger.Error("OnHealthDead_Handler", ex);
+            }
         }
 
         private static MODE ComputeModeForFile(string path)
@@ -314,20 +495,23 @@ namespace DuckovCustomSounds.CustomEnemySounds
             {
                 var ext = System.IO.Path.GetExtension(path)?.ToLowerInvariant();
                 var baseMode = MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF;
-                if (ext == ".mp3" || ext == ".ogg" || ext == ".flac")
-                    return baseMode | MODE.CREATESTREAM;
+                if (ext == ".mp3" || ext == ".ogg" || ext == ".flac") return baseMode | MODE.CREATESTREAM;
                 return baseMode; // wav/aiff 使用内存sample
             }
-            catch { return MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF; }
+            catch
+            {
+                return MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF;
+            }
         }
 
-        private static bool TryGetEvent3DDistances(string soundKey, AudioManager.VoiceType voiceType, out float min, out float max)
+        private static bool TryGetEvent3DDistances(string soundKey, AudioManager.VoiceType voiceType, out float min,
+            out float max)
         {
-            min = 1.5f; max = 25f;
+            min = 1.5f;
+            max = 25f;
             try
             {
-                if (TryGetEvent3DDistancesForKey(soundKey, voiceType, out min, out max))
-                    return true;
+                if (TryGetEvent3DDistancesForKey(soundKey, voiceType, out min, out max)) return true;
                 // 回退：优先采用“surprise”的3D距离以保证与普通惊吓语音响度一致
                 if (!string.Equals(soundKey, "surprise", StringComparison.OrdinalIgnoreCase) &&
                     TryGetEvent3DDistancesForKey("surprise", voiceType, out min, out max))
@@ -337,13 +521,18 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     TryGetEvent3DDistancesForKey("normal", voiceType, out min, out max))
                     return true;
             }
-            catch { }
+            catch
+            {
+            }
+
             return false;
         }
 
-        private static bool TryGetEvent3DDistancesForKey(string key, AudioManager.VoiceType voiceType, out float min, out float max)
+        private static bool TryGetEvent3DDistancesForKey(string key, AudioManager.VoiceType voiceType, out float min,
+            out float max)
         {
-            min = 1.5f; max = 25f;
+            min = 1.5f;
+            max = 25f;
             try
             {
                 string vt = voiceType.ToString().ToLowerInvariant();
@@ -356,14 +545,33 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         FMOD.Studio.EventDescription desc;
                         if (ev.getDescription(out desc) == RESULT.OK)
                         {
-                            try { desc.getMinMaxDistance(out min, out max); } catch { }
+                            try
+                            {
+                                desc.getMinMaxDistance(out min, out max);
+                            }
+                            catch
+                            {
+                            }
                         }
                     }
-                    finally { try { ev.release(); } catch { } }
+                    finally
+                    {
+                        try
+                        {
+                            ev.release();
+                        }
+                        catch
+                        {
+                        }
+                    }
+
                     return true;
                 }
             }
-            catch { }
+            catch
+            {
+            }
+
             return false;
         }
 
@@ -377,21 +585,25 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 try
                 {
                     var sfxBus = FMODUnity.RuntimeManager.GetBus("bus:/Master/SFX");
-                    if (sfxBus.getChannelGroup(out var cg) == RESULT.OK && cg.hasHandle())
-                        return cg;
+                    if (sfxBus.getChannelGroup(out var cg) == RESULT.OK && cg.hasHandle()) return cg;
                 }
-                catch { }
+                catch
+                {
+                }
 
                 // 其次使用已缓存的 SfxGroup
                 if (ModBehaviour.SfxGroup.hasHandle()) return ModBehaviour.SfxGroup;
 
                 // 最后回退 Master
-                if (FMODUnity.RuntimeManager.CoreSystem.getMasterChannelGroup(out var master) == RESULT.OK && master.hasHandle())
+                if (FMODUnity.RuntimeManager.CoreSystem.getMasterChannelGroup(out var master) == RESULT.OK &&
+                    master.hasHandle())
                     return master;
             }
-            catch { }
+            catch
+            {
+            }
+
             return default;
         }
     }
 }
-

@@ -112,7 +112,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                     if (ctx == null) return true; // 保留原声
 
                         // 调试：记录本次匹配上下文与 soundKey
-                        FootstepLogger.Debug($"[CFS:Route] OnFootStep: skSpec={skSpecific}, skGen={skGeneric}, vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, nameKey={ctx.NameKey}, icon={ctx.IconType}, mat={material}");
+                        FootstepLogger.DebugDetail($"[CFS:Route] OnFootStep: skSpec={skSpecific}, skGen={skGeneric}, vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, nameKey={ctx.NameKey}, icon={ctx.IconType}, mat={material}");
 
 
                     // 规则匹配：优先具体（含材质），未命中再尝试通用
@@ -124,7 +124,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         float minCd = GetMinCooldownSeconds();
                         if (minCd > 0f && IsOnCooldownAndTouch(id, false, minCd, out var remain))
                         {
-                            FootstepLogger.Debug($"[CFS:Cooldown] footstep SKIP id={id} remain={remain:F2}s (min={minCd:F2}s)");
+                            FootstepLogger.DebugDetail($"[CFS:Cooldown] footstep SKIP id={id} remain={remain:F2}s (min={minCd:F2}s)");
                             return false; // mute original as well
                         }
 
@@ -142,24 +142,24 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         {
                             int sCount = CustomFootStepSounds.Config?.SimpleRules?.Count ?? 0;
                             string reason = string.IsNullOrEmpty(ctx.NameKey) ? "nameKey为空，SimpleRules无法匹配" : "未命中任何 SimpleRules";
-                            FootstepLogger.Debug($"[CFS:Route] 未命中（UseSimpleRules=true）：{reason}（SimpleRules={sCount}）");
+                            FootstepLogger.DebugDetail($"[CFS:Route] 未命中（UseSimpleRules=true）：{reason}（SimpleRules={sCount}）");
                         }
                         else
                         {
-                            FootstepLogger.Debug("[CFS:Route] 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 CustomEnemySounds=Debug 查看 [CES:Path] cand/exists");
+                            FootstepLogger.DebugDetail("[CFS:Route] 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 CustomEnemySounds=Debug 查看 [CES:Path] cand/exists");
                         }
                         return true; // 未匹配 - 让原逻辑继续
                     }
 
                         // 记录命中信息与候选路径（仅在命中时打印）
-                        FootstepLogger.Debug($"[CFS:Route] 命中: rule={route.MatchRule}, file={route.FileFullPath}");
+                        FootstepLogger.DebugDetail($"[CFS:Route] 命中: rule={route.MatchRule}, file={route.FileFullPath}");
                         try
                         {
                             if (route.TriedPaths != null && route.TriedPaths.Count > 0)
                             {
                                 for (int i = 0; i < route.TriedPaths.Count; i++)
                                 {
-                                    FootstepLogger.Debug($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
+                                    FootstepLogger.DebugDetail($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
                                 }
                             }
                         }
@@ -253,7 +253,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         matched = CustomFootStepSounds.Engine != null && CustomFootStepSounds.Engine.TryRoute(ctx, "dash", ctx.VoiceType, out route);
 
                         // 调试：dash 匹配上下文
-                        FootstepLogger.Debug($"[CFS:Route] dash: vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, nameKey={ctx.NameKey}, icon={ctx.IconType}, mat={material}");
+                        FootstepLogger.DebugDetail($"[CFS:Route] dash: vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, nameKey={ctx.NameKey}, icon={ctx.IconType}, mat={material}");
 
                     }
                     if (!(matched && route != null && route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
@@ -263,24 +263,24 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         {
                             int sCount = CustomFootStepSounds.Config?.SimpleRules?.Count ?? 0;
                             string reason = string.IsNullOrEmpty(ctx.NameKey) ? "nameKey为空，SimpleRules无法匹配" : "未命中任何 SimpleRules";
-                            FootstepLogger.Debug($"[CFS:Route] dash 未命中（UseSimpleRules=true）：{reason}（SimpleRules={sCount}）");
+                            FootstepLogger.DebugDetail($"[CFS:Route] dash 未命中（UseSimpleRules=true）：{reason}（SimpleRules={sCount}）");
                         }
                         else
                         {
-                            FootstepLogger.Debug("[CFS:Route] dash 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 CustomEnemySounds=Debug 查看 [CES:Path] cand/exists");
+                            FootstepLogger.DebugDetail("[CFS:Route] dash 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 CustomEnemySounds=Debug 查看 [CES:Path] cand/exists");
                         }
                         return true; // 未匹配，继续原逻辑
                     }
 
                         // 记录 dash 命中信息与候选路径
-                        FootstepLogger.Debug($"[CFS:Route] dash 命中: rule={route.MatchRule}, file={route.FileFullPath}");
+                        FootstepLogger.DebugDetail($"[CFS:Route] dash 命中: rule={route.MatchRule}, file={route.FileFullPath}");
                         try
                         {
                             if (route.TriedPaths != null && route.TriedPaths.Count > 0)
                             {
                                 for (int i = 0; i < route.TriedPaths.Count; i++)
                                 {
-                                    FootstepLogger.Debug($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
+                                    FootstepLogger.DebugDetail($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
                                 }
                             }
                         }
@@ -310,7 +310,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         float dMinCd = GetMinCooldownSeconds();
                         if (dMinCd > 0f && IsOnCooldownAndTouch(did, true, dMinCd, out var dRemain))
                         {
-                            FootstepLogger.Debug($"[CFS:Cooldown] dash SKIP id={did} remain={dRemain:F2}s (min={dMinCd:F2}s)");
+                            FootstepLogger.DebugDetail($"[CFS:Cooldown] dash SKIP id={did} remain={dRemain:F2}s (min={dMinCd:F2}s)");
                             return false;
                         }
 
@@ -440,4 +440,3 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         }
     }
 }
-

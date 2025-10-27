@@ -14,6 +14,56 @@ namespace DuckovCustomSounds.CustomGunSounds
         private const float CleanupMaxSeconds = 6f;
         private static string BaseDir => Path.Combine(ModBehaviour.ModFolderName, "CustomGunSounds");
 
+        // Per-weapon shoot rate limiting
+        private static readonly Dictionary<int, float> s_LastShootAt = new Dictionary<int, float>(128);
+        private static readonly object s_RateLock = new object();
+
+        // Return true to skip (throttled). Select per-type interval when available; 0 disables for that type.
+        private static bool ShouldThrottleShoot(GameObject go, string typeIdStr, string soundKey)
+        {
+            try
+            {
+                bool enabled = DuckovCustomSounds.ModSettings.GunShootRateLimitEnabled;
+                if (!enabled) return false;
+
+                // Resolve effective interval (ms)
+                float minMs = DuckovCustomSounds.ModSettings.GunShootMinIntervalMs;
+                string src = "global";
+                try
+                {
+                    if (!string.IsNullOrWhiteSpace(typeIdStr))
+                    {
+                        var map = DuckovCustomSounds.ModSettings.GunShootRateLimitPerType;
+                        if (map != null && map.TryGetValue(typeIdStr, out var perMs))
+                        {
+                            if (perMs <= 0f) return false; // disabled for this type
+                            minMs = perMs;
+                            src = $"type:{typeIdStr}";
+                        }
+                    }
+                }
+                catch { }
+
+                float minSec = Mathf.Max(0f, minMs) / 1000f;
+                if (minSec <= 0f) return false;
+
+                int key = 0; try { key = go != null ? go.GetInstanceID() : 0; } catch { }
+                float now = Time.realtimeSinceStartup;
+                lock (s_RateLock)
+                {
+                    if (s_LastShootAt.TryGetValue(key, out var last) && (now - last) < minSec)
+                    {
+                        float deltaMs = (now - last) * 1000f;
+                        GunLogger.Debug($"[GunShoot:RateLimit] 抑制: typeId={typeIdStr}, key={soundKey}, Δ={deltaMs:F0}ms < {minMs}ms, src={src}");
+                        return true;
+                    }
+                    s_LastShootAt[key] = now;
+                    return false;
+                }
+            }
+            catch { return false; }
+        }
+
 
         // Tracking for reload sounds so we can stop them on Cancel/StopReloadSound
         private struct TrackedReload
@@ -226,6 +276,23 @@ namespace DuckovCustomSounds.CustomGunSounds
                 var (gun, typeIdStr) = GetGunAndTypeId(gameObject);
                 bool silenced = false;
                 try { if (gun != null) silenced = gun.Silenced; } catch { }
+
+                // Rate limiting: if too soon, also mute original Studio event to avoid leakage
+                if (ShouldThrottleShoot(gameObject, typeIdStr, soundKey))
+                {
+                    try
+                    {
+                        if (__result.HasValue)
+                        {
+                            var ev = __result.Value;
+                            try { ev.setParameterByName("Mute", 1f); } catch { }
+                            try { ev.setVolume(0f); } catch { }
+                        }
+                    }
+                    catch { }
+                    return;
+                }
+
                 if (soundKey.EndsWith("_mute", StringComparison.OrdinalIgnoreCase)) silenced = true;
 
                 var attempts = new List<string>();
@@ -256,7 +323,13 @@ namespace DuckovCustomSounds.CustomGunSounds
                 try { if (!RuntimeManager.IsInitialized) { GunLogger.Info($"[GunShoot] FMOD 未初始化，跳过自定义音效"); return; } } catch { }
 
                 // Mute original Studio event if any
-                try { if (__result.HasValue) { var ev = __result.Value; ev.setVolume(0f); } } catch { }
+                try {
+                    if (__result.HasValue) {
+                        var ev = __result.Value;
+                        try { ev.setParameterByName("Mute", 1f); } catch { }
+                        try { ev.setVolume(0f); } catch { }
+                    }
+                } catch { }
 
                 // Derive 3D min/max distance from original event when possible
                 float min = 1f, max = 50f;
@@ -403,7 +476,13 @@ namespace DuckovCustomSounds.CustomGunSounds
                 try { if (!RuntimeManager.IsInitialized) { GunLogger.Info($"[GunReload] FMOD 未初始化，跳过自定义音效"); return; } } catch { }
 
                 // Mute original Studio event
-                try { if (__result.HasValue) { var ev = __result.Value; ev.setVolume(0f); } } catch { }
+                try {
+                    if (__result.HasValue) {
+                        var ev = __result.Value;
+                        try { ev.setParameterByName("Mute", 1f); } catch { }
+                        try { ev.setVolume(0f); } catch { }
+                    }
+                } catch { }
 
                 // Derive 3D min/max distance
                 float min = 1f, max = 50f;
@@ -541,6 +620,27 @@ namespace DuckovCustomSounds.CustomGunSounds
             {
                 // No custom file found → pass through original event
                 return false;
+            }
+
+
+            // Rate limit only for shoot tag; other tags (reload, empty, etc.) not throttled here
+            if (string.Equals(tag, "GunShoot", StringComparison.Ordinal))
+            {
+                if (ShouldThrottleShoot(gameObject, typeIdStr, soundKey))
+                {
+                    // Ensure original Studio event is muted to avoid leakage when throttled
+                    try
+                    {
+                        if (__result.HasValue)
+                        {
+                            var ev = __result.Value;
+                            try { ev.setParameterByName("Mute", 1f); } catch { }
+                            try { ev.setVolume(0f); } catch { }
+                        }
+                    }
+                    catch { }
+                    return true; // handled by skipping custom
+                }
             }
 
             try { if (!RuntimeManager.IsInitialized) { GunLogger.Info($"[{tag}] FMOD 未初始化，放行原始事件: {eventName}"); return false; } } catch { }
@@ -764,6 +864,7 @@ namespace DuckovCustomSounds.CustomGunSounds
                 if (__result.HasValue)
                 {
                     var ev = __result.Value;
+                    try { ev.setParameterByName("Mute", 1f); } catch { }
                     try { ev.setVolume(0f); } catch { }
                 }
             }

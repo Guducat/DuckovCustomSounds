@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Globalization;
 using Newtonsoft.Json;
@@ -37,6 +38,12 @@ namespace DuckovCustomSounds
         // New: Footstep volume scale (0.0 - 2.0, default 1.0)
         public static float FootstepVolumeScale { get; private set; } = 1.0f;
 
+        // Per-module logging visibility (proxy to unified LogManager)
+        public static Logging.LogLevel CESLogLevel => LogManager.GetModuleLevel("CustomEnemySounds");
+        public static Logging.LogLevel CFSLogLevel => LogManager.GetModuleLevel("CustomFootStepSounds");
+        public static bool CESDebugEnabled => LogManager.ShouldLog("CustomEnemySounds", Logging.LogLevel.Debug);
+        public static bool CFSDebugEnabled => LogManager.ShouldLog("CustomFootStepSounds", Logging.LogLevel.Debug);
+
         // 控制 Home BGM 的播完后行为：
         // true 表示自动播放下一首；false 表示单曲循环当前曲目。
         public static bool HomeBgmAutoPlayNext { get; private set; } = true;
@@ -46,6 +53,13 @@ namespace DuckovCustomSounds
             public static bool HomeBgmRandomEnabled { get; private set; } = false;
             public static bool HomeBgmRandomNoRepeat { get; private set; } = true;
             public static bool HomeBgmRandomizePrevious { get; private set; } = false;
+
+        // Developer-only: gun shoot rate limiting (no default writeback)
+        public static bool GunShootRateLimitEnabled { get; private set; } = true; // safer default: enabled
+        public static float GunShootMinIntervalMs { get; private set; } = 100f; // milliseconds
+        // Developer-only: per-weapon-type overrides (typeId string -> interval ms, 0 disables)
+        public static readonly Dictionary<string, float> GunShootRateLimitPerType = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
+
 
         public static void Initialize()
         {
@@ -217,10 +231,81 @@ namespace DuckovCustomSounds
 
                 if (!hadHomeBgmAutoNext)
                 {
+
                     root[HomeBgmAutoNextKey] = homeAutoNextVal;
                     needsWriteBack = true;
                 }
                 HomeBgmAutoPlayNext = homeAutoNextVal;
+
+                // 8) Optional developer knobs: gun shoot rate limit (do NOT write defaults)
+                const string GunRateSwitchKey = "enableGunShootRateLimit";
+                try
+                {
+                    if (root.TryGetValue(GunRateSwitchKey, StringComparison.OrdinalIgnoreCase, out var gunRateToken))
+                    {
+                        if (gunRateToken.Type == JTokenType.Boolean)
+                            GunShootRateLimitEnabled = gunRateToken.Value<bool>();
+                    }
+                    else
+                    {
+                        GunShootRateLimitEnabled = true; // default safer enabled
+                    }
+                }
+                catch { GunShootRateLimitEnabled = true; }
+
+                const string GunRateMsKey = "gunShootMinIntervalMs";
+                float gunMs = 75f;
+                try
+                {
+                    if (root.TryGetValue(GunRateMsKey, StringComparison.OrdinalIgnoreCase, out var gunMsToken))
+                    {
+                        if (gunMsToken.Type == JTokenType.Integer || gunMsToken.Type == JTokenType.Float)
+                        {
+                            gunMs = Math.Clamp(gunMsToken.Value<float>(), 0f, 1000f);
+                        }
+                        else if (gunMsToken.Type == JTokenType.String)
+                        {
+                            var s = (gunMsToken.Value<string>() ?? "").Trim();
+                            if (float.TryParse(CleanFloatString(s), NumberStyles.Float, CultureInfo.InvariantCulture, out var v))
+                                gunMs = Math.Clamp(v, 0f, 1000f);
+                        }
+                    }
+
+	                // Per-type overrides: { "typeId": intervalMs, ... } (developer-only; do NOT write defaults)
+	                const string GunRatePerTypeKey = "gunShootRateLimitPerType";
+	                try
+	                {
+	                    GunShootRateLimitPerType.Clear();
+	                    if (root.TryGetValue(GunRatePerTypeKey, StringComparison.OrdinalIgnoreCase, out var perTypeToken)
+	                        && perTypeToken is JObject obj)
+	                    {
+	                        foreach (var prop in obj.Properties())
+	                        {
+	                            var k = (prop.Name ?? string.Empty).Trim();
+	                            if (k.Length == 0) continue;
+	                            float ms = 0f;
+	                            var v = prop.Value;
+	                            if (v.Type == JTokenType.Integer || v.Type == JTokenType.Float)
+	                            {
+	                                ms = Math.Clamp(v.Value<float>(), 0f, 1000f);
+	                            }
+	                            else if (v.Type == JTokenType.String)
+	                            {
+	                                var s = (v.Value<string>() ?? string.Empty).Trim();
+	                                if (float.TryParse(CleanFloatString(s), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed))
+	                                    ms = Math.Clamp(parsed, 0f, 1000f);
+	                            }
+	                            // Ignore other types silently
+	                            GunShootRateLimitPerType[k] = ms;
+	                        }
+	                    }
+	                }
+	                catch { /* ignore parse errors; keep empty map */ }
+
+                }
+                catch { }
+                GunShootMinIntervalMs = gunMs;
+
 
 
                 LevelLoadLoggerEnabled = loggerVal;
@@ -257,6 +342,7 @@ namespace DuckovCustomSounds
             out bool enabled, out float interval)
         {
             enabled = defaultEnabled;
+
             interval = defaultInterval;
 
             try

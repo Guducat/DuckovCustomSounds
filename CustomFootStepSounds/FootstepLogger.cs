@@ -13,6 +13,28 @@ namespace DuckovCustomSounds.CustomFootStepSounds
 
     internal static class FootstepLogger
     {
+        // 仅当 CFS 与 CES 的模块级别均达到 Debug 时，才输出“详细路由/路径”类日志
+        public static bool DetailedRoutingEnabled
+        {
+            get
+            {
+                try
+                {
+                    return LogManager.ShouldLog("CustomFootStepSounds", Logging.LogLevel.Debug)
+                        && LogManager.ShouldLog("CustomEnemySounds", Logging.LogLevel.Debug);
+                }
+                catch { return false; }
+            }
+        }
+
+        // 供 [CFS:Route]/[CFS:Path] 等详细日志使用的便捷方法
+        public static void DebugDetail(string msg)
+        {
+            if (!DetailedRoutingEnabled) return;
+            // 复用模块前缀风格，避免双重判断
+            UnityEngine.Debug.Log("[CustomFootStepSounds:Debug] " + msg);
+        }
+
         public static LogLevel CurrentLevel
         {
             get
@@ -75,4 +97,3 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         }
     }
 }
-
