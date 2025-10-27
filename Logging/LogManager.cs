@@ -119,6 +119,7 @@ namespace DuckovCustomSounds.Logging
                         ["CustomEnemySounds"] = new ModuleSection { level = "Info" },
                         ["CustomBGM"] = new ModuleSection { level = "Info" },
                         ["CustomGrenadeSounds"] = new ModuleSection { level = "Info" },
+                        ["CustomFootStepSounds"] = new ModuleSection { level = "Info" },
                     }
                 }
             };
@@ -136,7 +137,7 @@ namespace DuckovCustomSounds.Logging
             _globalEnabled = root?.logging?.enabled ?? true;
             var def = ParseLevel(root?.logging?.defaultLevel ?? "Info", LogLevel.Info);
 
-            string[] known = new[] { "Core", "CustomEnemySounds", "CustomBGM", "CustomGrenadeSounds" };
+            string[] known = new[] { "Core", "CustomEnemySounds", "CustomBGM", "CustomGrenadeSounds", "CustomFootStepSounds" };
             foreach (var m in known)
             {
                 _modules[m] = new ModuleConfig { Level = def, Enabled = true, Explicit = false };

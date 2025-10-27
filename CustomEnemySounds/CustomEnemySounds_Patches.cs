@@ -86,10 +86,11 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         return;
                     }
 
-                    CESLogger.Info($"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, ctx.VoiceType={ctx.VoiceType}, nameKey={ctx.NameKey}");
+                    // richer context logging
+                    CESLogger.Info($"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, icon={ctx.IconType}, nameKey={ctx.NameKey}, footMat={ctx.FootStepMaterialType}");
                     VoiceRoute route = null;
                     bool matched = CustomEnemySounds.Engine != null && CustomEnemySounds.Engine.TryRoute(ctx, soundKey, ctx.VoiceType, out route);
-                    var routeInfo = route != null ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")}") : "null";
+                    var routeInfo = route != null ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")} ") : "null";
                     CESLogger.Info($"[CES:Hook] Postfix: 匹配结果: matched={matched}, route={routeInfo}");
                     if (!matched || route == null || !(route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                     {

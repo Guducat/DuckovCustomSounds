@@ -27,10 +27,12 @@ namespace DuckovCustomSounds
 
         public static bool LevelLoadLoggerEnabled { get; private set; } = false;
 
-
         public static bool AudioPostLoggerEnabled { get; private set; } = false;
 
         public static bool EnableAmbientIntercept { get; private set; } = false;
+
+        // New: Footstep module master switch
+        public static bool EnableCustomFootStepSounds { get; private set; } = true;
 
         // 控制 Home BGM 的播完后行为：
         // true 表示自动播放下一首；false 表示单曲循环当前曲目。
@@ -127,6 +129,18 @@ namespace DuckovCustomSounds
                 }
                 EnableAmbientIntercept = ambientVal;
 
+                // 7) enableCustomFootStepSounds（脚步声自定义开关，默认 true）
+                const string FootstepSwitchKey = "enableCustomFootStepSounds";
+                bool hadFootSwitchKey = root.TryGetValue(FootstepSwitchKey, StringComparison.OrdinalIgnoreCase, out var footSwitchToken);
+                bool footSwitchVal = footSwitchToken?.Type == JTokenType.Boolean ? footSwitchToken.Value<bool>() : true;
+                if (!hadFootSwitchKey)
+                {
+                    root[FootstepSwitchKey] = footSwitchVal;
+                    needsWriteBack = true;
+                }
+                EnableCustomFootStepSounds = footSwitchVal;
+
+
                 // 7) homeBgmAutoPlayNext：控制 Home BGM 是自动切歌还是单曲循环（默认 true 自动切歌）
                 const string HomeBgmAutoNextKey = "homeBgmAutoPlayNext";
                 bool hadHomeBgmAutoNext = root.TryGetValue(HomeBgmAutoNextKey, StringComparison.OrdinalIgnoreCase, out var homeAutoNextToken);
@@ -150,7 +164,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}");
+                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}");
                     }
                     catch (Exception ex)
                     {

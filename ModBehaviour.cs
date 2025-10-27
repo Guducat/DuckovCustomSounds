@@ -65,6 +65,7 @@ namespace DuckovCustomSounds
                 // 4. 指挥其他模块加载它们自己的资源
                 CustomBGM.CustomBGM.Load();
                 CustomEnemySounds.CustomEnemySounds.Load();
+                DuckovCustomSounds.CustomItemSounds.ItemSoundsConfig.Initialize();
 
 
                 // 应用基于文件的快速开关（仅在 settings.json 未显式指定时生效）
@@ -139,6 +140,10 @@ namespace DuckovCustomSounds
         {
 	        Instance = null;
 		        CustomEnemySounds.CustomEnemySounds.Unload();
+                DuckovCustomSounds.CustomItemSounds.ItemSoundsConfig.Deinitialize();
+            try { CustomFootStepSounds.CustomFootStepSounds.Unload(); } catch { }
+
+
 
 	        // 6. 指挥其他模块卸载它们自己的资源
 	        CustomBGM.CustomBGM.Unload();
