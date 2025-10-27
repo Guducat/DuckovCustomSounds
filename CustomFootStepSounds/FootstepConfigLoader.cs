@@ -48,7 +48,11 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         {
             var ceLevel = DuckovCustomSounds.CustomEnemySounds.LogLevel.Info;
             if (Enum.TryParse(cfg.Debug.Level, true, out DuckovCustomSounds.CustomEnemySounds.LogLevel parsed)) ceLevel = parsed;
+            // 1) Footstep 模块自身日志级别
             FootstepLogger.Configure(cfg.Debug.Enabled, (LogLevel)(int)ceLevel);
+            // 2) 为了显示 [CES:Path] / [CES:Rule] 的调试细节（PathBuilder/VoiceRuleEngine 使用 CESLogger），同步提升 CustomEnemySounds 日志级别
+            CESLogger.Configure(cfg.Debug.Enabled, ceLevel);
+            // 3) 文件快速开关
             FootstepLogger.ApplyFileSwitches(ModBehaviour.ModFolderName);
         }
 
@@ -59,6 +63,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                 UseSimpleRules = true,
                 SimpleRules = new List<SimpleRuleConfig>
                 {
+                    new SimpleRuleConfig{ Team = "player", IconType = string.Empty, FilePattern = "CustomFootStepSounds/Player" },
                     new SimpleRuleConfig{ NameKey = "Cname_Scav", IconType = string.Empty, FilePattern = "CustomFootStepSounds/Scav" },
                     new SimpleRuleConfig{ NameKey = "Cname_Usec", IconType = string.Empty, FilePattern = "CustomFootStepSounds/Usec" },
                 },
@@ -79,7 +84,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                 {
                     _comment = "日志配置：Enabled=开关、Level=Error/Warning/Info/Debug/Verbose、ValidateFileExists=路由前是否检查文件存在",
                     Enabled = true,
-                    Level = "Info",
+                    Level = "Debug",
                     ValidateFileExists = true
                 },
                 Fallback = new
@@ -89,9 +94,11 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                     PreferredExtensions = new[] { ".mp3", ".wav" }
                 },
                 DefaultPattern = "CustomFootStepSounds/{team}/{rank}_{voiceType}_{soundKey}{ext}",
+                MinCooldownSeconds = 0.3,
                 UseSimpleRules = true,
                 SimpleRules = new object[]
                 {
+                    new { _comment = "玩家角色（nameKey为空）按 team 匹配", Team = "player", IconType = "", FilePattern = "CustomFootStepSounds/Player" },
                     new { _comment = "示例：为某个敌人 NameKey 指定根目录，文件命名遵循 {icon}_{voiceType}_{soundKey}{ext}", NameKey = "Cname_Scav", IconType = "", FilePattern = "CustomFootStepSounds/Scav" },
                     new { NameKey = "Cname_Usec", IconType = "", FilePattern = "CustomFootStepSounds/Usec" }
                 },
@@ -105,6 +112,19 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         private static void SanitizeConfig(VoiceConfig cfg)
         {
             if (cfg == null) return;
+
+                // Clamp/Default MinCooldownSeconds for footstep module
+                try
+                {
+                    if (cfg.MinCooldownSeconds <= 0f || float.IsNaN(cfg.MinCooldownSeconds) || float.IsInfinity(cfg.MinCooldownSeconds))
+                        cfg.MinCooldownSeconds = 0.3f;
+                    else if (cfg.MinCooldownSeconds < 0.05f)
+                        cfg.MinCooldownSeconds = 0.05f;
+                    else if (cfg.MinCooldownSeconds > 2f)
+                        cfg.MinCooldownSeconds = 2f;
+                }
+                catch { cfg.MinCooldownSeconds = 0.3f; }
+
             cfg.DefaultPattern = SanitizePattern(cfg.DefaultPattern);
             if (cfg.Rules != null)
             {

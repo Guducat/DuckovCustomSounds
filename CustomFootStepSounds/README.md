@@ -71,11 +71,12 @@ Quick check：
 - DuckovCustomSounds/CustomFootStepSounds/Scav/normal_scav_dash.mp3
 
 2) 简化规则（footstep_voice_rule.json 自动示例已包含）：
-- SimpleRules 数组包含：
+- SimpleRules 数组包含（示例）：
+  - { Team: "player", FilePattern: "CustomFootStepSounds/Player" }  // 适配玩家角色（nameKey 为空）
   - { NameKey: "Cname_Scav", FilePattern: "CustomFootStepSounds/Scav" }
 - 命中后模板为：{FilePattern}/{iconPrefix}_{voiceType}_{soundKey}{ext}
   - iconPrefix: 默认 normal；若 IconType 为 Elite/Boss 会自动变更
-  - voiceType: 优先使用从 NameKey 提取的 "Scav"（不要求属于枚举），从而匹配 normal_scav_...
+  - voiceType: 对 Scav 优先使用从 NameKey 提取的 "Scav"（不要求是枚举），从而匹配 normal_scav_...
 
 3) 不使用简化规则时（UseSimpleRules=false）：
 - 可以在 Rules 中为 team=Scav 指定 FilePattern=CustomFootStepSounds/Scav/{rank}_scav_{soundKey}{ext}，显式把 {voiceType} 固定为 "scav"。
@@ -93,6 +94,7 @@ Quick check：
   - PreferredExtensions（string[]）：扩展名优先级（如 [".mp3", ".wav"]）
 - DefaultPattern（string）：默认模板
 - UseSimpleRules（bool）：是否启用简化规则（默认 true）
+- MinCooldownSeconds（float）：最小冷却秒数（默认 0.3，建议 0.1–0.5；按角色独立计时，footstep/dash 分离）
 - SimpleRules（数组）：按 NameKey（与可选 IconType）绑定目录根 FilePattern
 - PriorityInterruptEnabled（bool）：是否启用优先级打断（脚步默认 false）
 - BindVariantIndexPerEnemy（bool）：是否将变体索引绑定到同一敌人（脚步默认 false）
@@ -144,6 +146,43 @@ Quick check：
 - 命中自定义后会阻止原版同类事件发声（避免叠加）。
 
 ---
+### 音量控制（仅影响脚步/冲刺）
+
+- 配置位置：DuckovCustomSounds/settings.json
+- 配置键名：`footstepVolumeScale`
+- 取值范围：0.0 - 2.0（0% - 200%）
+- 默认值：1.0（100% 原始音量）
+
+调整建议：
+- 脚步声偏大：建议 0.5 ~ 0.8
+- 脚步声偏小：建议 1.2 ~ 1.5
+- 设置为 0.0 可用于静音测试 3D 绑定
+
+示例配置：
+```json
+{
+  "enableCustomFootStepSounds": true,
+  "footstepVolumeScale": 0.75
+}
+```
+
+
+---
+
+### 最小冷却时间（防止播放不完整）
+
+- 配置：footstep_voice_rule.json → MinCooldownSeconds（默认 0.3）
+- 作用：当同一角色两次触发间隔小于该值时，跳过本次自定义播放（仍静音原生），避免上一次尚未结束就被打断/叠加。
+- 范围建议：0.1–0.5 秒；过大可能导致脚步声缺失。
+- 示例：
+```json
+{ "UseSimpleRules": true, "MinCooldownSeconds": 0.3 }
+```
+
+注意：该音量缩放仅应用于 CustomFootStepSounds 模块，不影响 CustomEnemySounds/CustomBGM 等模块。
+
+---
+
 
 ### 常见问题
 

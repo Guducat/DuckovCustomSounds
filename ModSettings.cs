@@ -34,6 +34,9 @@ namespace DuckovCustomSounds
         // New: Footstep module master switch
         public static bool EnableCustomFootStepSounds { get; private set; } = true;
 
+        // New: Footstep volume scale (0.0 - 2.0, default 1.0)
+        public static float FootstepVolumeScale { get; private set; } = 1.0f;
+
         // 控制 Home BGM 的播完后行为：
         // true 表示自动播放下一首；false 表示单曲循环当前曲目。
         public static bool HomeBgmAutoPlayNext { get; private set; } = true;
@@ -140,6 +143,33 @@ namespace DuckovCustomSounds
                 }
                 EnableCustomFootStepSounds = footSwitchVal;
 
+                // 7.1) footstepVolumeScale（脚步声音量缩放，默认 1.0，范围 0.0 - 2.0）
+                const string FootstepVolKey = "footstepVolumeScale";
+                bool hadFootVol = root.TryGetValue(FootstepVolKey, StringComparison.OrdinalIgnoreCase, out var footVolToken);
+                float footVolVal = 1.0f;
+                try
+                {
+                    if (footVolToken != null && footVolToken.Type != JTokenType.Null && footVolToken.Type != JTokenType.Undefined)
+                    {
+                        if (footVolToken.Type == JTokenType.Integer || footVolToken.Type == JTokenType.Float)
+                        {
+                            footVolVal = Math.Clamp(footVolToken.Value<float>(), 0f, 2f);
+                        }
+                        else if (footVolToken.Type == JTokenType.String)
+                        {
+                            var s = (footVolToken.Value<string>() ?? "").Trim();
+                            if (float.TryParse(CleanFloatString(s), NumberStyles.Float, CultureInfo.InvariantCulture, out var fv))
+                                footVolVal = Math.Clamp(fv, 0f, 2f);
+                        }
+                    }
+                }
+                catch { footVolVal = 1.0f; }
+                if (!hadFootVol)
+                {
+                    root[FootstepVolKey] = footVolVal;
+                    needsWriteBack = true;
+                }
+                FootstepVolumeScale = footVolVal;
 
                 // 7) homeBgmAutoPlayNext：控制 Home BGM 是自动切歌还是单曲循环（默认 true 自动切歌）
                 const string HomeBgmAutoNextKey = "homeBgmAutoPlayNext";
@@ -164,7 +194,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}");
+                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}");
                     }
                     catch (Exception ex)
                     {

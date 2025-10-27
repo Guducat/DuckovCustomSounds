@@ -38,13 +38,21 @@ namespace DuckovCustomSounds.CustomBGM
     [HarmonyPatch(typeof(BaseBGMSelector))]
     public static class BaseBGMSelectorPatch
     {
+        // 携带 Set() 调用的原始信息与“真实索引”
+        public struct SetState
+        {
+            public bool origPlay;
+            public bool origShowInfo;
+            public int realIndex;
+        }
+
         // 1) Set(int index, bool showInfo, bool play)
-        // Prefix：如果有自定义歌曲，强制 play=false，让原方法不触发 AudioManager.PlayBGM
         [HarmonyPatch("Set", new Type[] { typeof(int), typeof(bool), typeof(bool) })]
         [HarmonyPrefix]
-        public static void Set_Prefix(int index, bool showInfo, ref bool play, ref bool __state)
+        public static void Set_Prefix(BaseBGMSelector __instance, ref int index, ref bool showInfo, ref bool play, ref SetState __state)
         {
-            __state = play; // 记录原始 play 值，供 Postfix 判断是否应当播放
+            __state = new SetState { origPlay = play, origShowInfo = showInfo, realIndex = index };
+
             if (CustomBGM.HasHomeSongs)
             {
                 if (!play)
@@ -53,30 +61,44 @@ namespace DuckovCustomSounds.CustomBGM
                     CustomBGM.StopCurrentBGM(false);
                     BGMLogger.Info("Load阶段停止标题音乐，避免冲突");
                 }
-                // 重要：不再强制 play=false，允许原版 AudioManager.PlayBGM 执行，以确保 Studio/Music 总线初始化
-                BGMLogger.Debug($"拦截到 BaseBGMSelector.Set()：index={index}, play={play}, showInfo={showInfo} → 允许原曲初始化后再切换自定义");
+
+                // 避免原版 Set() 越界日志：将传入索引夹到原 entries 范围
+                int vanillaCount = (__instance.entries != null) ? __instance.entries.Length : 0;
+                if (vanillaCount > 0)
+                    index = Mathf.Clamp(index, 0, vanillaCount - 1);
+                else
+                    index = 0;
+
+                // 抑制原版 UI 提示，由我们在 Postfix 统一显示自定义信息
+                if (showInfo) showInfo = false;
+
+                BGMLogger.Debug($"拦截 BaseBGMSelector.Set()：请求={__state.realIndex}, 传给原版={index}, play={play}, showInfo(orig)={__state.origShowInfo}");
             }
         }
 
-        // Postfix：在原方法完成 UI/索引后，按最终索引播放我们的自定义音乐
+        // Postfix：在原方法完成 UI/索引后，按“真实索引”播放自定义音乐
         [HarmonyPatch("Set", new Type[] { typeof(int), typeof(bool), typeof(bool) })]
         [HarmonyPostfix]
-        public static void Set_Postfix(BaseBGMSelector __instance, int index, bool showInfo, bool play, bool __state)
+        public static void Set_Postfix(BaseBGMSelector __instance, int index, bool showInfo, bool play, SetState __state)
         {
             if (!CustomBGM.HasHomeSongs) return; // 无自定义时让原逻辑自然工作
-            if (!__state) return; // 原始 play=false（如加载阶段）则不播放
+            if (!__state.origPlay) return; // 原始 play=false（如加载阶段）则不播放
+
             try
             {
-                int count = (__instance.entries != null) ? __instance.entries.Length : 0;
-                if (count <= 0) return;
-                int safe = index;
-                if (safe < 0 || safe >= count) safe = Mathf.Clamp(safe, 0, count - 1);
+                int homeCount = CustomBGM.GetHomeCount();
+                if (homeCount <= 0) return;
+
+                // 使用“真实索引”选择自定义曲目
+                int real = __state.realIndex;
+                int safeHome = ((real % homeCount) + homeCount) % homeCount;
+
                 // 让原版 PlayBGM 先运行以完成 Studio 初始化，然后立即停止原曲并切到自定义
                 try { Duckov.AudioManager.StopBGM(); } catch { }
-                CustomBGM.PlayHomeBGM(safe);
+                CustomBGM.PlayHomeBGM(safeHome);
 
                 // 显示自定义歌曲信息（通过反射访问私有字段/属性，避免访问权限问题）
-                if (showInfo && CustomBGM.TryGetCurrentMusicInfo(out var name, out var author))
+                if (__state.origShowInfo && CustomBGM.TryGetCurrentMusicInfo(out var name, out var author))
                 {
                     try
                     {
@@ -85,11 +107,7 @@ namespace DuckovCustomSounds.CustomBGM
                         var proxy = proxyField?.GetValue(__instance);
                         if (proxy != null)
                         {
-                            // 统一使用“自定义列表的实际索引”作为显示索引，避免与原 entries 索引错位
-                            int homeCount = CustomBGM.GetHomeCount();
-                            int displayIndex = (CustomBGM.TryGetCurrentHomeIndex(out var curIdx))
-                                ? (curIdx + 1)
-                                : (homeCount > 0 ? (((safe % homeCount) + homeCount) % homeCount) + 1 : (safe + 1));
+                            int displayIndex = (CustomBGM.TryGetCurrentHomeIndex(out var curIdx)) ? (curIdx + 1) : (safeHome + 1);
 
                             string display = null;
                             var fmtProp = AccessTools.Property(__instance.GetType(), "BGMInfoFormat");
@@ -137,14 +155,56 @@ namespace DuckovCustomSounds.CustomBGM
             }
         }
 
-        // 2) SetNext/SetPrevious 保持放行，让它们内部最终调用 Set()
+        // 2) SetNext/SetPrevious：在有自定义歌曲时，按 HomeBGM 数量循环
         [HarmonyPatch("SetNext")]
         [HarmonyPrefix]
-        public static bool SetNext_Prefix_PassThrough() => true;
+        public static bool SetNext_Prefix(BaseBGMSelector __instance)
+        {
+            if (!CustomBGM.HasHomeSongs) return true;
+            int homeCount = CustomBGM.GetHomeCount();
+            if (homeCount <= 0) return true;
+
+            try
+            {
+                var fIndex = AccessTools.Field(typeof(BaseBGMSelector), "index");
+                int cur = 0;
+                try { cur = (int)fIndex.GetValue(__instance); } catch { cur = 0; }
+                cur++;
+                if (cur >= homeCount) cur = 0;
+                fIndex.SetValue(__instance, cur);
+                __instance.Set(cur, true);
+                return false; // 跳过原版（原版按 entries.Length 回环）
+            }
+            catch
+            {
+                return true; // 反射失败时放行原版
+            }
+        }
 
         [HarmonyPatch("SetPrevious")]
         [HarmonyPrefix]
-        public static bool SetPrevious_Prefix_PassThrough() => true;
+        public static bool SetPrevious_Prefix(BaseBGMSelector __instance)
+        {
+            if (!CustomBGM.HasHomeSongs) return true;
+            int homeCount = CustomBGM.GetHomeCount();
+            if (homeCount <= 0) return true;
+
+            try
+            {
+                var fIndex = AccessTools.Field(typeof(BaseBGMSelector), "index");
+                int cur = 0;
+                try { cur = (int)fIndex.GetValue(__instance); } catch { cur = 0; }
+                cur--;
+                if (cur < 0) cur = homeCount - 1;
+                fIndex.SetValue(__instance, cur);
+                __instance.Set(cur, true);
+                return false;
+            }
+            catch
+            {
+                return true;
+            }
+        }
     }
 
         // --- 补丁 3：确保任何触发 AudioManager.StopBGM() 的场景（如场景切换/死亡等）

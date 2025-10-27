@@ -21,6 +21,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
         internal sealed class SimpleRuleConfig
         {
+            // 新增：可选 Team 条件（例：player/pmc/scav）。当 NameKey 为空且 Team 命中时用于 SimpleRules 匹配。
+            public string? Team { get; set; } = null;
             public string? NameKey { get; set; } = null;     // 敌人唯一标识（如 Cname_Scav）
             public string? IconType { get; set; } = null;    // 可选：限定图标类型（空=匹配所有）
             public string? FilePattern { get; set; } = null; // 目录或路径前缀，例如 "CustomEnemySounds/Scav"
@@ -56,6 +58,10 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
         // 变体索引绑定：同一敌人实例的所有语音共享同一变体索引（默认关闭，保持随机）
         public bool BindVariantIndexPerEnemy { get; set; } = false;
+
+
+        // Footstep-specific: minimum cooldown seconds; voice module ignores when 0
+        public float MinCooldownSeconds { get; set; } = 0f;
 
     }
 

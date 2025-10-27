@@ -115,9 +115,52 @@ namespace DuckovCustomSounds.CustomEnemySounds
             route = null;
             try
             {
-                if (ctx == null || string.IsNullOrEmpty(ctx.NameKey)) return false;
+                if (ctx == null) return false;
                 var simpleRules = _config?.SimpleRules;
                 if (simpleRules == null || simpleRules.Count == 0) return false;
+
+                // NameKey 为空时，支持按照 SimpleRules.Team 进行匹配（用于玩家等 nameKey="" 的场景）
+                if (string.IsNullOrEmpty(ctx.NameKey))
+                {
+                    var team = (ctx.GetTeamNormalized() ?? string.Empty).Trim().ToLowerInvariant();
+                    var ctxIcon2 = NormalizeIcon(ctx.IconType);
+                    var teamCandidates = simpleRules
+                        .Where(r => r != null && !string.IsNullOrEmpty(r.Team) && string.Equals(r.Team.Trim(), team, StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    if (teamCandidates.Count == 0) return false;
+
+                    IEnumerable<SimpleRuleConfig> orderedTeam = teamCandidates
+                        .OrderByDescending(r => !string.IsNullOrEmpty(r.IconType) && NormalizeIcon(r.IconType) == ctxIcon2)
+                        .ThenBy(r => string.IsNullOrEmpty(r.IconType));
+
+                    foreach (var r in orderedTeam)
+                    {
+                        var root = SanitizePatternLocal(r.FilePattern);
+                        if (string.IsNullOrEmpty(root)) continue;
+
+                        var iconPrefix = string.IsNullOrEmpty(r.IconType) ? "normal" : NormalizeIcon(r.IconType);
+                        var pattern = $"{root.TrimEnd('/', '\\')}/{iconPrefix}_{{voiceType}}_{{soundKey}}{{ext}}";
+                        CESLogger.Debug($"[CES:Rule] Simple Team 使用模板: {pattern}, vt={voiceType}, soundKey={soundKey}, team={team}");
+
+                        var cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
+                        if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
+                        {
+                            CESLogger.Info($"[CES:Rule] Simple(Team) 命中: {chosen}");
+                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple-team:{team}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried };
+                            return true;
+                        }
+                        else
+                        {
+                            CESLogger.Info($"[CES:Rule] Simple(Team) 未命中，尝试的路径数: {tried?.Count ?? 0}");
+                            if (tried != null)
+                            {
+                                for (int i = 0; i < tried.Count; i++) CESLogger.Info($"[CES:Rule] Simple(Team) 尝试路径[{i}]: {tried[i]}");
+                            }
+                        }
+                    }
+
+                    return false;
+                }
 
                 var nk = ctx.NameKey;
                 var ctxIcon = NormalizeIcon(ctx.IconType);
