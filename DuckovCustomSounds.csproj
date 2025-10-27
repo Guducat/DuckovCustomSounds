@@ -4,7 +4,7 @@
         <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>enable</Nullable>
         <DuckovPath>G:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovPath>
-        <FileVersion>1.0.0</FileVersion>
+        <FileVersion>1.1.0</FileVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -35,5 +35,6 @@
 
     <ItemGroup>
       <Folder Include="assets\Debug\" />
+      <Folder Include="assets\FootStep\" />
     </ItemGroup>
 </Project>
