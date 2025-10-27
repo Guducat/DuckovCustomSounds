@@ -15,6 +15,92 @@ namespace DuckovCustomSounds.CustomGunSounds
         private static string BaseDir => Path.Combine(ModBehaviour.ModFolderName, "CustomGunSounds");
 
 
+        // Tracking for reload sounds so we can stop them on Cancel/StopReloadSound
+        private struct TrackedReload
+        {
+            public Sound Sound;
+            public Channel Channel;
+        }
+        private static readonly Dictionary<int, List<TrackedReload>> s_ReloadPlaying = new Dictionary<int, List<TrackedReload>>();
+        private static readonly object s_ReloadLock = new object();
+
+        private static int GetOwnerId(ItemAgent_Gun gun)
+        {
+            try { return gun != null ? gun.GetInstanceID() : 0; } catch { return 0; }
+        }
+
+        internal static void TrackReloadSound(ItemAgent_Gun gun, Sound sound, Channel channel)
+        {
+            int id = GetOwnerId(gun);
+            if (id == 0) return;
+            lock (s_ReloadLock)
+            {
+                if (!s_ReloadPlaying.TryGetValue(id, out var list))
+                {
+                    list = new List<TrackedReload>();
+                    s_ReloadPlaying[id] = list;
+                }
+                list.Add(new TrackedReload { Sound = sound, Channel = channel });
+            }
+        }
+
+        private static void UntrackReload(int ownerId, Sound sound, Channel channel)
+        {
+            if (ownerId == 0) return;
+            lock (s_ReloadLock)
+            {
+                if (!s_ReloadPlaying.TryGetValue(ownerId, out var list)) return;
+                // remove matching handle(s)
+                list.RemoveAll(t => (!t.Sound.hasHandle() || t.Sound.handle == sound.handle) && (!t.Channel.hasHandle() || t.Channel.handle == channel.handle));
+                if (list.Count == 0) s_ReloadPlaying.Remove(ownerId);
+            }
+        }
+
+        public static void StopCustomReloadFor(ItemAgent_Gun gun)
+        {
+            int id = GetOwnerId(gun);
+            if (id == 0) return;
+            List<TrackedReload> toStop = null;
+            lock (s_ReloadLock)
+            {
+                if (s_ReloadPlaying.TryGetValue(id, out var list) && list != null && list.Count > 0)
+                {
+                    toStop = list.ToList();
+                    s_ReloadPlaying.Remove(id);
+                }
+            }
+
+            if (toStop == null) return;
+            foreach (var t in toStop)
+            {
+                try { if (t.Channel.hasHandle()) t.Channel.stop(); } catch { }
+                try { if (t.Sound.hasHandle()) t.Sound.release(); } catch { }
+            }
+            GunLogger.Debug("[GunReload] 因取消/停止换弹而停止自定义换弹音效");
+        }
+
+        private static IEnumerator CleanupTrackedReload(int ownerId, Sound sound, Channel channel, float maxSec)
+        {
+            float end = Time.realtimeSinceStartup + Mathf.Max(1f, maxSec);
+            try
+            {
+                while (Time.realtimeSinceStartup < end)
+                {
+                    bool playing = false;
+                    try { if (channel.hasHandle()) channel.isPlaying(out playing); } catch { }
+                    if (!playing) break;
+                    yield return new WaitForSeconds(0.05f);
+                }
+            }
+            finally
+            {
+                try { if (channel.hasHandle()) channel.stop(); } catch { }
+                try { if (sound.hasHandle()) sound.release(); } catch { }
+                try { UntrackReload(ownerId, sound, channel); } catch { }
+            }
+        }
+
+
         private static readonly string[] Exts = new[] { ".mp3", ".wav", ".ogg", ".oga" };
         private static IEnumerable<string> ExpandCandidates(params string[] namesNoExt)
         {
@@ -217,8 +303,13 @@ namespace DuckovCustomSounds.CustomGunSounds
                 if (is3D) try { sound.set3DMinMaxDistance(min, max); } catch { }
 
                 ChannelGroup group = AcquireSfxChannelGroup();
-                var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
-                if (r2 != RESULT.OK || !channel.hasHandle())
+                ChannelGroup groupToUse = default;
+                try { if (group.hasHandle()) groupToUse = group; } catch { }
+
+                var r2 = RuntimeManager.CoreSystem.playSound(sound, groupToUse, true, out Channel channel);
+                bool chValid = false;
+                try { chValid = channel.hasHandle(); } catch { chValid = false; }
+                if (r2 != RESULT.OK || !chValid)
                 {
                     GunLogger.Info($"[GunShoot] playSound 失败({r2})");
                     try { if (sound.hasHandle()) sound.release(); } catch { }
@@ -229,13 +320,16 @@ namespace DuckovCustomSounds.CustomGunSounds
                 try { pos = gameObject?.transform?.position ?? Vector3.zero; } catch { }
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-                if (is3D)
+                if (is3D && chValid)
                 {
                     try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
                     try { channel.set3DMinMaxDistance(min, max); } catch { }
                     try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
                 }
-                try { channel.setPaused(false); } catch { }
+                if (chValid)
+                {
+                    try { channel.setPaused(false); } catch { }
+                }
 
                 GunLogger.Debug($"[GunShoot] 覆盖播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1}), 模式={(is3D ? "3D" : "2D")} ");
                 try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds)); } catch { }
@@ -356,8 +450,13 @@ namespace DuckovCustomSounds.CustomGunSounds
                 if (is3D) try { sound.set3DMinMaxDistance(min, max); } catch { }
 
                 ChannelGroup group = AcquireSfxChannelGroup();
-                var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
-                if (r2 != RESULT.OK || !channel.hasHandle())
+                ChannelGroup groupToUse = default;
+                try { if (group.hasHandle()) groupToUse = group; } catch { }
+
+                var r2 = RuntimeManager.CoreSystem.playSound(sound, groupToUse, true, out Channel channel);
+                bool chValid = false;
+                try { chValid = channel.hasHandle(); } catch { chValid = false; }
+                if (r2 != RESULT.OK || !chValid)
                 {
                     GunLogger.Info($"[GunReload] playSound 失败({r2})");
                     try { if (sound.hasHandle()) sound.release(); } catch { }
@@ -368,16 +467,32 @@ namespace DuckovCustomSounds.CustomGunSounds
                 try { pos = gameObject?.transform?.position ?? Vector3.zero; } catch { }
                 var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
                 var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-                if (is3D)
+                if (is3D && chValid)
                 {
                     try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
                     try { channel.set3DMinMaxDistance(min, max); } catch { }
                     try { channel.setMode(MODE._3D | MODE._3D_LINEARROLLOFF | MODE.LOOP_OFF); } catch { }
                 }
-                try { channel.setPaused(false); } catch { }
+                if (chValid)
+                {
+                    try { channel.setPaused(false); } catch { }
+                }
 
                 GunLogger.Debug($"[GunReload] 覆盖播放 {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1}), 模式={(is3D ? "3D" : "2D")} ");
-                try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds)); } catch { }
+                try
+                {
+                    if (gun != null)
+                    {
+                        int ownerId = GetOwnerId(gun);
+                        TrackReloadSound(gun, sound, channel);
+                        ModBehaviour.Instance?.StartCoroutine(CleanupTrackedReload(ownerId, sound, channel, CleanupMaxSeconds));
+                    }
+                    else
+                    {
+                        ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds));
+                    }
+                }
+                catch { }
             }
             catch (Exception ex)
             {
@@ -443,9 +558,13 @@ namespace DuckovCustomSounds.CustomGunSounds
 
             // Route to SFX group (fallbacks to Master)
             ChannelGroup group = AcquireSfxChannelGroup();
+            ChannelGroup groupToUse = default;
+            try { if (group.hasHandle()) groupToUse = group; } catch { }
 
-            var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
-            if (r2 != RESULT.OK || !channel.hasHandle())
+            var r2 = RuntimeManager.CoreSystem.playSound(sound, groupToUse, true, out Channel channel);
+            bool chValid = false;
+            try { chValid = channel.hasHandle(); } catch { chValid = false; }
+            if (r2 != RESULT.OK || !chValid)
             {
                 GunLogger.Info($"[{tag}] playSound 失败({r2})，放行原始事件: {eventName}");
                 try { if (sound.hasHandle()) sound.release(); } catch { }
@@ -457,8 +576,11 @@ namespace DuckovCustomSounds.CustomGunSounds
             try { pos = gameObject?.transform?.position ?? Vector3.zero; } catch { }
             var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
             var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-            try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
-            try { channel.setPaused(false); } catch { }
+            if (chValid)
+            {
+                try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                try { channel.setPaused(false); } catch { }
+            }
 
             GunLogger.Debug($"[{tag}] 替换 {eventName} → {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
 
@@ -472,14 +594,21 @@ namespace DuckovCustomSounds.CustomGunSounds
         {
             ChannelGroup group = default;
 
+            // Ensure FMOD is up
+            try { if (!RuntimeManager.IsInitialized) return group; } catch { }
+
             // 1) Prefer fresh bus each call to avoid stale cached pointers
             try
             {
                 var sfxBus = RuntimeManager.GetBus("bus:/Master/SFX");
-                if (sfxBus.getChannelGroup(out var cg) == RESULT.OK && cg.hasHandle())
+                if (sfxBus.getChannelGroup(out var cg) == RESULT.OK)
                 {
-                    try { ModBehaviour.SfxGroup = cg; } catch { }
-                    return cg;
+                    bool ok = false; try { ok = cg.hasHandle(); } catch { ok = false; }
+                    if (ok)
+                    {
+                        try { ModBehaviour.SfxGroup = cg; } catch { }
+                        return cg;
+                    }
                 }
             }
             catch { }
@@ -488,10 +617,14 @@ namespace DuckovCustomSounds.CustomGunSounds
             try
             {
                 var sfxBusAlt = RuntimeManager.GetBus("bus:/SFX");
-                if (sfxBusAlt.getChannelGroup(out var cg2) == RESULT.OK && cg2.hasHandle())
+                if (sfxBusAlt.getChannelGroup(out var cg2) == RESULT.OK)
                 {
-                    try { ModBehaviour.SfxGroup = cg2; } catch { }
-                    return cg2;
+                    bool ok2 = false; try { ok2 = cg2.hasHandle(); } catch { ok2 = false; }
+                    if (ok2)
+                    {
+                        try { ModBehaviour.SfxGroup = cg2; } catch { }
+                        return cg2;
+                    }
                 }
             }
             catch { }
@@ -501,6 +634,8 @@ namespace DuckovCustomSounds.CustomGunSounds
 
             // 4) Last resort: route to Master
             try { RuntimeManager.CoreSystem.getMasterChannelGroup(out group); } catch { }
+            bool masterOk = false; try { masterOk = group.hasHandle(); } catch { masterOk = false; }
+            if (!masterOk) group = default;
             return group;
         }
 
@@ -647,12 +782,14 @@ namespace DuckovCustomSounds.CustomGunSounds
 
             // Route to SFX group (fallbacks to Master)
             ChannelGroup group = AcquireSfxChannelGroup();
+            ChannelGroup groupToUse = default;
+            try { if (group.hasHandle()) groupToUse = group; } catch { }
 
-            var r2 = RuntimeManager.CoreSystem.playSound(sound, group, true, out Channel channel);
-            if (r2 != RESULT.OK || !channel.hasHandle())
+            var r2 = RuntimeManager.CoreSystem.playSound(sound, groupToUse, true, out Channel channel);
+            bool chValid = false;
+            try { chValid = channel.hasHandle(); } catch { chValid = false; }
+            if (r2 != RESULT.OK || !chValid)
             {
-
-
                 GunLogger.Info($"[{tag}] playSound 失败({r2})，放行原始事件: {eventName}");
                 try { if (sound.hasHandle()) sound.release(); } catch { }
                 return false;
@@ -662,12 +799,36 @@ namespace DuckovCustomSounds.CustomGunSounds
             try { pos = gameObject?.transform?.position ?? Vector3.zero; } catch { }
             var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
             var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
-            try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
-            try { channel.setPaused(false); } catch { }
+            if (chValid)
+            {
+                try { channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                try { channel.setPaused(false); } catch { }
+            }
 
             GunLogger.Debug($"[{tag}] 替换 {eventName} → {Path.GetFileName(filePath)} @ ({pos.x:F1},{pos.y:F1},{pos.z:F1})");
 
-            try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds)); } catch { }
+            try
+            {
+                if (tag == "GunReload")
+                {
+                    var (g, _) = GetGunAndTypeId(gameObject);
+                    if (g != null)
+                    {
+                        int ownerId = GetOwnerId(g);
+                        TrackReloadSound(g, sound, channel);
+                        ModBehaviour.Instance?.StartCoroutine(CleanupTrackedReload(ownerId, sound, channel, CleanupMaxSeconds));
+                    }
+                    else
+                    {
+                        ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds));
+                    }
+                }
+                else
+                {
+                    ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, CleanupMaxSeconds));
+                }
+            }
+            catch { }
 
             return true;
         }

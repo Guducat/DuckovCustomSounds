@@ -165,6 +165,137 @@ namespace DuckovCustomSounds.CustomItemSounds
                 return false;
             }
         }
+        // 使用阶段标记与声道注册器：用于在 Stop/Finish 时正确停止“进行中”的自定义声道，避免误杀“完成音效”
+        internal enum ItemUsePhase { Unknown = 0, Action = 1, Finish = 2 }
+
+        internal static class ItemUsePhaseMarker
+        {
+            [ThreadStatic] private static ItemUsePhase s_phase;
+            [ThreadStatic] private static int s_ownerGoId;
+
+            public static ItemUsePhase CurrentPhase => s_phase;
+            public static int CurrentOwnerGoId => s_ownerGoId;
+
+            public static void Push(GameObject go, ItemUsePhase phase)
+            {
+                s_phase = phase;
+                try { s_ownerGoId = go != null ? go.GetInstanceID() : 0; } catch { s_ownerGoId = 0; }
+            }
+
+            public static void Clear()
+            {
+                s_phase = ItemUsePhase.Unknown;
+                s_ownerGoId = 0;
+            }
+        }
+
+        internal sealed class TrackedChannel
+        {
+            public Sound Sound;
+            public Channel Channel;
+            public ItemUsePhase Phase;
+            public int GoId;
+            public bool Disposed;
+        }
+
+        internal static class ItemUseSoundRegistry
+        {
+            private static readonly Dictionary<int, List<TrackedChannel>> _map = new Dictionary<int, List<TrackedChannel>>();
+
+            public static void Track(GameObject go, Sound sound, Channel channel, ItemUsePhase phase, float maxSec = 6f)
+            {
+                int id = 0;
+                try { id = go != null ? go.GetInstanceID() : 0; } catch { }
+                var tc = new TrackedChannel { Sound = sound, Channel = channel, Phase = phase, GoId = id, Disposed = false };
+                lock (_map)
+                {
+                    if (!_map.TryGetValue(id, out var list))
+                    {
+                        list = new List<TrackedChannel>();
+                        _map[id] = list;
+                    }
+                    list.Add(tc);
+                }
+                try { ModBehaviour.Instance?.StartCoroutine(FollowAndCleanup(go != null ? go.transform : null, tc, maxSec)); } catch { }
+            }
+
+            public static void StopByPhase(GameObject go, ItemUsePhase phase)
+            {
+                int id = 0; try { id = go != null ? go.GetInstanceID() : 0; } catch { }
+                List<TrackedChannel> snapshot = null;
+                lock (_map)
+                {
+                    if (_map.TryGetValue(id, out var list) && list != null && list.Count > 0)
+                        snapshot = list.ToList();
+                }
+                if (snapshot == null) return;
+                foreach (var tc in snapshot)
+                {
+                    if (tc.Phase == phase)
+                    {
+                        SafeStopRelease(tc);
+                        Remove(tc);
+                    }
+                }
+            }
+
+            private static void SafeStopRelease(TrackedChannel tc)
+            {
+                if (tc == null) return;
+                if (tc.Disposed) return;
+                tc.Disposed = true;
+                try { if (tc.Channel.hasHandle()) tc.Channel.stop(); } catch { }
+                try { if (tc.Sound.hasHandle()) tc.Sound.release(); } catch { }
+            }
+
+            private static void Remove(TrackedChannel tc)
+            {
+                try
+                {
+                    lock (_map)
+                    {
+                        if (_map.TryGetValue(tc.GoId, out var list) && list != null)
+                        {
+                            list.Remove(tc);
+                            if (list.Count == 0) _map.Remove(tc.GoId);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            private static System.Collections.IEnumerator FollowAndCleanup(Transform follow, TrackedChannel tc, float maxSec)
+            {
+                float end = Time.realtimeSinceStartup + Mathf.Max(1f, maxSec);
+                try
+                {
+                    while (Time.realtimeSinceStartup < end)
+                    {
+                        bool playing = false;
+                        try { if (tc.Channel.hasHandle()) tc.Channel.isPlaying(out playing); } catch { }
+                        if (!playing) break;
+
+                        // 跟踪位置（若可用）
+                        if (follow != null)
+                        {
+                            Vector3 pos = Vector3.zero;
+                            try { pos = follow.position; } catch { }
+                            var fpos = new FMOD.VECTOR { x = pos.x, y = pos.y, z = pos.z };
+                            var fvel = new FMOD.VECTOR { x = 0, y = 0, z = 0 };
+                            try { tc.Channel.set3DAttributes(ref fpos, ref fvel); } catch { }
+                        }
+
+                        yield return null;
+                    }
+                }
+                finally
+                {
+                    SafeStopRelease(tc);
+                    Remove(tc);
+                }
+            }
+        }
+
 
 
         // 在设置使用物品时记录该角色最近一次使用的物品 TypeID（用于后续拦截 use_* 消耗品音效时匹配自定义音效）
@@ -210,6 +341,67 @@ namespace DuckovCustomSounds.CustomItemSounds
                 }
             }
         }
+
+            // 标记“动作阶段/完成阶段”以便在 AudioManager.Post 拦截中为自定义声道打上阶段标签
+            [HarmonyPatch(typeof(CA_UseItem))]
+            public static class CA_UseItem_SoundPhaseMarkers
+            {
+                [HarmonyPatch("PostActionSound")]
+                [HarmonyPrefix]
+                public static void PostActionSound_Prefix(CA_UseItem __instance)
+                {
+                    try { ItemUsePhaseMarker.Push(__instance != null ? __instance.gameObject : null, ItemUsePhase.Action); } catch { }
+                }
+
+                [HarmonyPatch("PostActionSound")]
+                [HarmonyPostfix]
+                public static void PostActionSound_Postfix()
+                {
+                    try { ItemUsePhaseMarker.Clear(); } catch { }
+                }
+
+                [HarmonyPatch("PostUseSound")]
+                [HarmonyPrefix]
+                public static void PostUseSound_Prefix(CA_UseItem __instance)
+                {
+                    try { ItemUsePhaseMarker.Push(__instance != null ? __instance.gameObject : null, ItemUsePhase.Finish); } catch { }
+                }
+
+                [HarmonyPatch("PostUseSound")]
+                [HarmonyPostfix]
+                public static void PostUseSound_Postfix()
+                {
+                    try { ItemUsePhaseMarker.Clear(); } catch { }
+                }
+            }
+
+            // 处理停止/中断逻辑：
+            [HarmonyPatch(typeof(CA_UseItem))]
+            public static class CA_UseItem_StopHooks
+            {
+                [HarmonyPatch("StopSound")]
+                [HarmonyPrefix]
+                public static void StopSound_Prefix(CA_UseItem __instance)
+                {
+                    try { ItemUseSoundRegistry.StopByPhase(__instance != null ? __instance.gameObject : null, ItemUsePhase.Action); } catch { }
+                }
+
+                [HarmonyPatch("OnStop")]
+                [HarmonyPostfix]
+                public static void OnStop_Postfix(CA_UseItem __instance)
+                {
+                    try { ItemUseSoundRegistry.StopByPhase(__instance != null ? __instance.gameObject : null, ItemUsePhase.Action); } catch { }
+                }
+
+                [HarmonyPatch("OnFinish")]
+                [HarmonyPostfix]
+                public static void OnFinish_Postfix(CA_UseItem __instance)
+                {
+                    // 完成时不强制停止“完成音效”，仅作为扩展点保留（如需收尾清理可在此加入）
+                    // 可按需加入：ItemUseSoundRegistry.StopByPhase(__instance.gameObject, ItemUsePhase.Action);
+                }
+            }
+
 
         [HarmonyPatch(typeof(AudioManager))]
         public static class AudioManager_Post_ItemUseReplace
@@ -384,7 +576,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                     var modeStr = is3D ? "3D" : "2D";
                     GunLogger.Debug($"[ItemUse] 覆盖播放({modeStr}) {Path.GetFileName(filePath)}");
 
-                    try { ModBehaviour.Instance?.StartCoroutine(Cleanup(sound, channel, 6f)); } catch { }
+                    try { ItemUseSoundRegistry.Track(gameObject, sound, channel, (ItemUsePhaseMarker.CurrentOwnerGoId == (gameObject?.GetInstanceID() ?? 0) ? ItemUsePhaseMarker.CurrentPhase : ItemUsePhase.Unknown), 6f); } catch { }
                 }
                 catch (Exception ex)
                 {

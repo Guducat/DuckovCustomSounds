@@ -41,6 +41,12 @@ namespace DuckovCustomSounds
         // true 表示自动播放下一首；false 表示单曲循环当前曲目。
         public static bool HomeBgmAutoPlayNext { get; private set; } = true;
 
+
+            // 随机播放设置（默认：关闭随机、避免连播同曲、上一曲不随机）
+            public static bool HomeBgmRandomEnabled { get; private set; } = false;
+            public static bool HomeBgmRandomNoRepeat { get; private set; } = true;
+            public static bool HomeBgmRandomizePrevious { get; private set; } = false;
+
         public static void Initialize()
         {
             try
@@ -175,6 +181,40 @@ namespace DuckovCustomSounds
                 const string HomeBgmAutoNextKey = "homeBgmAutoPlayNext";
                 bool hadHomeBgmAutoNext = root.TryGetValue(HomeBgmAutoNextKey, StringComparison.OrdinalIgnoreCase, out var homeAutoNextToken);
                 bool homeAutoNextVal = homeAutoNextToken?.Type == JTokenType.Boolean ? homeAutoNextToken.Value<bool>() : true;
+
+                // 7.2) homeBgmRandomEnabled（默认 false）
+                const string HomeBgmRandomEnabledKey = "homeBgmRandomEnabled";
+                bool hadHomeBgmRandomEnabled = root.TryGetValue(HomeBgmRandomEnabledKey, StringComparison.OrdinalIgnoreCase, out var homeRandomEnabledToken);
+                bool homeRandomEnabledVal = homeRandomEnabledToken?.Type == JTokenType.Boolean ? homeRandomEnabledToken.Value<bool>() : false;
+                if (!hadHomeBgmRandomEnabled)
+                {
+                    root[HomeBgmRandomEnabledKey] = homeRandomEnabledVal;
+                    needsWriteBack = true;
+                }
+                HomeBgmRandomEnabled = homeRandomEnabledVal;
+
+                // 7.3) homeBgmRandomNoRepeat（默认 true）
+                const string HomeBgmRandomNoRepeatKey = "homeBgmRandomNoRepeat";
+                bool hadHomeBgmRandomNoRepeat = root.TryGetValue(HomeBgmRandomNoRepeatKey, StringComparison.OrdinalIgnoreCase, out var homeRandomNoRepeatToken);
+                bool homeRandomNoRepeatVal = homeRandomNoRepeatToken?.Type == JTokenType.Boolean ? homeRandomNoRepeatToken.Value<bool>() : true;
+                if (!hadHomeBgmRandomNoRepeat)
+                {
+                    root[HomeBgmRandomNoRepeatKey] = homeRandomNoRepeatVal;
+                    needsWriteBack = true;
+                }
+                HomeBgmRandomNoRepeat = homeRandomNoRepeatVal;
+
+                // 7.4) homeBgmRandomizePrevious（默认 false）
+                const string HomeBgmRandomizePrevKey = "homeBgmRandomizePrevious";
+                bool hadHomeBgmRandomizePrev = root.TryGetValue(HomeBgmRandomizePrevKey, StringComparison.OrdinalIgnoreCase, out var homeRandomizePrevToken);
+                bool homeRandomizePrevVal = homeRandomizePrevToken?.Type == JTokenType.Boolean ? homeRandomizePrevToken.Value<bool>() : false;
+                if (!hadHomeBgmRandomizePrev)
+                {
+                    root[HomeBgmRandomizePrevKey] = homeRandomizePrevVal;
+                    needsWriteBack = true;
+                }
+                HomeBgmRandomizePrevious = homeRandomizePrevVal;
+
                 if (!hadHomeBgmAutoNext)
                 {
                     root[HomeBgmAutoNextKey] = homeAutoNextVal;
@@ -194,7 +234,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}");
+                        Log.Info($"settings.json 已{(exists ? "补充" : "创建")}默认键：overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}, {HomeBgmAutoNextKey}, {HomeBgmRandomEnabledKey}, {HomeBgmRandomNoRepeatKey}, {HomeBgmRandomizePrevKey}");
                     }
                     catch (Exception ex)
                     {

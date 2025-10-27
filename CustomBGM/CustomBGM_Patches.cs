@@ -167,13 +167,23 @@ namespace DuckovCustomSounds.CustomBGM
             try
             {
                 var fIndex = AccessTools.Field(typeof(BaseBGMSelector), "index");
-                int cur = 0;
-                try { cur = (int)fIndex.GetValue(__instance); } catch { cur = 0; }
-                cur++;
-                if (cur >= homeCount) cur = 0;
-                fIndex.SetValue(__instance, cur);
-                __instance.Set(cur, true);
-                return false; // 跳过原版（原版按 entries.Length 回环）
+                int next;
+                if (BGMConfig.RandomEnabled)
+                {
+                    next = CustomBGM.GetRandomHomeIndex(BGMConfig.AvoidImmediateRepeat);
+                }
+                else
+                {
+                    int cur = 0;
+                    try { cur = (int)fIndex.GetValue(__instance); } catch { cur = 0; }
+                    next = cur + 1;
+                    if (next >= homeCount) next = 0;
+                }
+
+                // 同步 BaseBGMSelector 的 index 字段以参与存档
+                fIndex.SetValue(__instance, next);
+                __instance.Set(next, true);
+                return false; // 接管原版（避免按 entries.Length 回环）
             }
             catch
             {
@@ -191,13 +201,25 @@ namespace DuckovCustomSounds.CustomBGM
 
             try
             {
-                var fIndex = AccessTools.Field(typeof(BaseBGMSelector), "index");
-                int cur = 0;
-                try { cur = (int)fIndex.GetValue(__instance); } catch { cur = 0; }
-                cur--;
-                if (cur < 0) cur = homeCount - 1;
-                fIndex.SetValue(__instance, cur);
-                __instance.Set(cur, true);
+                int next;
+                if (BGMConfig.RandomEnabled && BGMConfig.RandomizePrevious)
+                {
+                    next = CustomBGM.GetRandomHomeIndex(BGMConfig.AvoidImmediateRepeat);
+                }
+                else
+                {
+                    var fIndex = AccessTools.Field(typeof(BaseBGMSelector), "index");
+                    int cur = 0;
+                    try { cur = (int)fIndex.GetValue(__instance); } catch { cur = 0; }
+                    next = cur - 1;
+                    if (next < 0) next = homeCount - 1;
+                    fIndex.SetValue(__instance, next);
+                }
+
+                // 同步 BaseBGMSelector 的 index 字段以参与存档
+                var fIndex2 = AccessTools.Field(typeof(BaseBGMSelector), "index");
+                fIndex2.SetValue(__instance, next);
+                __instance.Set(next, true);
                 return false;
             }
             catch

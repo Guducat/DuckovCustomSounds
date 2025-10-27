@@ -46,6 +46,10 @@ namespace DuckovCustomSounds
                 // 读取并应用模块设置（例如 overrideExtractionBGM）
                 ModSettings.Initialize();
 
+
+                    // 初始化自定义 BGM 的配置（ModConfig/Settings.json）
+                    DuckovCustomSounds.CustomBGM.BGMConfig.Initialize();
+
                 try
                 {
                     var sfxBus = FMODUnity.RuntimeManager.GetBus("bus:/Master/SFX");
@@ -141,8 +145,6 @@ namespace DuckovCustomSounds
 	        Instance = null;
 		        CustomEnemySounds.CustomEnemySounds.Unload();
                 DuckovCustomSounds.CustomItemSounds.ItemSoundsConfig.Deinitialize();
-            try { CustomFootStepSounds.CustomFootStepSounds.Unload(); } catch { }
-
 
 
 	        // 6. 指挥其他模块卸载它们自己的资源

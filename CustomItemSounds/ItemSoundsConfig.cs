@@ -74,8 +74,8 @@ namespace DuckovCustomSounds.CustomItemSounds
             // 简单中文描述（如需国际化可接入 LocalizationManager）
             ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用 CustomItemSounds", Enabled);
             ModConfigAPI.SafeAddInputWithSlider(ModName, "volume", "音量倍率 (0~2)", typeof(float), Volume, new Vector2(0f, 2f));
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "replaceOriginal", "替换原游戏音效(静音原事件)", ReplaceOriginal);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "rootDir", "音效根目录(留空=默认)", typeof(string), string.IsNullOrEmpty(RootDir) ? "" : RootDir, null);
+            // ModConfigAPI.SafeAddBoolDropdownList(ModName, "replaceOriginal", "替换原游戏音效(静音原事件)", ReplaceOriginal);
+            // ModConfigAPI.SafeAddInputWithSlider(ModName, "rootDir", "音效根目录(留空=默认)", typeof(string), string.IsNullOrEmpty(RootDir) ? "" : RootDir, null);
 
             // 分类开关
             ModConfigAPI.SafeAddBoolDropdownList(ModName, "enable_food", "启用 食物/饮料 声音", EnableFood);

@@ -34,6 +34,9 @@ namespace DuckovCustomSounds.CustomBGM
         private static FMOD.Studio.Bus _lockedMusicBus;
         private static bool _musicBusLocked;
         private static Coroutine _bgmGuardRoutine;
+        private static Coroutine _pendingPlayRoutine;
+        private static long _playRequestId;
+
 
 
         // 3. 加载逻辑 (由 ModBehaviour.cs 调用)
@@ -178,6 +181,7 @@ namespace DuckovCustomSounds.CustomBGM
             s_StopRequested = true;
             s_AutoAdvanceEnabled = false;
             try { if (_bgmGuardRoutine != null && ModBehaviour.Instance != null) { ModBehaviour.Instance.StopCoroutine(_bgmGuardRoutine); _bgmGuardRoutine = null; } } catch { }
+            try { if (_pendingPlayRoutine != null && ModBehaviour.Instance != null) { ModBehaviour.Instance.StopCoroutine(_pendingPlayRoutine); _pendingPlayRoutine = null; } } catch { }
             if (currentBGMChannel.hasHandle())
             {
                 try { currentBGMChannel.stop(); } catch { }
@@ -200,7 +204,9 @@ namespace DuckovCustomSounds.CustomBGM
             // 等待 Studio 就绪后再播放，避免 ERR_STUDIO_NOT_LOADED
             if (ModBehaviour.Instance != null && TitleBGMSound.hasHandle())
             {
-                ModBehaviour.Instance.StartCoroutine(WaitForBusThenPlay(TitleBGMSound, true));
+                try { if (_pendingPlayRoutine != null) { ModBehaviour.Instance.StopCoroutine(_pendingPlayRoutine); _pendingPlayRoutine = null; } } catch { }
+                _playRequestId++;
+                _pendingPlayRoutine = ModBehaviour.Instance.StartCoroutine(WaitForBusThenPlay(TitleBGMSound, true, _playRequestId));
                 return;
             }
 
@@ -229,7 +235,9 @@ namespace DuckovCustomSounds.CustomBGM
             var songToPlay = info.Sound;
             if (ModBehaviour.Instance != null && songToPlay.hasHandle())
             {
-                ModBehaviour.Instance.StartCoroutine(WaitForBusThenPlay(songToPlay, false));
+                try { if (_pendingPlayRoutine != null) { ModBehaviour.Instance.StopCoroutine(_pendingPlayRoutine); _pendingPlayRoutine = null; } } catch { }
+                _playRequestId++;
+                _pendingPlayRoutine = ModBehaviour.Instance.StartCoroutine(WaitForBusThenPlay(songToPlay, false, _playRequestId));
                 BGMLogger.Debug($"正在请求播放索引 {currentHomeBGMIndex}（延迟路由） -> {info.Name} - {info.Author}");
                 return;
             }
@@ -240,16 +248,39 @@ namespace DuckovCustomSounds.CustomBGM
             BGMLogger.Debug($"正在播放索引 {currentHomeBGMIndex}，曲目句柄有效: {songToPlay.hasHandle()} -> {info.Name} - {info.Author}");
         }
 
+
+            // 返回一个随机索引；当 avoidImmediateRepeat=true 时尽量避免与当前曲目相同
+            public static int GetRandomHomeIndex(bool avoidImmediateRepeat)
+            {
+                int count = GetHomeCount();
+                if (count <= 0) return 0;
+                if (!avoidImmediateRepeat || count == 1)
+                {
+                    return UnityEngine.Random.Range(0, count);
+                }
+                // 排除当前索引的等概率采样：在 [0, count-2] 取值，>=current 时 +1
+                int current = currentHomeBGMIndex;
+                int r = UnityEngine.Random.Range(0, count - 1);
+                if (r >= current) r++;
+                return r;
+            }
+
         // 播放下一首（改为复用 BaseBGMSelector.Set 流程，确保与原版生命周期一致）
         public static void PlayNextHomeBGM()
         {
             if (!HasHomeSongs) return;
+            int target = currentHomeBGMIndex + 1;
             try
             {
+                // 随机模式：改为随机挑选下一首（可避免连播同一曲目）
+                if (BGMConfig.RandomEnabled)
+                {
+                    target = GetRandomHomeIndex(BGMConfig.AvoidImmediateRepeat);
+                }
+
                 var selector = UnityEngine.Object.FindObjectOfType<BaseBGMSelector>();
                 if (selector != null)
                 {
-                    int target = currentHomeBGMIndex + 1;
                     selector.Set(target, false, true); // showInfo=false, play=true
                     BGMLogger.Debug($"自动切歌：通过 BaseBGMSelector.Set 触发 → index={target} (showInfo=false, play=true)");
                     return;
@@ -257,7 +288,7 @@ namespace DuckovCustomSounds.CustomBGM
             }
             catch { }
             // 兜底：找不到 BaseBGMSelector 时，仍然走旧逻辑
-            PlayHomeBGM(currentHomeBGMIndex + 1);
+            PlayHomeBGM(target);
         }
 
         // 播放上一首
@@ -394,7 +425,7 @@ namespace DuckovCustomSounds.CustomBGM
                     }
                     if (ModBehaviour.MusicGroup.hasHandle())
                     {
-                        currentBGMChannel.setChannelGroup(ModBehaviour.MusicGroup);
+                        // 已在播放前绑定到 Music Bus；避免跨帧 setChannelGroup 以降低崩溃风险
                     }
                 }
                 catch { }
@@ -432,17 +463,10 @@ namespace DuckovCustomSounds.CustomBGM
                 if (!currentBGMChannel.hasHandle()) break;
                 if (ModBehaviour.MusicGroup.hasHandle())
                 {
-                    var setRes = currentBGMChannel.setChannelGroup(ModBehaviour.MusicGroup);
-                    if (setRes == FMOD.RESULT.OK)
-                    {
-                        _lastResolvedBus = "bus:/Master/Music";
-                        BGMLogger.Info("重新绑定播放中的 BGM 到 Music bus。");
-                        break;
-                    }
-                    else
-                    {
-                        BGMLogger.Warn($"重新绑定 setChannelGroup 失败: {setRes}");
-                    }
+                    // 为避免跨帧 setChannelGroup 引发崩溃，不在此处重绑；仅记录就绪状态
+                    _lastResolvedBus = "bus:/Master/Music";
+                    BGMLogger.Info("Music bus 已就绪（跳过跨帧重绑）。");
+                    break;
                 }
                 yield return new UnityEngine.WaitForSeconds(Mathf.Max(0.05f, pollInterval));
             }
@@ -450,7 +474,7 @@ namespace DuckovCustomSounds.CustomBGM
         }
 
 
-        private static System.Collections.IEnumerator WaitForBusThenPlay(FMOD.Sound sound, bool isTitle)
+        private static System.Collections.IEnumerator WaitForBusThenPlay(FMOD.Sound sound, bool isTitle, long requestId)
         {
             // 始终要求 Music 总线可用；不可用则取消播放
             bool requireMusic = true;
@@ -459,6 +483,8 @@ namespace DuckovCustomSounds.CustomBGM
 
             while (Time.realtimeSinceStartup < deadline)
             {
+                // 若在等待过程中已被新的请求替换，则终止
+                if (requestId != _playRequestId) yield break;
                 try
                 {
                     var bus = FMODUnity.RuntimeManager.GetBus("bus:/Master/Music");
@@ -476,6 +502,8 @@ namespace DuckovCustomSounds.CustomBGM
                 yield return new UnityEngine.WaitForSeconds(0.1f);
             }
 
+            if (requestId != _playRequestId) yield break;
+
             if (requireMusic && !musicOk)
             {
                 BGMLogger.Info("自定义BGM取消：Music总线在限定时间内不可用。");
@@ -492,6 +520,7 @@ namespace DuckovCustomSounds.CustomBGM
             float stDeadline = Time.realtimeSinceStartup + 10f;
             while (Time.realtimeSinceStartup < stDeadline)
             {
+                if (requestId != _playRequestId) yield break;
                 bool stPlaying = false;
                 try { stPlaying = Duckov.AudioManager.IsStingerPlaying; } catch { stPlaying = false; }
                 if (!stPlaying) break;
@@ -506,10 +535,11 @@ namespace DuckovCustomSounds.CustomBGM
                 yield break;
             }
 
+            if (requestId != _playRequestId) yield break;
 
             if (currentBGMChannel.hasHandle())
             {
-                currentBGMChannel.stop();
+                try { currentBGMChannel.stop(); } catch { }
             }
             if (sound.hasHandle())
             {

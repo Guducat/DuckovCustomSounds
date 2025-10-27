@@ -73,5 +73,29 @@ namespace DuckovCustomSounds.CustomGunSounds
             }
         }
     }
+
+        // 监听游戏侧的停止/取消换弹，主动停止自定义换弹音效
+        [HarmonyPatch(typeof(ItemAgent_Gun))]
+        public static class ItemAgent_Gun_StopReloadSound_Patch
+        {
+            [HarmonyPatch("StopReloadSound")]
+            [HarmonyPostfix]
+            public static void Postfix(ItemAgent_Gun __instance)
+            {
+                try { GunSfxUtil.StopCustomReloadFor(__instance); } catch (Exception ex) { GunLogger.Warn($"[GunReload] StopReloadSound 拦截处理异常: {ex.Message}"); }
+            }
+        }
+
+        [HarmonyPatch(typeof(ItemAgent_Gun))]
+        public static class ItemAgent_Gun_CancleReload_Patch
+        {
+            [HarmonyPatch("CancleReload")]
+            [HarmonyPostfix]
+            public static void Postfix(ItemAgent_Gun __instance)
+            {
+                try { GunSfxUtil.StopCustomReloadFor(__instance); } catch (Exception ex) { GunLogger.Warn($"[GunReload] CancleReload 拦截处理异常: {ex.Message}"); }
+            }
+        }
+
 }
 
