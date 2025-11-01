@@ -7,7 +7,7 @@ export default defineConfig({
   lastUpdated: true,
   cleanUrls: true,
   head: [
-    ['link', { rel: 'icon', href: '/favicon.png' }]
+    ['link', { rel: 'icon', href: 'https://github.com/Guducat/DuckovCustomSounds/raw/v1.x/docs/.vitepress/public/favicon.png' }]
   ],
   locales: {
     root: { label: '简体中文', lang: 'zh-CN' },
