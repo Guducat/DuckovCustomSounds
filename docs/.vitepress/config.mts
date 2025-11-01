@@ -11,7 +11,7 @@ export default defineConfig({
     en: { label: 'English', lang: 'en-US', link: '/en/' }
   },
   themeConfig: {
-    logo: { src: '/DuckovCustomSounds.png', alt: 'DuckovCustomSounds' },
+    logo: { src: 'https://raw.githubusercontent.com/Guducat/DuckovCustomSounds/refs/heads/v1.x/docs/DuckovCustomSounds.png', alt: 'DuckovCustomSounds' },
     
     // 1. 将所有语言共享的配置移到根级别
     socialLinks: [{ icon: 'github', link: 'https://github.com/Guducat/DuckovCustomSounds' }],

@@ -7,7 +7,7 @@ hero:
   text: 鸭科夫自定义音效音乐Mod
   tagline: BGM、敌人语音、脚步声、武器、物品、击杀反馈与声音包一键切换
   image:
-    src: /DuckovCustomSounds.png
+    src: https://raw.githubusercontent.com/Guducat/DuckovCustomSounds/refs/heads/v1.x/docs/DuckovCustomSounds.png
     alt: Duckov Custom Sounds
   actions:
     - theme: brand
