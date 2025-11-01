@@ -4,22 +4,24 @@ title: 物品音效
 
 # 物品音效
 
-本模块用于替换游戏内消耗品使用音效，包括食物、饮料、药品、注射针剂等。模块支持按物品 TypeID 精确匹配，并提供通用回退机制，同时保持与原版 FMOD 3D 音效的一致性。
-
-> [!WARNING]
-> 目前版本存在注射剂和药品音效的丢失，请等待修复，而且音效文件命名规则可能存在问题，请先忽略本文档的药品与注射针剂相关的内容，食物不受影响。
+本模块用于替换游戏内消耗品使用音效，包括食物、饮料、药品、注射针剂、绷带等。支持按物品 TypeID 精确匹配，并提供按类别与通用回退机制，同时保持与原版 FMOD 3D 音效的一致性。
 
 > [!NOTE]
-> 目前 ModConfig UI 支持尚未完善，你看到的属于前瞻性内容。
+> - 已支持任意新的物品类别（soundKey）。当游戏出现 `SFX/Item/use_xxx` 新事件时，无需改代码，只需在 `CustomItemSounds/xxx/` 放置音频即可。
+> - ModConfig UI 的分类开关目前仅内置 `food`、`meds`、`syringe`；其他类别（如 `bandage`）默认启用。
 
 ## 功能概述
 
 - 替换消耗品使用音效（食物、饮料、药品、注射针剂音效）
 - 按物品 TypeID 精确匹配音效文件（TypeID 必须是数字）
-- 按 soundKey 匹配（如 `food`、`meds`、`syringe`）
+- 按 soundKey 匹配（如 `food`、`meds`、`syringe`、`bandage` 等）
+- 可选“分段文件”：Action/Start 与 Finish/End 两段命名，取消使用时仅停止过程段，完成段保留
 - 分类开关（可单独启用/禁用食物、药品、注射针剂音效）
 - 自动 3D 定位与距离衰减
 - ModConfig UI 热重载配置
+
+> [!NOTE]
+> 提示：当前版本未内置“随机差分（_1/_2/…）”逻辑；如需差分，请在制作时自行合并或挑选固定文件名。
 
 ## 快速开始
 
@@ -52,9 +54,9 @@ DuckovCustomSounds/
 - 不同的物品有不同的 TypeID
 - 需要通过日志查看具体的 TypeID（详见"常见问题"章节）
 
-### 按类别组织（可选）
+### 按类别组织（推荐，优先匹配）
 
-你也可以按物品类别组织音效文件：
+你可以（也推荐）按物品类别组织音效文件：
 
 ```
 DuckovCustomSounds/
@@ -65,8 +67,11 @@ DuckovCustomSounds/
    ├─ meds/                  # 药品类别
    │  ├─ 20.mp3              # 药品 TypeID 20
    │  └─ default.mp3         # 药品通用音效
-   └─ syringe/               # 注射针剂类别
-      └─ default.mp3         # 注射针剂通用音效
+   ├─ syringe/               # 注射针剂类别
+   │  └─ default.mp3         # 注射针剂通用音效
+   └─ bandage/               # 绷带类别（示例）
+      ├─ 17.mp3              # 绷带 TypeID 17（示例）
+      └─ default.mp3         # 绷带通用音效
 ```
 
 ## TypeID 与 soundKey 说明
@@ -91,12 +96,15 @@ DuckovCustomSounds/
 
 ### 游戏音效事件
 
-游戏中的物品使用音效事件格式为：`SFX/Item/use_{soundKey}`
+游戏中的物品使用音效事件格式为：`SFX/Item/use_{soundKey}`。
 
-常见的 soundKey：
+常见（或可能新增）的 soundKey 示例：
 - `food`：食物和饮料
-- `meds`：药品（最近可能有修改！）
-- `syringe`：注射针剂（最近可能有修改！）
+- `meds`：药品
+- `syringe`：注射针剂
+- `bandage`：绷带类回血物品（示例）
+
+系统对未知/新增的 `soundKey` 会自动支持，无需更新 Mod。
 
 ## 文件命名规则
 
@@ -137,7 +145,8 @@ CustomItemSounds/
 CustomItemSounds/
 ├─ food.mp3               # 所有食物使用此音效
 ├─ meds.mp3               # 所有药品使用此音效
-└─ syringe.mp3            # 所有注射针剂使用此音效
+├─ syringe.mp3            # 所有注射针剂使用此音效
+└─ bandage.mp3            # 所有绷带使用此音效（示例）
 ```
 
 ### 通用回退
@@ -151,7 +160,7 @@ CustomItemSounds/
 
 ### 按类别组织（可选）
 
-你可以按物品类别组织音效文件：
+你也可以按物品类别组织音效文件：
 
 ```
 CustomItemSounds/
@@ -161,22 +170,42 @@ CustomItemSounds/
 ├─ meds/                  # 药品类别
 │  ├─ 20.mp3              # TypeID 20
 │  └─ default.mp3         # 药品通用音效
-└─ syringe/               # 注射针剂类别
-   └─ default.mp3         # 注射针剂通用音效
+├─ syringe/               # 注射针剂类别
+│  └─ default.mp3         # 注射针剂通用音效
+└─ bandage/               # 绷带类别（示例）
+   ├─ 17.mp3              # TypeID 17（示例）
+   └─ default.mp3         # 绷带通用音效
 ```
 
-### 查找优先级
+### 分段命名（可选）
 
-**扁平结构**（推荐）：
-1. `{TypeID}.mp3`（TypeID 必须是数字）
-2. `{soundKey}.mp3`
-3. `default.mp3`
+为更自然的体验，物品使用可拆分为“过程段 + 完成段”。命名规则：
 
-**分类结构**（可选）：
-1. `{category}/{TypeID}.mp3`
-2. `{category}/default.mp3`
-3. `{TypeID}.mp3`（回退到扁平结构）
-4. `default.mp3`
+- 过程段（Action）：`<TypeID>_action.(ext)` 或 `<TypeID>_start.(ext)`
+- 完成段（Finish）：`<TypeID>_finish.(ext)` 或 `<TypeID>_end.(ext)`
+
+也支持在“分类目录”或“根目录”提供分段回退（用于 meds/syringe 等类别）：
+
+```
+CustomItemSounds/
+├─ meds/
+│  ├─ 20_action.mp3
+│  └─ default_finish.mp3
+├─ syringe/
+│  └─ default_action.mp3
+└─ default_finish.mp3   # 全局完成段回退
+```
+
+行为说明：当物品使用被取消时，系统会停止“过程段”音效，但会保留“完成段”音效，以避免突兀中断。
+
+### 查找优先级（统一规则）
+
+无论是否使用分类目录，系统按以下顺序查找（前者优先）：
+1. `CustomItemSounds/{category}/{TypeID}.*`
+2. `CustomItemSounds/{category}/default.*`
+3. `CustomItemSounds/{TypeID}.*`
+4. `CustomItemSounds/{soundKey}.*`
+5. `CustomItemSounds/default.*`
 
 ### 支持的音频格式
 
@@ -204,6 +233,8 @@ default.mp3 → default.wav → default.ogg → default.oga
 - **启用 注射器 声音**：单独控制注射器音效
 
 配置变更会立即生效，无需重启游戏。
+
+提示：目前仅 `food`、`meds`、`syringe` 提供显式开关；其他类别（如 `bandage`）默认启用。
 
 ## 目录结构示例
 
@@ -395,14 +426,14 @@ CustomItemSounds/
 
 ### 文件查找策略
 
-模块使用多级查找策略：
-1. **主要候选**：尝试 TypeID（数字）
-2. **次要候选**：尝试 soundKey（类别）
-3. **回退候选**：使用 `default` 作为通用回退
+模块使用统一的多级查找策略（分类优先）：
+1. `CustomItemSounds/{category}/{TypeID}.*`
+2. `CustomItemSounds/{category}/default.*`
+3. `CustomItemSounds/{TypeID}.*`
+4. `CustomItemSounds/{soundKey}.*`
+5. `CustomItemSounds/default.*`
 
 对于每个候选文件名，会尝试所有支持的扩展名（`.mp3`、`.wav`、`.ogg`、`.oga`）。
-
-如果使用分类结构，会先在分类目录下查找，然后回退到根目录。
 
 ### 阶段追踪
 
@@ -434,7 +465,7 @@ CustomItemSounds/
 }
 ```
 
-或者使用 Verbose 级别查看所有路径尝试：
+或者使用 Verbose 级别查看所有路径尝试（会打印“查找顺序”）：
 ```json
 {
   "logLevels": {
@@ -451,11 +482,13 @@ CustomItemSounds/
 - `[ItemUse]`：物品使用音效日志
 - `记录 TypeID`：TypeID 记录日志
 - `追踪阶段`：阶段追踪日志
+- `查找顺序`：Verbose 下打印的候选路径顺序
 
 ### 常见错误信息
 
 - `未找到 TypeID`：没有找到物品的 TypeID，会使用 soundKey 作为回退
-- `未找到自定义文件`：没有找到匹配的自定义文件，会使用原版音效
+- `未找到自定义文件`：没有找到匹配的自定义文件，会使用原版音效；请查看 Verbose 日志的“查找顺序”确认尝试过的路径
+- `类别已禁用`：该类别在配置中被禁用（当前仅 `food`/`meds`/`syringe` 可配置）
 - `新接口播放失败`：播放自定义音效时出错，检查文件格式和路径
 - `Postfix 覆盖异常`：补丁执行时出错，查看详细错误信息
 

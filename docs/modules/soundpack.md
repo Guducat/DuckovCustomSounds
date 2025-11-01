@@ -33,6 +33,8 @@ title: 声音包系统
 
 ## 进阶：如何制作一个声音包
 
+> 💡 **工具推荐**: 使用我们的[声音包生成器工具](../tools/sound-pack-generator.md)可以快速生成符合格式的pack.json文件！
+
 - 目录结构（示例）
   - 包应放在 `DuckovCustomSounds/<包ID>/` 下。包ID推荐使用英文、数字、下划线，避免空格与特殊字符。
 

@@ -9,6 +9,9 @@ title: 枪械音效
 > [!NOTE]
 > 目前 ModConfig UI 支持尚未完善，你看到的属于前瞻性内容。
 
+> [!NOTE]
+> 此模块支持差分音效(xxx.mp3 xxx_1.mp3 etc.)
+
 ## 功能概述
 
 - 替换枪械射击音效（支持消音器检测）
@@ -115,9 +118,9 @@ CustomGunSounds/
 [GunShoot] TypeID=783, soundKey=pistol_light_mute
 查找顺序:
 [783_mute.mp3] → [783_mute.wav] → [783_mute.ogg] → [783_mute.oga] →
-[783.mp3] → [783.wav] → [783.ogg] → [783.oga] →
-[pistol_light_mute.mp3] → [pistol_light_mute.wav] → ...
-最终使用: 783.mp3
+[pistol_light_mute.mp3] → [pistol_light_mute.wav] → ... →
+[783.mp3] → [783.wav] → [783.ogg] → [783.oga]
+最终使用: pistol_light_mute.mp3（若存在）；否则回退到 783.mp3 或 default
 ```
 
 ### 按 soundKey 匹配（不推荐）
@@ -148,10 +151,11 @@ CustomGunSounds/
 ### 查找优先级
 
 **射击音效**（装备消音器时）：
-1. `{TypeID}_mute.mp3`
-2. `{TypeID}.mp3`
-3. `{soundKey}.mp3`
-4. `default.mp3`
+1. `{TypeID}_mute(.ext)`
+2. `{soundKey}_mute(.ext)`
+3. `{TypeID}(.ext)`
+4. `{soundKey}(.ext)`
+5. `default(.ext)`
 
 **射击音效**（未装备消音器时）：
 1. `{TypeID}.mp3`
@@ -264,8 +268,8 @@ CustomGunSounds/
   "gunShootRateLimitEnabled": true,
   "gunShootMinIntervalMs": 50.0,
   "gunShootRateLimitPerType": {
-    "ak47": 80.0,
-    "m4a1": 60.0
+    "258": 80.0,
+    "655": 60.0
   }
 }
 ```
@@ -300,6 +304,7 @@ CustomGunSounds/
 DuckovCustomSounds/
 └─ CustomGunSounds/
    ├─ 258.mp3               # TypeID 258 的射击音效
+   ├─ 258_1.mp3               # TypeID 258 的射击音效差分
    ├─ 258_mute.mp3          # TypeID 258 的消音器音效
    ├─ 258_reload.mp3        # TypeID 258 的换弹音效
    ├─ 258_reload_start.mp3  # TypeID 258 的换弹开始音效
@@ -409,9 +414,22 @@ DuckovCustomSounds/
 
 ### 6. 如何为同一武器提供多个变体？
 
-当前版本不支持变体随机播放。如果需要此功能，可以：
-- 手动创建多个文件并定期更换
-- 或等待未来版本支持
+现在支持差分音效（变体）随机播放。为同一键名提供多个文件时，使用 `_1`、`_2`、`_3` … 后缀：
+
+```
+CustomGunSounds/
+├─ 258.mp3               # 基准文件
+├─ 258_1.mp3             # 差分 1
+├─ 258_2.mp3             # 差分 2
+├─ 258_mute.mp3          # 消音器基准
+├─ 258_mute_1.mp3        # 消音器差分 1
+└─ 258_mute_2.mp3        # 消音器差分 2
+```
+
+规则：
+- 先按“查找优先级”决定命中的基准文件（如 `258_mute.mp3`）。
+- 若存在同扩展名的差分（`*_1.mp3`、`*_2.mp3`…），在差分集合中随机选择其一播放；若无差分，使用基准文件。
+- 支持 `.mp3`、`.wav`、`.ogg`、`.oga`。
 
 ### 7. 音效音量太大或太小怎么办？
 

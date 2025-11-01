@@ -6,12 +6,15 @@ export default defineConfig({
   base: process.env.VITEPRESS_BASE || '/DuckovCustomSounds/',
   lastUpdated: true,
   cleanUrls: true,
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.png' }]
+  ],
   locales: {
     root: { label: '简体中文', lang: 'zh-CN' },
     en: { label: 'English', lang: 'en-US', link: '/en/' }
   },
   themeConfig: {
-    logo: { src: 'https://raw.githubusercontent.com/Guducat/DuckovCustomSounds/refs/heads/v1.x/docs/DuckovCustomSounds.png', alt: 'DuckovCustomSounds' },
+    logo: { src: '/DuckovCustomSounds.png', alt: 'DuckovCustomSounds' },
     
     // 1. 将所有语言共享的配置移到根级别
     socialLinks: [{ icon: 'github', link: 'https://github.com/Guducat/DuckovCustomSounds' }],
@@ -53,6 +56,7 @@ export default defineConfig({
             items: [
               { text: '概览', link: '/modules/bgm/overview' },
               { text: 'Boss BGM', link: '/modules/bgm/boss-bgm' },
+              { text: '加载界面/加载完成 BGM', link: '/modules/bgm/loading-bgm' },
               { text: '场景 BGM', link: '/modules/bgm/scene-bgm' },
               { text: '标题 BGM', link: '/modules/bgm/title-bgm' },
               { text: '地堡留声机 BGM', link: '/modules/bgm/home-bgm' },
@@ -69,10 +73,17 @@ export default defineConfig({
         ]
       },
       {
+        text: '工具',
+        items: [
+          { text: '工具概览', link: '/tools/' }
+        ]
+      },
+      {
         text: '高级',
         items: [
           { text: 'ModConfig 选项', link: '/advanced/modconfig' },
-          { text: '日志与排错', link: '/advanced/logging-troubleshooting' }
+          { text: '日志与排错', link: '/advanced/logging-troubleshooting' },
+          { text: '更新日志', link: '/changelog' }
         ]
       },
       { text: 'GitHub', link: 'https://github.com/Guducat/DuckovCustomSounds' }
@@ -86,6 +97,7 @@ export default defineConfig({
           items: [
             { text: '概览', link: '/modules/bgm/overview' },
             { text: 'Boss BGM', link: '/modules/bgm/boss-bgm' },
+            { text: '加载界面/加载完成 BGM', link: '/modules/bgm/loading-bgm' },
             { text: '场景 BGM', link: '/modules/bgm/scene-bgm' },
             { text: '标题 BGM', link: '/modules/bgm/title-bgm' },
             { text: '地堡留声机 BGM', link: '/modules/bgm/home-bgm' },
@@ -104,6 +116,12 @@ export default defineConfig({
             { text: '击杀反馈', link: '/modules/kill-feedback' }
           ]
         }
+      ],
+      '/tools/': [
+        { text: '工具', items: [
+          { text: '工具概览', link: '/tools/' },
+          { text: '声音包生成器', link: '/tools/sound-pack-generator' }
+        ]}
       ]
     },
     editLink: {
@@ -178,4 +196,3 @@ export default defineConfig({
     }
   }
 })
-

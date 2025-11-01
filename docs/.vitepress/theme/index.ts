@@ -3,6 +3,7 @@ import type { Theme } from 'vitepress'
 import VideoEmbed from '../../components/VideoEmbed.vue'
 import LightChart from '../../components/LightChart.vue'
 import EChart from '../../components/EChart.vue'
+import SoundPackGenerator from '../../components/SoundPackGenerator.vue'
 import './styles.css'
 
 export default {
@@ -11,5 +12,6 @@ export default {
     app.component('VideoEmbed', VideoEmbed)
     app.component('LightChart', LightChart)
     app.component('EChart', EChart)
+    app.component('SoundPackGenerator', SoundPackGenerator)
   }
 } satisfies Theme
