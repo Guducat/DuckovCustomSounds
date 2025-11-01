@@ -7,7 +7,7 @@ hero:
   text: Audio customization and Sound Pack system
   tagline: BGM, enemy voices, footsteps, weapons, items, kill feedback and more — switch by Sound Pack
   image:
-    src: /DuckovCustomSounds.png
+    src: https://github.com/Guducat/DuckovCustomSounds/raw/v1.x/docs/.vitepress/public/DuckovCustomSounds.png
     alt: Duckov Custom Sounds
   actions:
     - theme: brand
