@@ -3,6 +3,8 @@ bin/
 obj/
 .idea/
 assets/
+node_modules/
+package-lock.json
 *.user
 *.suo
 *.vs
@@ -23,3 +25,8 @@ assets/
 *.gitlab-ci.yml
 *.travis.yml
 *.circleci
+
+# VitePress cache and build output
+docs/.vitepress/dist
+docs/.vitepress/cache
+/.fastRequest/config/fastRequestCurrentProjectConfig.json
