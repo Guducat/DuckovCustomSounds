@@ -111,7 +111,6 @@ DuckovCustomSounds/
 ├── CustomGrenadeSounds/      # 手雷音效模块
 ├── CustomGunSounds/           # 枪声音效模块
 ├── CustomItemSounds/         # 物品音效模块
-├── CustomKillFeedback/       # 击杀反馈模块
 ├── CustomMeleeSounds/         # 近战音效模块
 ├── Logging/                  # 日志系统
 ├── ModConfig/                # Mod配置
@@ -185,7 +184,6 @@ DuckovCustomSounds/
 ### 不重复实现的功能
 - [x] 自定义玩家F1声音替换/DuckovCustomPlayerQuak —— https://steamcommunity.com/sharedfiles/filedetails/?id=3596875485  由我自己的MOD实现。
 - [x] 自定义搜索/搜出音效 — 由 @dzj0821 的 物品价值稀有度与搜索音效 mod 提供
-- [x] 自定义击杀音效 — 由 @F_O_G 的 CF击杀反馈 mod 提供
 - [x] 自定义文本（交战、换弹、躲避手雷等） — 由 @MajMaj 的 三角洲人机文本替换增加人机 交战 换弹 躲避手雷文本 mod 提供
 
 ---

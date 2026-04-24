@@ -21,8 +21,7 @@ const moduleOptions = [
   { value: 'CustomGunSounds', label: '自定义枪械声音' },
   { value: 'CustomMeleeSounds', label: '自定义近战声音' },
   { value: 'CustomGrenadeSounds', label: '自定义手雷声音' },
-  { value: 'CustomItemSounds', label: '自定义物品声音' },
-  { value: 'CustomKillFeedback', label: '自定义击杀反馈' }
+  { value: 'CustomItemSounds', label: '自定义物品声音' }
 ]
 
 // 生成JSON

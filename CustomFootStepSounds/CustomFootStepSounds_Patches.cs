@@ -72,6 +72,20 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                 if (now - kv.Value.lastSeen > 120f) { s_cooldowns.TryRemove(kv.Key, out _); }
             }
         }
+
+        private static void LogTriedPathsVerbose(VoiceRoute route)
+        {
+            try
+            {
+                if (route?.TriedPaths == null || route.TriedPaths.Count == 0) return;
+                for (int i = 0; i < route.TriedPaths.Count; i++)
+                {
+                    FootstepLogger.VerboseDetail($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
+                }
+            }
+            catch { }
+        }
+
         // 1) 拦截脚步声核心分发，优先使用自定义，命中后阻止原逻辑发声
         [HarmonyPatch(typeof(AudioManager))]
         [HarmonyPatch("OnFootStepSound", new Type[] { typeof(Vector3), typeof(CharacterSoundMaker.FootStepTypes), typeof(CharacterMainControl) })]
@@ -103,7 +117,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                     string skGeneric = $"footstep_{move}_{strength}";
 
                     // 绑定/获取上下文
-                    EnemyContext ctx = null;
+                    EnemyContext? ctx = null;
                     var go = character.gameObject;
                     if (go != null)
                     {
@@ -121,20 +135,10 @@ namespace DuckovCustomSounds.CustomFootStepSounds
 
 
                     // 规则匹配：优先具体（含材质），未命中再尝试通用
-                    VoiceRoute route = null;
-                    FootstepLogger.DebugDetail($"[CFS:Route] 开始匹配: sk={skSpecific}, engine={(CustomFootStepSounds.Engine != null ? "已加载" : "未加载")}");
+                    VoiceRoute? route = null;
+                    FootstepLogger.VerboseDetail($"[CFS:Route] 开始匹配: sk={skSpecific}, engine={(CustomFootStepSounds.Engine != null ? "已加载" : "未加载")}");
                     bool matched = (CustomFootStepSounds.Engine != null && CustomFootStepSounds.Engine.TryRoute(ctx, skSpecific, ctx.VoiceType, out route));
-                    FootstepLogger.DebugDetail($"[CFS:Route] 首次匹配结果: matched={matched}, route={(route != null ? $"UseCustom={route.UseCustom}, File={route.FileFullPath}" : "null")}");
-
-                        // Cooldown check (footstep) after acquiring GameObject
-                        int id = go != null ? go.GetInstanceID() : 0;
-                        float minCd = GetMinCooldownSeconds();
-                        if (minCd > 0f && IsOnCooldownAndTouch(id, false, minCd, out var remain))
-                        {
-                            FootstepLogger.DebugDetail($"[CFS:Cooldown] footstep SKIP id={id} remain={remain:F2}s (min={minCd:F2}s)");
-                            return false; // mute original as well
-                        }
-
+                    FootstepLogger.VerboseDetail($"[CFS:Route] 首次匹配结果: matched={matched}, route={(route != null ? $"UseCustom={route.UseCustom}, File={route.FileFullPath}" : "null")}");
 
                     if (!(matched && route != null && route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                     {
@@ -152,43 +156,44 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         }
                         else
                         {
-                            FootstepLogger.DebugDetail("[CFS:Route] 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 CustomEnemySounds=Debug 查看 [CES:Path] cand/exists");
+                            FootstepLogger.DebugDetail("[CFS:Route] 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 Footstep=Verbose 查看 [CFS:Path] cand/exists");
                         }
                         return true; // 未匹配 - 让原逻辑继续
                     }
 
+                        string routeFile = route.FileFullPath;
+
+                        // Cooldown check (footstep) after confirming custom route
+                        int id = go != null ? go.GetInstanceID() : 0;
+                        float minCd = GetMinCooldownSeconds();
+                        if (minCd > 0f && IsOnCooldownAndTouch(id, false, minCd, out var remain))
+                        {
+                            FootstepLogger.DebugDetail($"[CFS:Cooldown] footstep SKIP id={id} remain={remain:F2}s (min={minCd:F2}s)");
+                            return false; // mute original as well
+                        }
+
                         // 记录命中信息与候选路径（仅在命中时打印）
                         FootstepLogger.DebugDetail($"[CFS:Route] 命中: rule={route.MatchRule}, file={route.FileFullPath}");
-                        try
-                        {
-                            if (route.TriedPaths != null && route.TriedPaths.Count > 0)
-                            {
-                                for (int i = 0; i < route.TriedPaths.Count; i++)
-                                {
-                                    FootstepLogger.DebugDetail($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
-                                }
-                            }
-                        }
-                        catch { }
+                        LogTriedPathsVerbose(route);
 
 
                     // 使用新接口播放自定义 3D 脚步声
                     // 注意：新接口自动处理 3D 距离、自动跟随 GameObject、自动资源清理
                     try
                     {
-                        var eventInstance = Duckov.AudioManager.PostCustomSFX(route.FileFullPath, go, loop: false);
+                        var eventInstance = Duckov.AudioManager.PostCustomSFX(routeFile, go, loop: false);
                         if (eventInstance.HasValue && eventInstance.Value.isValid())
                         {
                             // 设置音量（如果需要）
-                            try { eventInstance.Value.setVolume(ModSettings.FootstepVolumeScale); } catch { }
+                            try { eventInstance.Value.setVolume(FootstepConfig.Volume); } catch { }
 
                             // 标记已播放
                             try { MarkPlayed(id, false); } catch { }
 
                             // 追踪 EventInstance
-                            try { FootstepSoundTracker.Track(go.GetInstanceID(), eventInstance.Value, route.FileFullPath, skGeneric); } catch { }
+                            try { FootstepSoundTracker.Track(id, eventInstance.Value, routeFile, skGeneric, FootstepSoundKind.Footstep); } catch { }
 
-                            FootstepLogger.Info($"[CFS] footstep -> {route.FileFullPath}");
+                            FootstepLogger.Info($"[CFS] footstep -> {routeFile}");
                         }
                         else
                         {
@@ -232,7 +237,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                     // 获取 ctx
 
 
-                    EnemyContext ctx = null;
+                    EnemyContext? ctx = null;
                     if (!EnemyContextRegistry.TryGet(gameObject, out ctx) || ctx == null)
                     {
                         try
@@ -249,7 +254,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
 
                     // 规则匹配（dash 可根据材质扩展：dash_{material}）
                     string material = ctx.FootStepMaterialType.ToString().ToLowerInvariant();
-                    VoiceRoute route = null;
+                    VoiceRoute? route = null;
                     bool matched = CustomFootStepSounds.Engine != null && CustomFootStepSounds.Engine.TryRoute(ctx, $"dash_{material}", ctx.VoiceType, out route);
                     if (!(matched && route != null && route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                     {
@@ -269,24 +274,25 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                         }
                         else
                         {
-                            FootstepLogger.DebugDetail("[CFS:Route] dash 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 CustomEnemySounds=Debug 查看 [CES:Path] cand/exists");
+                            FootstepLogger.DebugDetail("[CFS:Route] dash 未命中（UseSimpleRules=false）：复杂规则/默认模板未命中；可开启 Footstep=Verbose 查看 [CFS:Path] cand/exists");
                         }
                         return true; // 未匹配，继续原逻辑
                     }
 
+                        string routeFile = route.FileFullPath;
+
                         // 记录 dash 命中信息与候选路径
                         FootstepLogger.DebugDetail($"[CFS:Route] dash 命中: rule={route.MatchRule}, file={route.FileFullPath}");
-                        try
+                        LogTriedPathsVerbose(route);
+
+                        // Cooldown check (dash) before muting native event
+                        int did = gameObject.GetInstanceID();
+                        float dMinCd = GetMinCooldownSeconds();
+                        if (dMinCd > 0f && IsOnCooldownAndTouch(did, true, dMinCd, out var dRemain))
                         {
-                            if (route.TriedPaths != null && route.TriedPaths.Count > 0)
-                            {
-                                for (int i = 0; i < route.TriedPaths.Count; i++)
-                                {
-                                    FootstepLogger.DebugDetail($"[CFS:Path] tried[{i}]: {route.TriedPaths[i]}");
-                                }
-                            }
+                            FootstepLogger.DebugDetail($"[CFS:Cooldown] dash SKIP id={did} remain={dRemain:F2}s (min={dMinCd:F2}s)");
+                            return true; // dash cooldown fallback to original
                         }
-                        catch { }
 
                     // 创建一个原事件实例并静音，保留生命周期（避免依赖 internal AudioObject.GetOrCreate）
                     try
@@ -307,33 +313,23 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                     }
                     catch { }
 
-                        // Cooldown check (dash) after creating silent original instance
-                        int did = gameObject != null ? gameObject.GetInstanceID() : 0;
-                        float dMinCd = GetMinCooldownSeconds();
-                        if (dMinCd > 0f && IsOnCooldownAndTouch(did, true, dMinCd, out var dRemain))
-                        {
-                            FootstepLogger.DebugDetail($"[CFS:Cooldown] dash SKIP id={did} remain={dRemain:F2}s (min={dMinCd:F2}s)");
-                            return false;
-                        }
-
-
                     // 使用新接口播放自定义 3D 冲刺音效
                     // 注意：新接口自动处理 3D 距离、自动跟随 GameObject、自动资源清理
                     try
                     {
-                        var eventInstance = Duckov.AudioManager.PostCustomSFX(route.FileFullPath, gameObject, loop: false);
+                        var eventInstance = Duckov.AudioManager.PostCustomSFX(routeFile, gameObject, loop: false);
                         if (eventInstance.HasValue && eventInstance.Value.isValid())
                         {
                             // 设置音量（如果需要）
-                            try { eventInstance.Value.setVolume(ModSettings.FootstepVolumeScale); } catch { }
+                            try { eventInstance.Value.setVolume(FootstepConfig.Volume); } catch { }
 
                             // 追踪 EventInstance
-                            try { FootstepSoundTracker.Track(gameObject.GetInstanceID(), eventInstance.Value, route.FileFullPath, "dash"); } catch { }
+                            try { FootstepSoundTracker.Track(did, eventInstance.Value, routeFile, "dash", FootstepSoundKind.Dash); } catch { }
 
                             // 标记已播放
-                            try { MarkPlayed(gameObject != null ? gameObject.GetInstanceID() : 0, true); } catch { }
+                            try { MarkPlayed(did, true); } catch { }
 
-                            FootstepLogger.Info($"[CFS] dash -> {route.FileFullPath}");
+                            FootstepLogger.Info($"[CFS] dash -> {routeFile}");
                         }
                         else
                         {

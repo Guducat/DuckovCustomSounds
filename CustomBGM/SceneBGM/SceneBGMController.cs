@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using Duckov; // AudioManager
+using DuckovCustomSounds.CustomBGM.Core;
 
 namespace DuckovCustomSounds.CustomBGM.SceneBGM
 {
@@ -19,8 +20,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         private FMOD.Studio.EventInstance? bgmInstance;
 
         // 场景信息
-        private string sceneName;
-        private string musicType; // "Enter" or "Loop"
+        private string sceneName = string.Empty;
+        private string musicType = string.Empty; // "Enter" or "Loop"
 
         // 播放模式
         private bool isLoop;
@@ -37,7 +38,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         private bool isFadingOut = false;
 
         // 播放完成回调（仅用于单次播放）
-        public event Action OnPlaybackFinished;
+        public event Action? OnPlaybackFinished;
 
         // 定时器（用于检测播放结束）
         private float playbackCheckTimer = 0f;
@@ -60,9 +61,9 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
                 // 播放 BGM
                 SceneBGMLogger.Debug($"加载音频路径: {musicPath}");
-                bgmInstance = AudioManager.PlayCustomBGM(musicPath, loop: isLoop);
+                bgmInstance = CustomBGMPlayer.PlayMusicFile(musicPath, isLoop, stopExistingBGM: false);
 
-                if (!bgmInstance.HasValue || !bgmInstance.Value.isValid())
+                if (!CustomBGMPlayer.IsEventInstanceActive(bgmInstance))
                 {
                     SceneBGMLogger.Error($"播放场景 {musicType} BGM 失败: {sceneName}");
                     Destroy(this);
@@ -70,7 +71,15 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 }
 
                 // 设置初始音量为 0（淡入效果）
-                bgmInstance.Value.setVolume(0f);
+                if (!bgmInstance.HasValue)
+                {
+                    SceneBGMLogger.Error($"播放场景 {musicType} BGM 失败：实例为空: {sceneName}");
+                    Destroy(this);
+                    return;
+                }
+
+                var instance = bgmInstance.Value;
+                instance.setVolume(0f);
                 currentVolume = 0f;
                 targetVolume = baseVolume;
                 isPlaying = true;
@@ -89,8 +98,26 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// </summary>
         void Update()
         {
-            if (!isPlaying || !bgmInstance.HasValue || !bgmInstance.Value.isValid())
+            if (!isPlaying)
                 return;
+
+            if (!bgmInstance.HasValue || !bgmInstance.Value.isValid())
+            {
+                isPlaying = false;
+                return;
+            }
+
+            if (!CustomBGMPlayer.IsEventInstanceActive(bgmInstance))
+            {
+                if (isLoop)
+                {
+                    StopPlayback();
+                    return;
+                }
+
+                CheckPlaybackFinished();
+                return;
+            }
 
             try
             {
@@ -220,7 +247,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// </summary>
         public bool IsValid()
         {
-            return bgmInstance.HasValue && bgmInstance.Value.isValid() && isPlaying;
+            return isPlaying && CustomBGMPlayer.IsEventInstanceActive(bgmInstance);
         }
 
         /// <summary>

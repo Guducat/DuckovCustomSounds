@@ -19,7 +19,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             string soundKey,
             AudioManager.VoiceType voiceType,
             IEnumerable<string> preferredExts,
-            bool includePatternWithoutSoundKey)
+            bool includePatternWithoutSoundKey,
+            Action<string>? verboseLog = null,
+            string pathLogPrefix = "CES:Path")
         {
             if (string.IsNullOrEmpty(pattern)) yield break;
             var team = ctx.GetTeamNormalized();
@@ -39,7 +41,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                     .Replace("{soundKey}", sk)
                     .Replace("{ext}", ext);
                 var full1 = EnsureRooted(pathStr);
-                CESLogger.Verbose($"[CES:Path] cand: {full1}");
+                LogVerbose(verboseLog, pathLogPrefix, $"cand: {full1}");
                 yield return full1;
             }
 
@@ -58,7 +60,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                         .Replace("{voiceType}", vt)
                         .Replace("{ext}", ext);
                     var full2 = EnsureRooted(pathStr);
-                    CESLogger.Verbose($"[CES:Path] fallback-cand: {full2}");
+                    LogVerbose(verboseLog, pathLogPrefix, $"fallback-cand: {full2}");
                     yield return full2;
                 }
             }
@@ -73,7 +75,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             string soundKey,
             string voiceTypeString,
             IEnumerable<string> preferredExts,
-            bool includePatternWithoutSoundKey)
+            bool includePatternWithoutSoundKey,
+            Action<string>? verboseLog = null,
+            string pathLogPrefix = "CES:Path")
         {
             if (string.IsNullOrEmpty(pattern)) yield break;
             var team = ctx.GetTeamNormalized();
@@ -92,7 +96,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                     .Replace("{soundKey}", sk)
                     .Replace("{ext}", ext);
                 var full1 = EnsureRooted(pathStr);
-                CESLogger.Verbose($"[CES:Path] cand: {full1}");
+                LogVerbose(verboseLog, pathLogPrefix, $"cand: {full1}");
                 yield return full1;
             }
 
@@ -110,13 +114,23 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                         .Replace("{voiceType}", vt)
                         .Replace("{ext}", ext);
                     var full2 = EnsureRooted(pathStr);
-                    CESLogger.Verbose($"[CES:Path] fallback-cand: {full2}");
+                    LogVerbose(verboseLog, pathLogPrefix, $"fallback-cand: {full2}");
                     yield return full2;
                 }
             }
         }
 
-        public static bool TryResolveExisting(IEnumerable<string> candidates, bool validateExists, int ownerId, out string chosen, out List<string> tried)
+        public static bool TryResolveExisting(
+            IEnumerable<string> candidates,
+            bool validateExists,
+            int ownerId,
+            out string? chosen,
+            out List<string> tried,
+            Action<string>? verboseLog = null,
+            Action<string>? debugLog = null,
+            string pathLogPrefix = "CES:Path",
+            string variantLogPrefix = "CES:Variant",
+            bool? bindVariantIndexPerOwner = null)
         {
             tried = new List<string>();
             foreach (var c in candidates)
@@ -125,25 +139,32 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                 tried.Add(normalized);
                 if (!validateExists)
                 {
-                    CESLogger.Verbose($"[CES:Path] skip-exists-check: {normalized}");
+                    LogVerbose(verboseLog, pathLogPrefix, $"skip-exists-check: {normalized}");
                     chosen = normalized; return true;
                 }
                 try
                 {
                     bool exists = File.Exists(normalized);
-                    CESLogger.Verbose($"[CES:Path] exists={exists}: {normalized}");
+                    LogVerbose(verboseLog, pathLogPrefix, $"exists={exists}: {normalized}");
                     if (exists)
                     {
                         // 基础文件存在，尝试查找随机变体
-                        var final = ChooseRandomVariant(normalized, ownerId, out var _);
-                        CESLogger.Verbose($"[CES:Path] 选择文件: {final}");
+                        var final = ChooseRandomVariant(
+                            normalized,
+                            ownerId,
+                            out var _,
+                            verboseLog ?? debugLog,
+                            pathLogPrefix,
+                            variantLogPrefix,
+                            bindVariantIndexPerOwner);
+                        LogVerbose(verboseLog, pathLogPrefix, $"选择文件: {final}");
                         chosen = final;
                         return true;
                     }
                 }
                 catch (Exception ex)
                 {
-                    CESLogger.Verbose($"[CES:Path] exists-check-ex: {normalized} => {ex.Message}");
+                    LogVerbose(verboseLog, pathLogPrefix, $"exists-check-ex: {normalized} => {ex.Message}");
                 }
             }
             chosen = null; return false;
@@ -153,7 +174,14 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
         /// 若存在同名变体（base_1.ext, base_2.ext, ...，编号需连续），随机在 [0, N) 中选择其一
         /// 0 表示基础文件本身；若出现异常或无变体，返回基础文件
         /// </summary>
-        internal static string ChooseRandomVariant(string baseFullPath, int ownerId, out int availableCount)
+        internal static string ChooseRandomVariant(
+            string baseFullPath,
+            int ownerId,
+            out int availableCount,
+            Action<string>? debugLog = null,
+            string pathLogPrefix = "CES:Path",
+            string variantLogPrefix = "CES:Variant",
+            bool? bindVariantIndexPerOwner = null)
         {
             availableCount = 1;
             try
@@ -175,35 +203,50 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                 }
 
                 // 是否启用绑定：启用则使用绑定索引；否则随机
-                bool bindEnabled = CustomEnemySounds.Config?.BindVariantIndexPerEnemy ?? false;
+                bool bindEnabled = bindVariantIndexPerOwner ?? (CustomEnemySounds.Config?.BindVariantIndexPerEnemy ?? false);
                 if (bindEnabled)
                 {
-                    var boundIndex = VariantIndexBinder.GetOrAllocate(ownerId, count);
+                    var boundIndex = VariantIndexBinder.GetOrAllocate(ownerId, count, bindEnabled, debugLog, variantLogPrefix);
                     int selectedIndex = boundIndex;
                     if (boundIndex >= count)
                     {
                         int fallbackIndex = Mathf.Clamp(boundIndex, 0, count - 1);
-                        CESLogger.Debug($"[CES:Variant] 绑定索引 {boundIndex} 超出范围（共 {count} 个变体），回退到索引 {fallbackIndex}");
+                        LogDebug(debugLog, variantLogPrefix, $"绑定索引 {boundIndex} 超出范围（共 {count} 个变体），回退到索引 {fallbackIndex}");
                         selectedIndex = fallbackIndex;
                     }
                     var selectedBound = selectedIndex == 0 ? baseFullPath : Path.Combine(dir, $"{name}_{selectedIndex}{ext}");
-                    CESLogger.Debug($"[CES:Variant] 使用绑定索引 {selectedIndex} 选择文件 -> {selectedBound}");
+                    LogDebug(debugLog, variantLogPrefix, $"使用绑定索引 {selectedIndex} 选择文件 -> {selectedBound}");
                     return selectedBound;
                 }
                 else
                 {
                     int index = UnityEngine.Random.Range(0, count);
-                    CESLogger.Debug($"[CES:Path] 找到 {count} 个语音变体（包括基础文件），随机选择索引 {index}");
+                    LogDebug(debugLog, pathLogPrefix, $"找到 {count} 个语音变体（包括基础文件），随机选择索引 {index}");
                     var selected = index == 0 ? baseFullPath : Path.Combine(dir, $"{name}_{index}{ext}");
-                    CESLogger.Debug($"[CES:Path] 最终选择文件 -> {selected}");
+                    LogDebug(debugLog, pathLogPrefix, $"最终选择文件 -> {selected}");
                     return selected;
                 }
             }
             catch (Exception ex)
             {
-                CESLogger.Debug($"[CES:Path] 变体检测异常：{ex.Message}");
+                LogDebug(debugLog, pathLogPrefix, $"变体检测异常：{ex.Message}");
                 return baseFullPath;
             }
+        }
+
+        private static void LogVerbose(Action<string>? logger, string prefix, string message)
+        {
+            (logger ?? CESLogger.Verbose)($"[{NormalizePrefix(prefix, "CES:Path")}] {message}");
+        }
+
+        private static void LogDebug(Action<string>? logger, string prefix, string message)
+        {
+            (logger ?? CESLogger.Debug)($"[{NormalizePrefix(prefix, "CES:Path")}] {message}");
+        }
+
+        private static string NormalizePrefix(string prefix, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(prefix) ? fallback : prefix.Trim();
         }
 
         private static string EnsureRooted(string relativeOrAbsolute)
@@ -225,7 +268,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             return path.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
         }
 
-        private static string Safe(string s)
+        private static string Safe(string? s)
         {
             if (string.IsNullOrEmpty(s)) return "unknown";
             return s.Replace(' ', '_').Replace(':', '_');

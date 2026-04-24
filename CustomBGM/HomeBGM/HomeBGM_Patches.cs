@@ -4,7 +4,6 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using Duckov.Scenes;
-using DuckovCustomSounds.CustomBGM.SceneBGM;
 
 
 namespace DuckovCustomSounds.CustomBGM.HomeBGM
@@ -23,10 +22,9 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
                 if (string.IsNullOrWhiteSpace(name)) return true;
 
-                if (name == "mus_title")
+                if (string.Equals(name, "mus_title", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 在 startFX 序列进行中，暂缓 mus_title：阻止原版与拦截，避免打断 startFX
-                    if (CustomSceneBGM.IsMenuStartSequenceActive())
+                    if (HomeBGMManager.IsTitleStartSequenceActive())
                     {
                         HomeBGMLogger.Debug("[MenuStart] 序列进行中：屏蔽 mus_title（避免与 startFX 冲突）");
                         __result = null;
@@ -45,16 +43,12 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
                     try
                     {
-                        // 停止当前BGM（如果有）
-                        Duckov.AudioManager.StopBGM();
-
-                        // 播放自定义title BGM
-                        HomeBGMManager.PlayTitleBGM();
+                        HomeBGMManager.PlayTitleBGMWithStartFX();
 
                         // 设置返回值为空（因为我们自己处理了）
                         __result = null;
 
-                        HomeBGMLogger.Info("自定义title BGM播放成功");
+                        HomeBGMLogger.Info("自定义title BGM序列已启动");
                         return false; // 跳过原方法
                     }
                     catch (Exception ex)
@@ -96,6 +90,7 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
     {
         // 防重入标志：防止 Set 方法被递归调用
         private static bool _isProcessingSet = false;
+        private static float _lastStartStingerDelayLogTime = -10f;
 
             // 手动切歌标记：用于确保手动切歌时强制显示信息气泡
             [ThreadStatic]
@@ -200,7 +195,7 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
             __state = new SetState { origPlay = play, origShowInfo = showInfo, realIndex = index };
             var manualFlagAtEnter = _manualInvokeFlag;
-            HomeBGMLogger.Debug($"Set_Prefix ENTER: index={index}, play={play}, showInfo={showInfo}, manualFlag={manualFlagAtEnter}");
+            HomeBGMLogger.Verbose($"Set_Prefix ENTER: index={index}, play={play}, showInfo={showInfo}, manualFlag={manualFlagAtEnter}");
 
             if (HomeBGMManager.HasHomeSongs)
             {
@@ -220,6 +215,18 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
                 if (totalCount > 0)
                 {
                     index = ((index % totalCount) + totalCount) % totalCount;
+                }
+
+                if (play && !manualFlagAtEnter && HomeBGMManager.IsStartStingerProtectionActive())
+                {
+                    try { AccessTools.Field(typeof(BaseBGMSelector), "waitForStinger")?.SetValue(__instance, true); } catch { }
+                    try { AccessTools.Field(typeof(BaseBGMSelector), "index")?.SetValue(__instance, index); } catch { }
+                    if (Time.realtimeSinceStartup - _lastStartStingerDelayLogTime >= 1f)
+                    {
+                        _lastStartStingerDelayLogTime = Time.realtimeSinceStartup;
+                        HomeBGMLogger.Debug($"start.mp3 保护中：延后自动 HomeBGM 播放，index={index}");
+                    }
+                    return false;
                 }
 
                 // 检查是否是自定义 BGM（有 filePath）

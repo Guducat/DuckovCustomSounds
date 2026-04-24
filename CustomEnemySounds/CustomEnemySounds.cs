@@ -14,8 +14,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
     /// </summary>
     internal static class CustomEnemySounds
     {
-        public static VoiceConfig Config { get; private set; }
-        public static VoiceRuleEngine Engine { get; } = new VoiceRuleEngine();
+        public static VoiceConfig Config { get; private set; } = new VoiceConfig();
+        public static VoiceRuleEngine Engine { get; } = new VoiceRuleEngine(CESLogger.Info, CESLogger.Debug, CESLogger.Verbose, "CES:Rule");
         public static bool IsLoaded { get; private set; }
 
         /// <summary>

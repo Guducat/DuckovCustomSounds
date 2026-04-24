@@ -15,7 +15,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
 
             public PropertyAccessor(PropertyInfo property) => _property = property;
 
-            public override object GetValue(object target) => _property.GetValue(target);
+            public override object? GetValue(object target) => _property.GetValue(target);
         }
 
         private sealed class FieldAccessor : MemberAccessor
@@ -24,18 +24,18 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
 
             public FieldAccessor(FieldInfo field) => _field = field;
 
-            public override object GetValue(object target) => _field.GetValue(target);
+            public override object? GetValue(object target) => _field.GetValue(target);
         }
 
         private abstract class MemberAccessor
         {
-            public abstract object GetValue(object target);
+            public abstract object? GetValue(object target);
         }
 
         private static readonly ConcurrentDictionary<(Type, string), MemberAccessor> Cache =
             new ConcurrentDictionary<(Type, string), MemberAccessor>();
 
-        public static object GetValue(object target, string name)
+        public static object? GetValue(object target, string name)
         {
             if (target == null || string.IsNullOrEmpty(name)) return null;
 
@@ -92,7 +92,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             {
             }
 
-            public override object GetValue(object target) => null;
+            public override object? GetValue(object target) => null;
         }
     }
 }

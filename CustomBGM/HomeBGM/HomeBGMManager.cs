@@ -1,7 +1,9 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using Duckov;
+using DuckovCustomSounds.CustomBGM.Core;
 
 namespace DuckovCustomSounds.CustomBGM.HomeBGM
 {
@@ -19,8 +21,9 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
             public string FilePath;
         }
 
-        private static string TitleBGMPath;
+        private static string? TitleBGMPath;
         private static List<MusicInfo> HomeBGMList = new List<MusicInfo>();
+        private const float TitleStartFxMaxWaitSeconds = 30f;
 
         public static bool HasHomeSongs => HomeBGMList != null && HomeBGMList.Count > 0;
 
@@ -33,6 +36,17 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
         // 当前播放的 BGM EventInstance（用于手动管理 BGM 停止）
         private static FMOD.Studio.EventInstance? _currentBGMInstance = null;
+        private static FMOD.Studio.EventInstance? s_TitleStartFXInstance = null;
+        private static bool s_TitleStartSequenceActive = false;
+        private static int s_TitleStartSequenceId = 0;
+
+        // 进入基地 start stinger 保护：避免 BaseBGMSelector.Set 在下一帧立刻抢占 start.mp3
+        private static FMOD.Studio.EventInstance? s_StartStingerInstance = null;
+        private static float s_StartStingerFallbackUntil = -1f;
+        private static float s_StartStingerMaxUntil = -1f;
+        private static bool s_StartStingerUseFallbackOnly = false;
+        private const float StartStingerFallbackGuardSeconds = 6f;
+        private const float StartStingerMaxGuardSeconds = 30f;
 
         // 递归保护标志：防止 StopCurrentBGM -> AudioManager.StopBGM -> StopBGM_Postfix -> StopCurrentBGM 无限递归
         private static bool _isStoppingBGM = false;
@@ -40,15 +54,18 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
         // --- 加载逻辑 (由 ModBehaviour.cs 调用) ---
         public static void Load()
         {
+            AudioFileExtensions.ClearCache();
+
             // 加载主菜单 BGM
-            TitleBGMPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "title.mp3");
-            if (File.Exists(TitleBGMPath))
+            string titleDir = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM");
+            TitleBGMPath = AudioFileExtensions.FindMusicFile(titleDir, "title");
+            if (!string.IsNullOrEmpty(TitleBGMPath))
             {
                 HomeBGMLogger.Info($"找到主菜单音乐: {TitleBGMPath}");
             }
             else
             {
-                HomeBGMLogger.Info($"未找到主菜单音乐文件（可选）: {TitleBGMPath}");
+                HomeBGMLogger.Info($"未找到主菜单音乐文件（可选）: {Path.Combine(titleDir, "title.*")}");
                 TitleBGMPath = null;
             }
 
@@ -60,8 +77,8 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
                 return;
             }
 
-            // 获取所有 .mp3 文件
-            string[] musicFiles = Directory.GetFiles(homeBGMPath, "*.mp3");
+            // 获取所有支持格式的音乐文件
+            string[] musicFiles = AudioFileExtensions.GetMusicFiles(homeBGMPath);
             HomeBGMLogger.Info($"在 HomeBGM 中找到 {musicFiles.Length} 首歌曲");
 
             foreach (string filePath in musicFiles)
@@ -114,8 +131,8 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
         // --- 公共接口：获取音乐信息 ---
         public static bool TryGetCurrentMusicInfo(out string name, out string author)
         {
-            name = null;
-            author = null;
+            name = string.Empty;
+            author = string.Empty;
             if (!HasHomeSongs) return false;
             int idx = currentHomeBGMIndex;
             if (idx < 0 || idx >= HomeBGMList.Count) return false;
@@ -127,9 +144,9 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
         public static bool TryGetHomeMusicInfo(int index, out string name, out string author, out string filePath)
         {
-            name = null;
-            author = null;
-            filePath = null;
+            name = string.Empty;
+            author = string.Empty;
+            filePath = string.Empty;
             if (!HasHomeSongs) return false;
             if (index < 0 || index >= HomeBGMList.Count) return false;
             var info = HomeBGMList[index];
@@ -153,9 +170,55 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
         public static int GetHomeCount() => HasHomeSongs ? HomeBGMList.Count : 0;
 
         // 获取 TitleBGM 路径（用于补丁检查）
-        public static string GetTitleBGMPath() => TitleBGMPath;
+        public static string GetTitleBGMPath() => TitleBGMPath ?? string.Empty;
 
         // --- 播放控制 (使用新接口) ---
+        public static bool IsTitleStartSequenceActive() => s_TitleStartSequenceActive;
+
+        public static void PlayTitleBGMWithStartFX()
+        {
+            if (!HomeBGMConfig.Enabled) return; // 模块未启用
+            if (string.IsNullOrEmpty(TitleBGMPath)) return;
+
+            string titleDir = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM");
+            var startFxPath = AudioFileExtensions.FindMusicFile(titleDir, "startFX");
+            if (string.IsNullOrEmpty(startFxPath))
+            {
+                PlayTitleBGM();
+                return;
+            }
+
+            try
+            {
+                ClearStartStingerProtection();
+                CancelTitleStartSequence(false);
+                StopTrackedBGM(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+
+                HomeBGMLogger.Info($"使用 Music 总线播放主菜单 startFX: {startFxPath}");
+                _currentBGMInstance = CustomBGMPlayer.PlayMusicFile(startFxPath, loop: false, stopExistingBGM: true);
+                s_TitleStartFXInstance = _currentBGMInstance;
+                ApplyVolumeToCurrentBGM();
+                SetCurrentBGMName("Title StartFX");
+
+                var runner = ModBehaviour.Instance;
+                int sequenceId = ++s_TitleStartSequenceId;
+                if (runner != null && CustomBGMPlayer.IsEventInstanceActive(s_TitleStartFXInstance))
+                {
+                    s_TitleStartSequenceActive = true;
+                    runner.StartCoroutine(PlayTitleBGMAfterStartFX(s_TitleStartFXInstance, sequenceId));
+                    return;
+                }
+
+                FinishTitleStartSequence(sequenceId);
+            }
+            catch (System.Exception ex)
+            {
+                HomeBGMLogger.Warning($"播放主菜单 startFX 失败: {ex.Message}");
+                int sequenceId = ++s_TitleStartSequenceId;
+                FinishTitleStartSequence(sequenceId);
+            }
+        }
+
         public static void PlayTitleBGM()
         {
             if (!HomeBGMConfig.Enabled) return; // 模块未启用
@@ -163,16 +226,16 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
             try
             {
+                ClearStartStingerProtection();
+                CancelTitleStartSequence(false);
+
                 // 1. 停止当前 BGM（如果有）
-                if (_currentBGMInstance.HasValue && _currentBGMInstance.Value.isValid())
-                {
-                    _currentBGMInstance.Value.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
-                    _currentBGMInstance.Value.release();
-                }
+                StopTrackedBGM(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
 
                 // 2. 播放新 BGM（循环播放，走 Music 总线）
                 HomeBGMLogger.Info($"使用 Music 总线播放主菜单 BGM: {TitleBGMPath}");
-                _currentBGMInstance = AudioManager.PlayCustomBGM(TitleBGMPath, loop: true);
+                _currentBGMInstance = CustomBGMPlayer.PlayMusicFile(TitleBGMPath, loop: true, stopExistingBGM: true);
+                ApplyVolumeToCurrentBGM();
 
                 // 3. 更新当前 BGM 名称
                 SetCurrentBGMName("Title BGM");
@@ -181,6 +244,71 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
             {
                 HomeBGMLogger.Warning($"播放主菜单 BGM 失败: {ex.Message}");
             }
+        }
+
+        private static IEnumerator PlayTitleBGMAfterStartFX(FMOD.Studio.EventInstance? startFxInstance, int sequenceId)
+        {
+            float startedAt = Time.realtimeSinceStartup;
+            while (CustomBGMPlayer.IsEventInstanceActive(startFxInstance) &&
+                   Time.realtimeSinceStartup - startedAt < TitleStartFxMaxWaitSeconds)
+            {
+                yield return null;
+            }
+
+            FinishTitleStartSequence(sequenceId);
+        }
+
+        private static void FinishTitleStartSequence(int sequenceId)
+        {
+            if (sequenceId != s_TitleStartSequenceId)
+                return;
+
+            StopCurrentTitleStartFX(false);
+            s_TitleStartSequenceActive = false;
+            PlayTitleBGM();
+        }
+
+        private static void CancelTitleStartSequence(bool fade)
+        {
+            if (!s_TitleStartSequenceActive && !s_TitleStartFXInstance.HasValue)
+                return;
+
+            s_TitleStartSequenceId++;
+            s_TitleStartSequenceActive = false;
+            StopCurrentTitleStartFX(fade);
+        }
+
+        private static void StopCurrentTitleStartFX(bool fade)
+        {
+            if (!s_TitleStartFXInstance.HasValue)
+                return;
+
+            try
+            {
+                var instance = s_TitleStartFXInstance.Value;
+                if (instance.isValid())
+                {
+                    instance.stop(fade ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE);
+                    instance.release();
+                }
+            }
+            catch { }
+            finally
+            {
+                _currentBGMInstance = null;
+                s_TitleStartFXInstance = null;
+            }
+        }
+
+        private static void StopTrackedBGM(FMOD.Studio.STOP_MODE stopMode)
+        {
+            if (_currentBGMInstance.HasValue && _currentBGMInstance.Value.isValid())
+            {
+                _currentBGMInstance.Value.stop(stopMode);
+                _currentBGMInstance.Value.release();
+            }
+
+            _currentBGMInstance = null;
         }
 
         public static void PlayHomeBGM(int index)
@@ -196,6 +324,8 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
             var info = HomeBGMList[currentHomeBGMIndex];
             try
             {
+                ClearStartStingerProtection();
+
                 // 1. 停止当前 BGM（如果有）
                 if (_currentBGMInstance.HasValue && _currentBGMInstance.Value.isValid())
                 {
@@ -308,6 +438,8 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
 
             try
             {
+                ClearStartStingerProtection();
+
                 // 1. 停止当前 BGM（如果有）
                 if (_currentBGMInstance.HasValue && _currentBGMInstance.Value.isValid())
                 {
@@ -384,6 +516,8 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
             _isStoppingBGM = true;
             try
             {
+                ClearStartStingerProtection();
+                CancelTitleStartSequence(fade);
                 s_AutoAdvanceEnabled = false;
 
                 // 停止自定义 BGM 实例（如果有）
@@ -406,6 +540,64 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
             {
                 _isStoppingBGM = false;
             }
+        }
+
+        public static void BeginStartStingerProtection(FMOD.Studio.EventInstance? instance)
+        {
+            try
+            {
+                float now = Time.realtimeSinceStartup;
+                s_StartStingerInstance = instance;
+                s_StartStingerFallbackUntil = now + StartStingerFallbackGuardSeconds;
+                s_StartStingerMaxUntil = now + StartStingerMaxGuardSeconds;
+                s_StartStingerUseFallbackOnly = !CustomBGMPlayer.IsEventInstanceActive(instance);
+
+                HomeBGMLogger.Debug($"start.mp3 保护已启用: instanceActive={!s_StartStingerUseFallbackOnly}, fallback={StartStingerFallbackGuardSeconds:F1}s, max={StartStingerMaxGuardSeconds:F1}s");
+            }
+            catch (System.Exception ex)
+            {
+                HomeBGMLogger.Debug($"start.mp3 保护启用失败: {ex.Message}");
+            }
+        }
+
+        public static bool IsStartStingerProtectionActive()
+        {
+            try
+            {
+                float now = Time.realtimeSinceStartup;
+
+                if (!s_StartStingerUseFallbackOnly && s_StartStingerInstance.HasValue)
+                {
+                    if (now < s_StartStingerMaxUntil && CustomBGMPlayer.IsEventInstanceActive(s_StartStingerInstance))
+                    {
+                        return true;
+                    }
+
+                    ClearStartStingerProtection();
+                    return false;
+                }
+
+                if (now < s_StartStingerFallbackUntil)
+                {
+                    return true;
+                }
+
+                ClearStartStingerProtection();
+                return false;
+            }
+            catch
+            {
+                ClearStartStingerProtection();
+                return false;
+            }
+        }
+
+        private static void ClearStartStingerProtection()
+        {
+            s_StartStingerInstance = null;
+            s_StartStingerFallbackUntil = -1f;
+            s_StartStingerMaxUntil = -1f;
+            s_StartStingerUseFallbackOnly = false;
         }
 
         // 通过反射安全更新 AudioManager 的私有字段 currentBGMName（避免修改游戏本体代码）
@@ -664,7 +856,7 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
                     PlayNextHomeBGM();
                 }
             }
-            catch (System.Exception ex)
+            catch (System.Exception)
             {
                 //HomeBGMLogger.Debug($"自动切歌轮询异常: {ex.Message}");
             }

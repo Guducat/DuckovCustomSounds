@@ -12,7 +12,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
     {
         private static readonly ConcurrentDictionary<int, EnemyContext> Map = new ConcurrentDictionary<int, EnemyContext>();
 
-        public static EnemyContext Register(CharacterMainControl cmc, AudioManager.VoiceType voiceType, AudioManager.FootStepMaterialType foot)
+        public static EnemyContext? Register(CharacterMainControl? cmc, AudioManager.VoiceType voiceType, AudioManager.FootStepMaterialType foot)
         {
             if (cmc == null) return null;
             var ctx = EnemyContext.FromCharacter(cmc, voiceType, foot);
@@ -23,11 +23,10 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             }
             Map[ctx.InstanceId] = ctx;
             CESLogger.Debug($"登记敌人上下文: {ctx}");
-            try { CESLogger.Info($"登记敌人上下文: {ctx}"); } catch {}
             return ctx;
         }
 
-        public static bool TryGet(GameObject go, out EnemyContext ctx)
+        public static bool TryGet(GameObject? go, out EnemyContext? ctx)
         {
             ctx = null;
             if (go == null) return false;
@@ -151,6 +150,11 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
 										
 										// 注册到注册表
 										var registeredCtx = EnemyContextRegistry.Register(character, character.AudioVoiceType, character.FootStepMaterialType);
+										if (registeredCtx == null)
+										{
+											CESLogger.Debug("[Batch] Register 返回空上下文，跳过 Controller 注入");
+											continue;
+										}
 										
 										var go = character.gameObject;
 										var existing = go.GetComponent<DuckovCustomSounds.CustomBGM.BossBGM.BossBGMController>();
@@ -162,12 +166,12 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
 												controller.Initialize(registeredCtx);
 												added++;
 												DuckovCustomSounds.CustomBGM.BossBGM.BossBGMLogger.Info($"[Batch] 发现并注册新 BOSS: {registeredCtx.NameKey}");
+												}
+												catch (System.Exception ex)
+												{
+													DuckovCustomSounds.CustomBGM.BossBGM.BossBGMLogger.Warning($"[Batch] 为新 BOSS 添加 Controller 失败: {registeredCtx.NameKey} - {ex.Message}");
+												}
 											}
-											catch (System.Exception ex)
-											{
-												DuckovCustomSounds.CustomBGM.BossBGM.BossBGMLogger.Warning($"[Batch] 为新 BOSS 添加 Controller 失败: {registeredCtx.NameKey} - {ex.Message}");
-											}
-										}
 										else
 										{
 											existed++;

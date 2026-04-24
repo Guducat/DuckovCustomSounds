@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using DuckovCustomSounds.CustomBGM.Core;
 using DuckovCustomSounds.CustomEnemySounds.Context;
 
 namespace DuckovCustomSounds.CustomBGM.BossBGM
@@ -11,8 +12,8 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
     /// </summary>
     internal static class BossMusicResolver
     {
-        private static string bossBGMFolder;
-        private static Dictionary<string, string> pathCache = new Dictionary<string, string>();
+        private static string bossBGMFolder = string.Empty;
+        private static Dictionary<string, string?> pathCache = new Dictionary<string, string?>();
         private static HashSet<string> availableMusic = new HashSet<string>();
 
         /// <summary>
@@ -63,23 +64,17 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             if (!Directory.Exists(bossBGMFolder))
                 return;
 
-            string[] extensions = { "*.mp3", "*.wav", "*.ogg", "*.flac" };
-
-            foreach (string ext in extensions)
+            foreach (string file in AudioFileExtensions.GetMusicFiles(bossBGMFolder))
             {
                 try
                 {
-                    string[] files = Directory.GetFiles(bossBGMFolder, ext, SearchOption.TopDirectoryOnly);
-                    foreach (string file in files)
-                    {
-                        string fileName = Path.GetFileNameWithoutExtension(file);
-                        availableMusic.Add(fileName.ToLowerInvariant());
-                        BossBGMLogger.Debug($"发现音乐文件: {fileName}");
-                    }
+                    string fileName = Path.GetFileNameWithoutExtension(file);
+                    availableMusic.Add(fileName.ToLowerInvariant());
+                    BossBGMLogger.Debug($"发现音乐文件: {fileName}");
                 }
                 catch (Exception ex)
                 {
-                    BossBGMLogger.Warning($"扫描文件失败 ({ext}): {ex.Message}");
+                    BossBGMLogger.Warning($"扫描文件失败 ({file}): {ex.Message}");
                 }
             }
         }
@@ -91,7 +86,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// 2. 回退到 "default_boss.mp3"
         /// 3. 都不存在返回 null
         /// </summary>
-        public static string ResolveMusicPath(EnemyContext ctx)
+        public static string? ResolveMusicPath(EnemyContext? ctx)
         {
             if (ctx == null)
                 return null;
@@ -99,7 +94,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             string nameKey = ctx.NameKey ?? "unknown";
 
             // 检查缓存
-            if (pathCache.TryGetValue(nameKey, out string cached))
+            if (pathCache.TryGetValue(nameKey, out string? cached))
             {
                 return cached;
             }
@@ -110,7 +105,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             BossBGMLogger.Debug($"解析音乐路径: nameKey={nameKey}, cleanName={cleanName}");
 
             // 尝试匹配特定 BOSS 音乐
-            string specificPath = FindMusicFile(cleanName);
+            string? specificPath = FindMusicFile(cleanName);
             if (specificPath != null)
             {
                 pathCache[nameKey] = specificPath;
@@ -119,7 +114,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             }
 
             // 回退到默认 BOSS 音乐
-            string defaultPath = FindMusicFile("default_boss");
+            string? defaultPath = FindMusicFile("default_boss");
             if (defaultPath != null)
             {
                 pathCache[nameKey] = defaultPath;
@@ -153,20 +148,9 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// <summary>
         /// 查找音乐文件（按优先级尝试不同扩展名）
         /// </summary>
-        private static string FindMusicFile(string baseName)
+        private static string? FindMusicFile(string baseName)
         {
-            string[] extensions = { ".mp3", ".wav", ".ogg", ".flac" };
-
-            foreach (string ext in extensions)
-            {
-                string filePath = Path.Combine(bossBGMFolder, baseName + ext);
-                if (File.Exists(filePath))
-                {
-                    return filePath;
-                }
-            }
-
-            return null;
+            return AudioFileExtensions.FindMusicFile(bossBGMFolder, baseName);
         }
 
         /// <summary>
@@ -175,6 +159,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         public static void ClearCache()
         {
             pathCache.Clear();
+            AudioFileExtensions.ClearCache(bossBGMFolder);
             BossBGMLogger.Debug("路径缓存已清除");
         }
 

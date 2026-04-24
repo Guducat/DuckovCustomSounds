@@ -7,7 +7,7 @@ hero:
   text: Audio customization and Sound Pack system
   tagline: BGM, enemy voices, footsteps, weapons, items, kill feedback and more — switch by Sound Pack
   image:
-    src: /DuckovCustomSounds.png
+    src: https://github.com/Guducat/DuckovCustomSounds/raw/v2.x/docs/.vitepress/public/DuckovCustomSounds.png
     alt: Duckov Custom Sounds
   actions:
     - theme: brand
@@ -26,4 +26,3 @@ features:
 ---
 
 Welcome! This is the documentation site for Duckov Custom Sounds — an audio mod for Escape from Duckov. Start with Quickstart, then read module pages as needed.
-

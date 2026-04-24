@@ -4,148 +4,109 @@ title: 声音包系统
 
 # 声音包系统
 
-本页面向“普通玩家”和“资源包作者”，介绍如何使用与制作声音包（Sound Pack），以及系统的工作原理与注意事项。你可以通过“声音包”在不同成套音频资源之间一键切换。
+声音包让你在不同成套音频资源之间一键切换。切换后需重启游戏生效。
 
-提示：切换声音包后需要重启游戏生效。
+## 装别人的包
 
-> [!NOTE]
-> 目前 ModConfig UI 支持尚未完善，你看到的属于前瞻性内容。
+1. 把包文件夹放到 `DuckovCustomSounds/` 下。
+2. 启动游戏，ModConfig → 选你的声音包。
+3. 重启游戏。
 
-## 如何安装与切换
+包没出现在列表？检查文件夹里有没有 `pack.json`，文件格式对不对。
 
-- 安装位置
-  - 游戏根目录下的 `DuckovCustomSounds/`。
-  - “默认资源”（不启用任何包）放在根目录直下的模块目录中，如 `TitleBGM/`、`HomeBGM/`、`SceneBGM/`、`BossBGM/`、`Extraction/`、`CustomEnemySounds/`、`CustomFootStepSounds/` 等。
-  - 声音包安装为子文件夹：`DuckovCustomSounds/<包ID>/`，该文件夹内必须包含一个 `pack.json` 元数据文件，以及你要替换的模块目录。
+## 切换与恢复
 
-- 切换方法
-  - 优先：在游戏内 ModConfig → “声音包”下拉列表选择需要的包名称，点击应用后重启游戏。
-  - 备选：编辑 `DuckovCustomSounds/settings.json`，将 `currentSoundPack` 设置为目标包的“包ID”（即包文件夹名）。保存后重启游戏。
+- **ModConfig（推荐）**：游戏内 ModConfig → 声音包下拉列表，选择后重启。
+- **settings.json（备选）**：编辑 `currentSoundPack` 为空串 `""` 恢复默认，或设为包文件夹名。
+- **恢复 Default**：在 ModConfig 选 "Default"，或清空 `currentSoundPack`，重启。
 
-- 恢复默认
-  - 在 ModConfig 中选择“Default”，或将 `settings.json.currentSoundPack` 置为空字符串 `""`，然后重启。
+没提供的模块会自动回退：当前包 → Default（根目录）→ 原版音效。
 
-- 常见问题
-  - 看不到任何包：请确认 `DuckovCustomSounds/` 下是否存在包含 `pack.json` 的包文件夹；如果没有声音包，也可以直接在根目录的默认模块目录中放入音频文件，系统会把它识别为“Default”。
-  - 切换不生效：切换写入的是 `settings.json`，需“重启游戏”后才真正应用。
-  - 只改了一部分模块：允许。未提供的部分会按“当前包 → Default → 原版”的顺序回退。
-  - 如何确认当前选择：打开 `DuckovCustomSounds/settings.json` 查看 `currentSoundPack`；或在 ModConfig 的说明文本处查看当前包信息。
+## 自己做包
 
-## 进阶：如何制作一个声音包
+1. 在 `DuckovCustomSounds/` 下创建包文件夹，名字用英文、数字、下划线（这就是包 ID）。例如 `MyPack/`。
+2. 按模块目录结构放入你要替换的音频（只放你需要的部分）。
+3. 在包文件夹里创建 `pack.json`。
+4. 重启游戏，ModConfig 选中，再重启。
 
-> 💡 **工具推荐**: 使用我们的[声音包生成器工具](../tools/sound-pack-generator.md)可以快速生成符合格式的pack.json文件！
+**目录示例**：
+```
+DuckovCustomSounds/
+├── TitleBGM/                     # Default（根目录资源）
+├── HomeBGM/
+├── BossBGM/
+├── MyPack/                       # 你的包（包 ID = MyPack）
+│   ├── pack.json
+│   ├── HomeBGM/
+│   └── CustomEnemySounds/
+└── AnotherPack/
+    ├── pack.json
+    └── CustomFootStepSounds/
+```
 
-- 目录结构（示例）
-  - 包应放在 `DuckovCustomSounds/<包ID>/` 下。包ID推荐使用英文、数字、下划线，避免空格与特殊字符。
+## pack.json
 
-  ```
-  DuckovCustomSounds/
-  ├─ settings.json                 # 全局设置（不要打包带走）
-  ├─ TitleBGM/                     # Default（非包）示例：根目录直放即为“默认”
-  ├─ HomeBGM/
-  ├─ SceneBGM/
-  ├─ BossBGM/
-  │   └─ ...
-  ├─ MyPack/                       # 声音包示例（包ID = MyPack）
-  │  ├─ pack.json                  # 元数据（必须）
-  │  ├─ HomeBGM/
-  │  ├─ Extraction/
-  │  └─ CustomEnemySounds/
-  └─ AnotherPack/
-     ├─ pack.json
-     └─ CustomFootStepSounds/
-  ```
+**最小配置**：
+```json
+{
+  "name": "你的包名",
+  "author": "你的名字",
+  "version": "1.0.0"
+}
+```
 
-- 必备文件：`pack.json`
-  - 位置：包文件夹内（`DuckovCustomSounds/<包ID>/pack.json`）
-  - 作用：在扫描时识别为“一个包”，并提供显示信息。未通过校验（缺少必填项）将不会出现在列表中。
-  - 字段规范（最小必填：name、author、version）
-
-  ```json
-  {
-    "name": "My Custom Sounds",
-    "author": "YourName",
-    "version": "1.0.0",
-    "description": "对若干模块的替换示例",
-    "compatibleModVersion": "2.0.0",
-    "requiredModules": [
-      "CustomBGM",
-      "CustomEnemySounds",
-      "CustomFootStepSounds"
-    ],
-    "optional": {
-      "homepage": "https://example.com",
-      "qq": "123456"
-    }
+**完整配置**：
+```json
+{
+  "name": "My Custom Sounds",
+  "author": "YourName",
+  "version": "1.0.0",
+  "description": "替换了BGM和敌人语音",
+  "compatibleModVersion": "2.0.0",
+  "requiredModules": ["CustomBGM", "CustomEnemySounds"],
+  "optional": {
+    "homepage": "https://example.com",
+    "qq": "123456"
   }
-  ```
+}
+```
 
-  - 注意
-    - 包ID并不写在 `pack.json`，而是“包文件夹名”本身。显示文本为 `name vversion by author - description`（如果有描述）。
-    - `compatibleModVersion` 与 `requiredModules` 仅作信息展示与约定，当前版本不会强制校验或阻断加载。
-    - 不要把 `settings.json` 随包一并分发，它是用户本地全局配置。
+### 字段说明
 
-### 模块与目录对照（概览）
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `name` | 是 | 在 UI 列表里显示的名字 |
+| `author` | 是 | 作者名 |
+| `version` | 是 | 版本号，建议语义化（1.0.0） |
+| `description` | 否 | 简介，UI 会显示在名称后面 |
+| `compatibleModVersion` | 否 | 目标 Mod 兼容版本，只是说明，不影响加载 |
+| `requiredModules` | 否 | 涉及的模块列表，只是说明，不做强校验 |
+| `optional.homepage` | 否 | 主页链接 |
+| `optional.qq` | 否 | QQ 号或群号 |
 
-- BGM（背景音乐）
-  - `TitleBGM/`：`title.mp3`（标题/菜单循环）、`start.mp3`（进入地图提示，单次）、`death.mp3`（死亡提示，单次）、`extraction.mp3`（作为 Extraction 缺省回退）
-  - `HomeBGM/`：放多首 mp3，即可在大厅进行播放与切换（随机/不重复/上一首等由设置控制）
-  - `SceneBGM/`：场景/关卡 BGM
-  - `BossBGM/`：以敌人 NameKey（去掉 `Cname_` 前缀）命名的文件，找不到则用 `default_boss.*`
-- Extraction（撤离提示）
-  - `Extraction/`：`countdown.mp3|wav`（倒计时模式，循环）、`success.mp3|wav`（撤离成功 stinger）、可选 `extraction.mp3|wav`（作为缺省）
-- 敌人语音、脚步与其他 SFX
-  - `CustomEnemySounds/`、`CustomFootStepSounds/`、`CustomGunSounds/`、`CustomMeleeSounds/`、`CustomGrenadeSounds/`、`CustomItemSounds/`、`CustomKillFeedback/`
-  - 各模块的键名/文件组织、格式细节，请参考对应模块页面与各模块 README（本页仅做总览）。
+注意：
+- 包 ID 是**文件夹名**，不在 pack.json 里设置。
+- `name`/`author`/`version` 缺一个，系统会忽略这个包。
+- UI 显示格式：`名称 v版本号 by 作者 - 描述`。
 
-音频格式支持（概览，以模块 README 为准）
-- `HomeBGM/`、`TitleBGM/`：推荐 mp3；
-- 其他常见目录：通常支持 mp3/wav/ogg/flac；
-- 若模块另有特殊限制或优先级，请以相应模块文档为准。
+## 涉及模块
 
-### 回退与优先级（通用）
-- 资源解析按以下顺序回退：当前“声音包” → Default（根目录直放） → 原版游戏音频。
-- 未覆盖的模块或文件，系统会自动回退；因此你可以只提供自己想要替换的那一部分，不必“做满整套”。
+声音包的子目录名和模块目录名一致：
 
-### 发布建议
-- 只打包你的“包文件夹”（例如 `MyPack/`），不要包含 `settings.json`；
-- 在 README/发布页介绍清楚支持的模块、建议格式、推荐音量；
-- 如涉及他人作品，请明确授权信息。
+| 模块 | 目录 |
+|------|------|
+| BGM | `TitleBGM/`、`HomeBGM/`、`SceneBGM/`、`Extraction/`、`BossBGM/` |
+| 敌人语音 | `CustomEnemySounds/` |
+| 脚步 | `CustomFootStepSounds/` |
+| 枪械 | `CustomGunSounds/` |
+| 近战 | `CustomMeleeSounds/` |
+| 手雷 | `CustomGrenadeSounds/` |
+| 物品 | `CustomItemSounds/` |
 
-## 原理与实现（给想深入的你）
-- 启动时扫描与识别
-  - 系统仅扫描 `DuckovCustomSounds/` 的一级子目录，存在 `pack.json` 则识别为一个包；根目录若在典型目录中（`HomeBGM/`、`BossBGM/`、`SceneBGM/`、`TitleBGM/`）发现音频文件，则也会提供一个名为“Default”的选项。
-- 选择与保存
-  - 游戏内 ModConfig 的“声音包”下拉列表来源于扫描结果；当你更改选择时，仅写入 `DuckovCustomSounds/settings.json` 的 `currentSoundPack`，需要重启后生效。
-- 元数据
-  - `pack.json` 反序列化到 `SoundPackInfo`，必须字段为 `name/author/version`，显示文本由 `GetDisplayText()` 生成。
-- 设置文件读取
-  - `settings.json` 也会在全局设置初始化时被读取，`currentSoundPack` 会被保留为字符串（空字符串代表 Default）。
+## 常见问题
 
-## 附录
-
-- `settings.json` 片段
-  ```json
-  {
-    "currentSoundPack": "MyPack"
-  }
-  ```
-
-- `pack.json` 模板
-  ```json
-  {
-    "name": "Your Sound Pack Name",
-    "author": "Your Name",
-    "version": "1.0.0",
-    "description": "对哪些模块做了替换的说明",
-    "compatibleModVersion": "2.0.0",
-    "requiredModules": ["CustomBGM", "CustomFootStepSounds", "CustomEnemySounds"],
-    "optional": {
-      "homepage": "https://your-website.com",
-      "qq": "123456"
-    }
-  }
-  ```
-
-如需进一步定制与调试，请继续阅读各模块的专页（BGM、敌人语音、脚步、武器/近战/手雷/物品/击杀反馈等）。
-
+- **看不到声音包选项**：`DuckovCustomSounds/` 下没有包含有效 `pack.json` 的子文件夹。根目录有典型资源目录且有音频时，会自动出现 "Default" 选项。
+- **切换不生效**：需重启游戏。检查 `settings.json` 里 `currentSoundPack` 是否正确。
+- **包没出现**：`pack.json` JSON 格式错误或缺少必填字段。
+- **怎么恢复默认**：UI 选 "Default"，或清空 `currentSoundPack` 值重启。
+- **不支持嵌套**：只扫描 `DuckovCustomSounds/` 第一层子目录。

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using DuckovCustomSounds.CustomEnemySounds.Context;
 using Duckov; // AudioManager, LevelManager
+using DuckovCustomSounds.CustomBGM.Core;
 
 namespace DuckovCustomSounds.CustomBGM.BossBGM
 {
@@ -19,9 +20,9 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         private FMOD.Studio.EventInstance? bgmInstance;
 
         // BOSS 上下文
-        private EnemyContext bossContext;
-        private string bossName;
-        private string musicPath;
+        private EnemyContext? bossContext;
+        private string bossName = "Unknown";
+        private string? musicPath;
 
         // 音量控制
         private float currentVolume = 0f;
@@ -39,12 +40,11 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         private float updateTimer = 0f;
         private float updateInterval;
 
-        // 非活跃延迟停止与进度恢复
-        private float inactiveTimer = 0f;
+        // 进度恢复
         private int lastTimelineMs = -1;
 
         // 玩家引用缓存
-        private Transform playerTransform;
+        private Transform? playerTransform;
 
         /// <summary>
         /// 初始化 Controller
@@ -119,7 +119,11 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
 
                 float fadeAmount = actualFadeSpeed * Time.deltaTime;
                 currentVolume = Mathf.MoveTowards(currentVolume, targetVolume, fadeAmount);
-                bgmInstance.Value.setVolume(currentVolume);
+                if (bgmInstance.HasValue && CustomBGMPlayer.IsEventInstanceActive(bgmInstance))
+                {
+                    var instance = bgmInstance.Value;
+                    instance.setVolume(currentVolume);
+                }
 
                 // 调试输出淡入淡出状态
                 if (Time.frameCount % 60 == 0) // 每秒输出一次
@@ -158,32 +162,29 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                 // 非活跃BOSS：仅静音，保留实例（若存在），避免与其他控制器相互
                 // 抢占/销毁导致的无效化；由活跃分支在需要时负责重建
                 targetVolume = 0f;
-                inactiveTimer = 0f;
                 return;
             }
             else if (distanceSqr < triggerDistanceSqr)
             {
-                targetVolume = 0.7f; // 活跃且在范围内，淡入
-
-                // 活跃状态下重置非活跃计时
-                inactiveTimer = 0f;
+                targetVolume = BossBGMConfig.Volume; // 活跃且在范围内，淡入
 
                 // 重新启动FMOD事件实例（如果需要）
-                if (!bgmInstance.HasValue || !bgmInstance.Value.isValid())
+                if (!CustomBGMPlayer.IsEventInstanceActive(bgmInstance))
                 {
                     try
                     {
-                        string musicPath = BossMusicResolver.ResolveMusicPath(bossContext);
+                        string? musicPath = BossMusicResolver.ResolveMusicPath(bossContext);
                         if (!string.IsNullOrEmpty(musicPath))
                         {
-                            bgmInstance = AudioManager.PlayCustomBGM(musicPath, loop: true);
-                            if (bgmInstance.HasValue && bgmInstance.Value.isValid())
+                            bgmInstance = CustomBGMPlayer.PlayMusicFile(musicPath, loop: true, stopExistingBGM: false);
+                            if (bgmInstance.HasValue && CustomBGMPlayer.IsEventInstanceActive(bgmInstance))
                             {
+                                var instance = bgmInstance.Value;
                                 if (BossBGMConfig.ResumePlaybackEnabled && lastTimelineMs > 0)
                                 {
                                     try
                                     {
-                                        bgmInstance.Value.setTimelinePosition(lastTimelineMs);
+                                        instance.setTimelinePosition(lastTimelineMs);
                                         BossBGMLogger.Debug($"[BossBGM] 恢复进度: {bossName} -> setTimelinePosition({lastTimelineMs})");
                                     }
                                     catch (Exception e)
@@ -192,7 +193,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                                     }
                                 }
 
-                                bgmInstance.Value.setVolume(currentVolume);
+                                instance.setVolume(currentVolume);
                                 BossBGMLogger.Debug($"BOSS BGM 已重新启动: {bossName}");
                             }
                         }
@@ -211,18 +212,22 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             // 调试输出（每秒一次）
             if (Time.frameCount % 60 == 0)
             {
-                string instanceStatus = (bgmInstance.HasValue && bgmInstance.Value.isValid()) ? "有效" : "无效/已停止";
+                string instanceStatus = CustomBGMPlayer.IsEventInstanceActive(bgmInstance) ? "有效" : "无效/已停止";
                 bool isOutOfRange = distanceSqr >= triggerDistanceSqr;
                 BossBGMLogger.Debug($"BOSS BGM 距离检测: {bossName}, 距离: {distance:F1}m, 范围: {triggerDistance}m, 超出范围: {isOutOfRange}, 活跃: {isActive}, 目标音量: {targetVolume:F1}, 当前音量: {currentVolume:F3}, 实例: {instanceStatus}");
 
                 // 额外调试：检查FMOD实例的实际音量
-                if (bgmInstance.HasValue && bgmInstance.Value.isValid())
+                if (CustomBGMPlayer.IsEventInstanceActive(bgmInstance))
                 {
                     try
                     {
                         float actualVolume = 0f;
                         float finalVolume = 0f;
-                        bgmInstance.Value.getVolume(out actualVolume, out finalVolume);
+                        if (bgmInstance.HasValue)
+                        {
+                            var instance = bgmInstance.Value;
+                            instance.getVolume(out actualVolume, out finalVolume);
+                        }
                         BossBGMLogger.Debug($"BOSS BGM FMOD音量: {bossName}, 实际: {actualVolume:F3}, 最终: {finalVolume:F3}");
                     }
                     catch (Exception ex)
@@ -238,15 +243,11 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// </summary>
         public void SetPriority(bool active)
         {
-            if (isActive != active)
-            {
-                isActive = active;
-                if (isActive)
+                if (isActive != active)
                 {
-                    inactiveTimer = 0f;
+                    isActive = active;
+                    BossBGMLogger.Debug($"BOSS BGM 优先级变更: {bossName} -> {(active ? "激活" : "静音")}");
                 }
-                BossBGMLogger.Debug($"BOSS BGM 优先级变更: {bossName} -> {(active ? "激活" : "静音")}");
-            }
         }
 
         /// <summary>
@@ -278,7 +279,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// </summary>
         public bool IsValid()
         {
-            return bgmInstance.HasValue && bgmInstance.Value.isValid();
+            return CustomBGMPlayer.IsEventInstanceActive(bgmInstance);
         }
 
         /// <summary>

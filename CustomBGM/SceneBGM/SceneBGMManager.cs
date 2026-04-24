@@ -17,8 +17,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
     internal static class SceneBGMManager
     {
         // 双通道控制器
-        private static SceneBGMController currentEnterBGM = null;
-        private static SceneBGMController currentLoopBGM = null;
+        private static SceneBGMController? currentEnterBGM = null;
+        private static SceneBGMController? currentLoopBGM = null;
 
         // 当前场景信息
         private static string currentSceneId = "";
@@ -59,10 +59,13 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// <summary>
         /// 播放场景音乐（场景加载完成时调用）
         /// </summary>
-        public static void PlaySceneMusic(string sceneId, string displayName)
+        public static void PlaySceneMusic(string? sceneId, string? displayName)
         {
             try
             {
+                sceneId ??= string.Empty;
+                displayName ??= string.Empty;
+
                 // 检查总开关
                 if (!SceneBGMConfig.Enabled)
                 {
@@ -99,10 +102,10 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 currentDisplayName = displayName;
 
                 // 解析音乐路径
-                string enterMusicPath = SceneMusicResolver.ResolveEnterMusicPath(sceneId, displayName);
-                string loopMusicPath = SceneMusicResolver.ResolveLoopMusicPath(sceneId, displayName);
+                string? enterMusicPath = SceneMusicResolver.ResolveEnterMusicPath(sceneId, displayName);
+                string? loopMusicPath = SceneMusicResolver.ResolveLoopMusicPath(sceneId, displayName);
 
-                SceneBGMLogger.Info($"资源选择结果 -> Enter: {(string.IsNullOrEmpty(enterMusicPath) ? "<none>" : enterMusicPath)}, Loop: {(string.IsNullOrEmpty(loopMusicPath) ? "<none>" : loopMusicPath)}");
+                SceneBGMLogger.Info($"BGM启用结果 -> Enter: {(string.IsNullOrEmpty(enterMusicPath) ? "<none>" : enterMusicPath)}, Loop: {(string.IsNullOrEmpty(loopMusicPath) ? "<none>" : loopMusicPath)}");
 
                 // 播放进入音乐（如果启用且有文件）
                 if (SceneBGMConfig.EnterBGMEnabled && !string.IsNullOrEmpty(enterMusicPath))
@@ -288,7 +291,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             // 如果启用进入 BGM 且当前在场景中，重新播放
             if (SceneBGMConfig.EnterBGMEnabled && currentEnterBGM == null && !string.IsNullOrEmpty(currentSceneId))
             {
-                string enterMusicPath = SceneMusicResolver.ResolveEnterMusicPath(currentSceneId, currentDisplayName);
+                string? enterMusicPath = SceneMusicResolver.ResolveEnterMusicPath(currentSceneId, currentDisplayName);
                 if (!string.IsNullOrEmpty(enterMusicPath))
                 {
                     PlayEnterBGM(enterMusicPath, currentSceneId, currentDisplayName);
@@ -319,7 +322,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             // 如果启用循环 BGM 且当前在场景中，重新播放
             if (SceneBGMConfig.LoopBGMEnabled && currentLoopBGM == null && !string.IsNullOrEmpty(currentSceneId))
             {
-                string loopMusicPath = SceneMusicResolver.ResolveLoopMusicPath(currentSceneId, currentDisplayName);
+                string? loopMusicPath = SceneMusicResolver.ResolveLoopMusicPath(currentSceneId, currentDisplayName);
                 if (!string.IsNullOrEmpty(loopMusicPath))
                 {
                     PlayLoopBGM(loopMusicPath, currentSceneId, currentDisplayName);

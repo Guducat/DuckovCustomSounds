@@ -11,29 +11,29 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
     internal sealed class EnemyContext
     {
         public int InstanceId { get; private set; }
-        public GameObject GameObject { get; private set; }
-        public string Team { get; private set; }
-        public string IconType { get; private set; }
-        public string EnemyType { get; private set; }
-        public string NameKey { get; private set; }
+        public GameObject? GameObject { get; private set; }
+        public string? Team { get; private set; }
+        public string? IconType { get; private set; }
+        public string? EnemyType { get; private set; }
+        public string? NameKey { get; private set; }
         public float Health { get; private set; }
         public bool HasSkill { get; private set; }
 
         public AudioManager.VoiceType VoiceType { get; internal set; }
         public AudioManager.FootStepMaterialType FootStepMaterialType { get; private set; }
 
-        private string _rank;
-        private string _teamNormalized;
+        private string _rank = string.Empty;
+        private string _teamNormalized = string.Empty;
 
         private EnemyContext() { }
 
-        public static EnemyContext FromCharacter(CharacterMainControl cmc,
+        public static EnemyContext FromCharacter(CharacterMainControl? cmc,
             AudioManager.VoiceType voiceType,
             AudioManager.FootStepMaterialType foot)
         {
             var ctx = new EnemyContext
             {
-                GameObject = cmc != null ? cmc.gameObject : null,
+                GameObject = cmc?.gameObject,
                 InstanceId = cmc != null && cmc.gameObject != null ? cmc.gameObject.GetInstanceID() : 0,
                 VoiceType = voiceType,
                 FootStepMaterialType = foot
@@ -97,7 +97,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             return $"EnemyContext(go={InstanceId}, type={EnemyType}, team={Team}, icon={IconType}, nameKey={NameKey}, health={Health}, vt={VoiceType})";
         }
 
-        private static void PopulateFromPreset(EnemyContext ctx, CharacterRandomPreset preset)
+        private static void PopulateFromPreset(EnemyContext ctx, CharacterRandomPreset? preset)
         {
             if (ctx == null || preset == null) return;
 
@@ -109,7 +109,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             if (string.IsNullOrEmpty(ctx.EnemyType)) ctx.EnemyType = preset.GetType().Name;
         }
 
-        private static string ComputeRank(string iconType, float health)
+        private static string ComputeRank(string? iconType, float health)
         {
             var icon = (iconType ?? string.Empty).ToLowerInvariant();
             if (icon.Contains("boss")) return "boss";
@@ -119,7 +119,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             return "normal";
         }
 
-        private static string ComputeTeamNormalized(string team)
+        private static string ComputeTeamNormalized(string? team)
         {
             var t = (team ?? string.Empty).ToLowerInvariant();
             if (t.Contains("scav")) return "scav";
@@ -128,15 +128,15 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             return string.IsNullOrEmpty(t) ? "unknown" : t;
         }
 
-        private static string GetIconType(CharacterRandomPreset preset)
+        private static string? GetIconType(CharacterRandomPreset preset)
         {
             var value = ReflectionCache.GetValue(preset, "characterIconType");
             return GetStringSafe(value);
         }
 
-        private static string GetStringSafe(object value) => value?.ToString();
+        private static string? GetStringSafe(object? value) => value?.ToString();
 
-        private static float GetFloatSafe(object value)
+        private static float GetFloatSafe(object? value)
         {
             if (value == null) return 0f;
             if (value is float f) return f;
@@ -145,7 +145,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             return float.TryParse(value.ToString(), out var parsed) ? parsed : 0f;
         }
 
-        private static bool GetBoolSafe(object value)
+        private static bool GetBoolSafe(object? value)
         {
             if (value == null) return false;
             if (value is bool b) return b;

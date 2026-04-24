@@ -3,31 +3,74 @@
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>enable</Nullable>
-        <DuckovPath>G:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovPath>
+        <Configurations>Debug;Release;ExDebug;ExRelease</Configurations>
+        <DuckovPath Condition="'$(DuckovPath)' == ''">G:/SteamLibrary/steamapps/common/Escape from Duckov</DuckovPath>
+        <DuckovManagedDir Condition="'$(DuckovManagedDir)' == '' and Exists('$(MSBuildProjectDirectory)/DuckovAPIs-Mod引用库/DuckovGameManagedDLL')">$(MSBuildProjectDirectory)/DuckovAPIs-Mod引用库/DuckovGameManagedDLL</DuckovManagedDir>
+        <DuckovManagedDir Condition="'$(DuckovManagedDir)' == ''">$(DuckovPath)/Duckov_Data/Managed</DuckovManagedDir>
         <FileVersion>2.0.0</FileVersion>
     </PropertyGroup>
 
-    <ItemGroup>
-        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\TeamSoda.*" />
-        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\ItemStatsSystem.dll" />
-        <Reference Include="FMODUnity">
-            <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\FMODUnity.dll</HintPath>
+    <ItemGroup Condition="Exists('$(DuckovManagedDir)')">
+        <Reference Include="$(DuckovManagedDir)/TeamSoda.*" />
+        <Reference Include="Eflatun.SceneReference">
+          <HintPath>$(DuckovManagedDir)/Eflatun.SceneReference.dll</HintPath>
         </Reference>
-        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\Unity*" />
+        <Reference Include="$(DuckovManagedDir)/ItemStatsSystem.dll" />
+        <Reference Include="FMODUnity">
+            <HintPath>$(DuckovManagedDir)/FMODUnity.dll</HintPath>
+        </Reference>
+        <Reference Include="$(DuckovManagedDir)/Unity*" />
         <Reference Include="Newtonsoft.Json">
-          <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\Newtonsoft.Json.dll</HintPath>
+          <HintPath>$(DuckovManagedDir)/Newtonsoft.Json.dll</HintPath>
         </Reference>
         <Reference Include="SodaLocalization">
-          <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\SodaLocalization.dll</HintPath>
+          <HintPath>$(DuckovManagedDir)/SodaLocalization.dll</HintPath>
         </Reference>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Lib.Harmony" Version="2.4.1" />
+        <PackageReference Include="Lib.Harmony" Version="2.4.1" GeneratePathProperty="true" />
     </ItemGroup>
 
     <ItemGroup>
-        <Compile Remove="assets\**\*.cs" />
+        <Compile Remove="assets/**/*.cs" />
+        <Compile Remove="DuckovAPIs-Mod引用库/**/*.cs" />
+        <Compile Remove="DuckovCustomSounds.Tests/**/*.cs" />
     </ItemGroup>
+
+    <PropertyGroup>
+        <HarmonyRuntimeDll Condition="'$(HarmonyRuntimeDll)' == '' and Exists('$(PkgLib_Harmony)/lib/net472/0Harmony.dll')">$(PkgLib_Harmony)/lib/net472/0Harmony.dll</HarmonyRuntimeDll>
+        <HarmonyRuntimeDll Condition="'$(HarmonyRuntimeDll)' == '' and Exists('$(PkgLib_Harmony)/lib/net48/0Harmony.dll')">$(PkgLib_Harmony)/lib/net48/0Harmony.dll</HarmonyRuntimeDll>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'ExDebug'">
+        <DefineConstants>DEBUG;TRACE;$(DefineConstants);EXDEBUG</DefineConstants>
+        <DebugType>portable</DebugType>
+        <Optimize>false</Optimize>
+        <OutputPath>$(MSBuildProjectDirectory)/DuckovCustomSounds-Export/</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'ExRelease'">
+        <DefineConstants>TRACE;$(DefineConstants);EXRELEASE</DefineConstants>
+        <DebugType>none</DebugType>
+        <Optimize>true</Optimize>
+        <OutputPath>$(MSBuildProjectDirectory)/DuckovCustomSounds-Export/</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <Target Name="ValidateDuckovManagedDir" BeforeTargets="ResolveReferences">
+        <Error Condition="!Exists('$(DuckovManagedDir)')"
+               Text="未找到 Duckov Managed 目录: $(DuckovManagedDir)。请通过 DuckovPath 或 DuckovManagedDir 指向含有游戏程序集的 Duckov_Data/Managed 目录。" />
+        <Error Condition="Exists('$(DuckovManagedDir)') and !Exists('$(DuckovManagedDir)/TeamSoda.Duckov.Core.dll')"
+               Text="Duckov Managed 目录中缺少 TeamSoda.Duckov.Core.dll: $(DuckovManagedDir)" />
+    </Target>
+
+    <Target Name="CopyHarmonyRuntime" AfterTargets="CopyFilesToOutputDirectory">
+        <Copy SourceFiles="$(HarmonyRuntimeDll)"
+              DestinationFolder="$(OutDir)"
+              SkipUnchangedFiles="true"
+              Condition="'$(HarmonyRuntimeDll)' != '' and Exists('$(HarmonyRuntimeDll)')" />
+    </Target>
 
 </Project>

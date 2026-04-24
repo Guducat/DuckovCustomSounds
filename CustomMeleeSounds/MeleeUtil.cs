@@ -32,9 +32,9 @@ namespace DuckovCustomSounds.CustomMeleeSounds
         /// <summary>
         /// 获取近战武器组件和 TypeID
         /// </summary>
-        public static (ItemAgent_MeleeWeapon melee, string typeIdStr) GetMeleeAndTypeId(GameObject gameObject)
+        public static (ItemAgent_MeleeWeapon? melee, string typeIdStr) GetMeleeAndTypeId(GameObject gameObject)
         {
-            ItemAgent_MeleeWeapon melee = null;
+            ItemAgent_MeleeWeapon? melee = null;
             string typeIdStr = string.Empty;
 
             try

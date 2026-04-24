@@ -7,15 +7,26 @@ namespace DuckovCustomSounds.CustomFootStepSounds
     {
         private static readonly ILog _logger = LogManager.GetLogger("Footstep");
 
-        // 仅当 Footstep 与 Enemy 的模块级别均达到 Debug 时，才输出"详细路由/路径"类日志
+        // 仅当 Footstep 模块级别达到 Debug 时，才输出详细路由类日志
         public static bool DetailedRoutingEnabled
         {
             get
             {
                 try
                 {
-                    return LogManager.ShouldLog("Footstep", LogLevel.Debug)
-                        && LogManager.ShouldLog("Enemy", LogLevel.Debug);
+                    return LogManager.ShouldLog("Footstep", LogLevel.Debug);
+                }
+                catch { return false; }
+            }
+        }
+
+        public static bool DetailedVerboseEnabled
+        {
+            get
+            {
+                try
+                {
+                    return LogManager.ShouldLog("Footstep", LogLevel.Verbose);
                 }
                 catch { return false; }
             }
@@ -26,6 +37,12 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         {
             if (!DetailedRoutingEnabled) return;
             _logger.Debug(msg);
+        }
+
+        public static void VerboseDetail(string msg)
+        {
+            if (!DetailedVerboseEnabled) return;
+            _logger.Verbose(msg);
         }
 
         public static LogLevel CurrentLevel => LogManager.GetModuleLevel("Footstep");
@@ -48,6 +65,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             try { LogManager.ApplyFileSwitches(modRoot); } catch { }
         }
 
+        public static ILog ForScope(params string[] scopes) => _logger.ForScope(scopes);
         public static void Error(string msg, Exception? ex = null) => _logger.Error(msg, ex);
         public static void Warning(string msg) => _logger.Warning(msg);
         public static void Info(string msg) => _logger.Info(msg);

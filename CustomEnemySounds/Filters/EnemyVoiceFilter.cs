@@ -27,7 +27,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
         private sealed class FilterCacheEntry
         {
             public bool Result;
-            public string SoundKey;
+            public string SoundKey = string.Empty;
             public float ExpireTime;
         }
 
@@ -36,10 +36,10 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             public Teams? SoundSourceTeam { get; set; }
             public Vector3? SoundPosition { get; set; }
             public float? SoundRadius { get; set; }
-            public string SoundType { get; set; }
+            public string? SoundType { get; set; }
         }
 
-        public static VoiceEventContext CreateContext(EnemyContext ctx)
+        public static VoiceEventContext? CreateContext(EnemyContext? ctx)
         {
             if (ctx == null) return null;
             return new VoiceEventContext
@@ -49,7 +49,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             };
         }
 
-        public static bool ShouldAllow(CharacterMainControl speaker, string soundKey, VoiceEventContext context)
+        public static bool ShouldAllow(CharacterMainControl speaker, string? soundKey, VoiceEventContext? context)
         {
             if (speaker == null)
                 return false;
@@ -88,7 +88,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             return decision;
         }
 
-        private static Teams? ParseTeam(string team)
+        private static Teams? ParseTeam(string? team)
         {
             if (string.IsNullOrEmpty(team)) return null;
             switch (team.ToLowerInvariant())
@@ -105,7 +105,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             }
         }
 
-        private static bool ShouldProcessInHybridMode(CharacterMainControl enemy, string soundKey, VoiceEventContext context)
+        private static bool ShouldProcessInHybridMode(CharacterMainControl enemy, string? soundKey, VoiceEventContext? context)
         {
             var player = GetPlayerCharacter();
             if (player == null)
@@ -129,7 +129,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             return true;
         }
 
-        private static bool TryGetCachedDecision(int instanceId, string soundKey, float now, out bool decision)
+        private static bool TryGetCachedDecision(int instanceId, string? soundKey, float now, out bool decision)
         {
             var key = soundKey ?? string.Empty;
             lock (CacheSync)
@@ -154,7 +154,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             return false;
         }
 
-        private static void StoreDecision(int instanceId, string soundKey, bool result, float now)
+        private static void StoreDecision(int instanceId, string? soundKey, bool result, float now)
         {
             var entry = new FilterCacheEntry
             {
@@ -169,7 +169,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             }
         }
 
-        private static bool IsPlayerRelatedEvent(CharacterMainControl enemy, string soundKey, VoiceEventContext context)
+        private static bool IsPlayerRelatedEvent(CharacterMainControl enemy, string? soundKey, VoiceEventContext? context)
         {
             try
             {
@@ -310,7 +310,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             return value;
         }
 
-        private static CharacterMainControl GetPlayerCharacter()
+        private static CharacterMainControl? GetPlayerCharacter()
         {
             try
             {
@@ -359,7 +359,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Filters
             return false;
         }
 
-        private static ItemAgent_Gun GetCurrentWeapon(CharacterMainControl enemy)
+        private static ItemAgent_Gun? GetCurrentWeapon(CharacterMainControl enemy)
         {
             try
             {

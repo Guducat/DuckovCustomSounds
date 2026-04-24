@@ -53,16 +53,17 @@ namespace DuckovCustomSounds
         // Enemy voice integration controls
         public static bool EnableNPCtoNPCCombatVoices { get; private set; } = true;
         public static EnemyVoiceTriggerMode EnemyVoiceMode { get; private set; } = EnemyVoiceTriggerMode.Original;
+        public static float EnemyVoiceVolumeScale { get; private set; } = 1.0f;
 
         // DuckovCustomPlayerQuak module settings
         public static bool EnableDuckovCustomPlayerQuak { get; private set; } = true;
         public static float DuckovCustomPlayerQuakVolumeScale { get; private set; } = 1.0f;
 
         // Per-module logging visibility (proxy to unified LogManager)
-        public static Logging.LogLevel CESLogLevel => LogManager.GetModuleLevel("CustomEnemySounds");
-        public static Logging.LogLevel CFSLogLevel => LogManager.GetModuleLevel("CustomFootStepSounds");
-        public static bool CESDebugEnabled => LogManager.ShouldLog("CustomEnemySounds", Logging.LogLevel.Debug);
-        public static bool CFSDebugEnabled => LogManager.ShouldLog("CustomFootStepSounds", Logging.LogLevel.Debug);
+        public static Logging.LogLevel CESLogLevel => LogManager.GetModuleLevel("Enemy");
+        public static Logging.LogLevel CFSLogLevel => LogManager.GetModuleLevel("Footstep");
+        public static bool CESDebugEnabled => LogManager.ShouldLog("Enemy", Logging.LogLevel.Debug);
+        public static bool CFSDebugEnabled => LogManager.ShouldLog("Footstep", Logging.LogLevel.Debug);
 
         // 控制 Home BGM 的播完后行为：
         // true 表示自动播放下一首；false 表示单曲循环当前曲目。
@@ -114,7 +115,7 @@ namespace DuckovCustomSounds
                 // 0) currentSoundPack（声音包选择，由 SoundPackManager 管理）
                 const string SoundPackKey = "currentSoundPack";
                 bool hadSoundPackKey = root.TryGetValue(SoundPackKey, StringComparison.OrdinalIgnoreCase, out var soundPackToken);
-                string soundPackVal = soundPackToken?.Type == JTokenType.String ? soundPackToken.Value<string>() : "";
+                string soundPackVal = soundPackToken?.Type == JTokenType.String ? (soundPackToken.Value<string>() ?? string.Empty) : string.Empty;
                 if (!hadSoundPackKey)
                 {
                     root[SoundPackKey] = soundPackVal; // 默认空字符串 = Default
@@ -280,6 +281,33 @@ namespace DuckovCustomSounds
                     needsWriteBack = true;
                 }
                 EnemyVoiceMode = voiceModeVal;
+
+                const string EnemyVoiceVolumeKey = "enemyVoiceVolumeScale";
+                bool hadEnemyVoiceVolume = root.TryGetValue(EnemyVoiceVolumeKey, StringComparison.OrdinalIgnoreCase, out var enemyVoiceVolumeToken);
+                float enemyVoiceVolumeVal = 1.0f;
+                try
+                {
+                    if (enemyVoiceVolumeToken != null && enemyVoiceVolumeToken.Type != JTokenType.Null && enemyVoiceVolumeToken.Type != JTokenType.Undefined)
+                    {
+                        if (enemyVoiceVolumeToken.Type == JTokenType.Integer || enemyVoiceVolumeToken.Type == JTokenType.Float)
+                        {
+                            enemyVoiceVolumeVal = Math.Clamp(enemyVoiceVolumeToken.Value<float>(), 0f, 2f);
+                        }
+                        else if (enemyVoiceVolumeToken.Type == JTokenType.String)
+                        {
+                            var s = (enemyVoiceVolumeToken.Value<string>() ?? "").Trim();
+                            if (float.TryParse(CleanFloatString(s), NumberStyles.Float, CultureInfo.InvariantCulture, out var fv))
+                                enemyVoiceVolumeVal = Math.Clamp(fv, 0f, 2f);
+                        }
+                    }
+                }
+                catch { enemyVoiceVolumeVal = 1.0f; }
+                if (!hadEnemyVoiceVolume)
+                {
+                    root[EnemyVoiceVolumeKey] = enemyVoiceVolumeVal;
+                    needsWriteBack = true;
+                }
+                EnemyVoiceVolumeScale = enemyVoiceVolumeVal;
 
                 // DuckovCustomPlayerQuak module settings
                 const string PlayerQuakEnabledKey = "enableDuckovCustomPlayerQuak";
@@ -462,7 +490,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json {(exists ? "已补充" : "已创建")}默认键：{SoundPackKey}, overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {GrenadeDistanceKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}, {HomeBgmAutoNextKey}, {HomeBgmRandomEnabledKey}, {HomeBgmRandomNoRepeatKey}, {HomeBgmRandomizePrevKey}, {NPCCombatKey}, {EnemyVoiceModeKey}, {PlayerQuakEnabledKey}, {PlayerQuakVolumeKey}");
+                        Log.Info($"settings.json {(exists ? "已补充" : "已创建")}默认键：{SoundPackKey}, overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {GrenadeDistanceKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}, {HomeBgmAutoNextKey}, {HomeBgmRandomEnabledKey}, {HomeBgmRandomNoRepeatKey}, {HomeBgmRandomizePrevKey}, {NPCCombatKey}, {EnemyVoiceModeKey}, {EnemyVoiceVolumeKey}, {PlayerQuakEnabledKey}, {PlayerQuakVolumeKey}");
                     }
                     catch (Exception ex)
                     {
@@ -478,8 +506,14 @@ namespace DuckovCustomSounds
 
         public static void ApplyEnemyVoiceSettings(bool enableNpcCombatVoices, EnemyVoiceTriggerMode mode, bool persist = false)
         {
+            ApplyEnemyVoiceSettings(enableNpcCombatVoices, mode, EnemyVoiceVolumeScale, persist);
+        }
+
+        public static void ApplyEnemyVoiceSettings(bool enableNpcCombatVoices, EnemyVoiceTriggerMode mode, float volumeScale, bool persist = false)
+        {
             EnableNPCtoNPCCombatVoices = enableNpcCombatVoices;
             EnemyVoiceMode = mode;
+            EnemyVoiceVolumeScale = Math.Clamp(volumeScale, 0f, 2f);
 
             if (!persist)
                 return;
@@ -488,6 +522,7 @@ namespace DuckovCustomSounds
             {
                 root["enableNPCtoNPCCombatVoices"] = enableNpcCombatVoices;
                 root["enemyVoiceTriggerMode"] = mode.ToString();
+                root["enemyVoiceVolumeScale"] = EnemyVoiceVolumeScale;
             });
         }
 
@@ -539,7 +574,7 @@ namespace DuckovCustomSounds
             }
         }
 
-        private static bool TryReadBoolean(JToken token, out bool value)
+        private static bool TryReadBoolean(JToken? token, out bool value)
         {
             value = false;
             if (token == null || token.Type == JTokenType.Null || token.Type == JTokenType.Undefined)
@@ -595,7 +630,7 @@ namespace DuckovCustomSounds
             }
         }
 
-        private static bool TryParseEnemyVoiceMode(JToken token, out EnemyVoiceTriggerMode mode)
+        private static bool TryParseEnemyVoiceMode(JToken? token, out EnemyVoiceTriggerMode mode)
         {
             mode = EnemyVoiceTriggerMode.Original;
             if (token == null || token.Type == JTokenType.Null || token.Type == JTokenType.Undefined)
@@ -641,7 +676,7 @@ namespace DuckovCustomSounds
         // - bool: true => always (interval 0), false => off
         // - number: treated as seconds (negative clamped to 0)
         // - string: supports "always"/"off"/numeric values (optional f/F/s suffix)
-        private static void ParseRateControl(JToken token, bool defaultEnabled, float defaultInterval,
+        private static void ParseRateControl(JToken? token, bool defaultEnabled, float defaultInterval,
             out bool enabled, out float interval)
         {
             enabled = defaultEnabled;
@@ -714,4 +749,3 @@ namespace DuckovCustomSounds
         }
     }
 }
-

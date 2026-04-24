@@ -24,7 +24,7 @@ namespace DuckovCustomSounds.API
         /// 查询某个 GameObject（敌人/实体）的上下文快照。
         /// 当不可用时返回 false（例如该对象未在本 Mod 注册）。
         /// </summary>
-        public static bool TryGetEnemyContext(GameObject owner, out EnemyContextData data)
+        public static bool TryGetEnemyContext(GameObject? owner, out EnemyContextData? data)
         {
             data = null;
             try
@@ -44,7 +44,7 @@ namespace DuckovCustomSounds.API
         /// 直接播放 3D 音效（强依赖方式）。
         /// 使用新接口 PostCustomSFX 替代 FMOD Core API。
         /// </summary>
-        public static bool Play3D(PlaybackRequest request, out object handle)
+        public static bool Play3D(PlaybackRequest? request, out object? handle)
         {
             handle = null;
             try
@@ -106,4 +106,3 @@ namespace DuckovCustomSounds.API
         // 注意：ComputeModeForFile 辅助函数已删除，因为新接口自动处理 FMOD 模式
     }
 }
-

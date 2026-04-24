@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using DuckovCustomSounds.CustomBGM.Core;
 
 namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
 {
@@ -21,8 +23,12 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         };
 
         // 当前绑定的倒计时区域（只跟踪一个活动实例）
-        private static WeakReference _currentAreaRef;
+        private static WeakReference? _currentAreaRef;
+        private static bool _countdownActive = false;
         private static bool _startedThisRound = false;
+        private static float _lastCountdownSuccessTime = -1f;
+        private const float CountdownSuccessStingerGraceSeconds = 3.0f;
+        private const float CountdownCancelFadeOutSeconds = 0.35f;
 
 
         // 当前倒计时音效的播放实例（用于在离开时强制停止）
@@ -31,12 +37,6 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         // 旧逻辑：当前播放的extraction.mp3实例（用于场景切换时停止）
         private static FMOD.Studio.EventInstance? _currentLegacyInstance = null;
 
-        // 倒计时音效文件候选
-        private static readonly string[] kCountdownCandidates = new[] { "countdown.mp3", "countdown.wav", "extraction.mp3", "extraction.wav" };
-
-        // 成功音效文件候选（优先 Extraction/success.mp3，回退到 TitleBGM/extraction.mp3）
-        private static readonly string[] kSuccessCandidates = new[] { "success.mp3", "success.wav" };
-
         /// <summary>
         /// 倒计时音效文件路径
         /// </summary>
@@ -44,13 +44,9 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         {
             get
             {
-                var baseDir = Path.Combine(ModBehaviour.ModFolderName, "Extraction");
-                foreach (var f in kCountdownCandidates)
-                {
-                    var p = Path.Combine(baseDir, f);
-                    if (File.Exists(p)) return p;
-                }
-                return Path.Combine(baseDir, "countdown.mp3"); // 优先用于日志提示
+                var extractionDir = Path.Combine(ModBehaviour.ModFolderName, "Extraction");
+                return AudioFileExtensions.FindFirstMusicFile(extractionDir, "countdown", "extraction")
+                       ?? Path.Combine(extractionDir, "countdown.mp3");
             }
         }
 
@@ -61,17 +57,13 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         {
             get
             {
-                // 优先使用 Extraction/success.mp3
                 var extractionDir = Path.Combine(ModBehaviour.ModFolderName, "Extraction");
-                foreach (var f in kSuccessCandidates)
-                {
-                    var p = Path.Combine(extractionDir, f);
-                    if (File.Exists(p)) return p;
-                }
+                var successPath = AudioFileExtensions.FindFirstMusicFile(extractionDir, "success");
+                if (!string.IsNullOrEmpty(successPath)) return successPath;
 
-                // 回退到 TitleBGM/extraction.mp3（兼容旧配置）
-                var titleBgmPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "extraction.mp3");
-                if (File.Exists(titleBgmPath)) return titleBgmPath;
+                var titleDir = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM");
+                var titleBgmPath = AudioFileExtensions.FindMusicFile(titleDir, "extraction");
+                if (!string.IsNullOrEmpty(titleBgmPath)) return titleBgmPath;
 
                 return Path.Combine(extractionDir, "success.mp3"); // 默认路径（用于日志）
             }
@@ -86,7 +78,9 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                     return;
 
                 _currentAreaRef = new WeakReference(countDownArea);
+                _countdownActive = true;
                 _startedThisRound = false;
+                _lastCountdownSuccessTime = -1f;
                 ExtractionBGMLogger.Debug("撤离倒计时开始：等待剩余<=5s触发音效...");
             }
             catch (Exception ex)
@@ -99,9 +93,19 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         {
             try
             {
-                if (!_startedThisRound) return;
-                StopActiveImmediate();
-                ExtractionBGMLogger.Debug("撤离倒计时中止：已停止撤离音效。");
+                if (!ReferenceEqualsFromWeak(_currentAreaRef, countDownArea)) return;
+
+                _countdownActive = false;
+                _lastCountdownSuccessTime = -1f;
+
+                if (!_startedThisRound)
+                {
+                    _currentAreaRef = null;
+                    return;
+                }
+
+                StopActive(fadeCountdown: true);
+                ExtractionBGMLogger.Debug("撤离倒计时中止：撤离音效已开始淡出停止。");
             }
             catch (Exception ex)
             {
@@ -116,6 +120,10 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 // 倒计时模式下：成功时不做处理，让音效自然播放完成
                 if (ExtractionBGMConfig.Mode == ExtractionBGMMode.CountdownMode)
                 {
+                    if (!ReferenceEqualsFromWeak(_currentAreaRef, countDownArea)) return;
+
+                    _countdownActive = false;
+                    _lastCountdownSuccessTime = Time.realtimeSinceStartup;
                     ExtractionBGMLogger.Debug("撤离成功：保留撤离音效直至自然结束。");
                 }
             }
@@ -163,7 +171,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 if (!hasActiveSound) return;
                 
                 // 在场景切换/StopBGM时一律停止，避免跨场景残留
-                StopActiveImmediate();
+                StopActive(fadeCountdown: false);
                 ExtractionBGMLogger.Debug("场景切换/StopBGM：撤离音效已停止。");
             }
             catch (Exception ex)
@@ -172,7 +180,25 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             }
         }
 
-        private static bool ReferenceEqualsFromWeak(WeakReference wr, object target)
+        public static void ApplyVolumeToCurrentSounds()
+        {
+            ApplyConfiguredVolume(_currentCountdownInstance);
+            ApplyConfiguredVolume(_currentLegacyInstance);
+        }
+
+        private static void ApplyConfiguredVolume(FMOD.Studio.EventInstance? instance)
+        {
+            try
+            {
+                if (instance.HasValue && instance.Value.isValid())
+                {
+                    instance.Value.setVolume(ExtractionBGMConfig.Volume);
+                }
+            }
+            catch { }
+        }
+
+        private static bool ReferenceEqualsFromWeak(WeakReference? wr, object target)
         {
             try
             {
@@ -181,6 +207,39 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 return o != null && ReferenceEquals(o, target);
             }
             catch { return false; }
+        }
+
+        public static bool IsExtractionStingerKey(string key)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(key)) return false;
+                if (ExtractionStingerKeys.Contains(key)) return true;
+                if (!key.StartsWith("stg_map_", StringComparison.OrdinalIgnoreCase)) return false;
+                if (string.Equals(key, "stg_map_base", StringComparison.OrdinalIgnoreCase)) return false;
+
+                return HasActiveExtractionContext();
+            }
+            catch (Exception ex)
+            {
+                ExtractionBGMLogger.Warning($"IsExtractionStingerKey 异常：{ex.Message}");
+                return false;
+            }
+        }
+
+        private static bool HasActiveExtractionContext()
+        {
+            try
+            {
+                if (_countdownActive) return true;
+                if (_lastCountdownSuccessTime < 0f) return false;
+
+                return Time.realtimeSinceStartup - _lastCountdownSuccessTime <= CountdownSuccessStingerGraceSeconds;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -203,6 +262,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 try
                 {
                     _currentCountdownInstance = Duckov.AudioManager.PostCustomSFX(path, loop: false);
+                    ApplyConfiguredVolume(_currentCountdownInstance);
                     _startedThisRound = true;
                     ExtractionBGMLogger.Info($"倒计时音效已触发（<=5s）：{Path.GetFileName(path)}");
                 }
@@ -247,7 +307,8 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
 
                     try
                     {
-                        Duckov.AudioManager.PlayCustomBGM(path, loop: false);
+                        _currentLegacyInstance = Duckov.AudioManager.PlayCustomBGM(path, loop: false);
+                        ApplyConfiguredVolume(_currentLegacyInstance);
                         ExtractionBGMLogger.Info($"已播放自定义撤离成功音效：{Path.GetFileName(path)}");
                         return true; // 拦截原版
                     }
@@ -260,13 +321,15 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
 
                 // 禁用模式：使用旧逻辑（兼容1.0.0行为）
                 // 当 overrideExtractionBGM=false 时，播放自定义的 TitleBGM/extraction.mp3
-                var legacyExtractionPath = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM", "extraction.mp3");
-                if (File.Exists(legacyExtractionPath))
+                var titleDir = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM");
+                var legacyExtractionPath = AudioFileExtensions.FindMusicFile(titleDir, "extraction");
+                if (!string.IsNullOrEmpty(legacyExtractionPath))
                 {
                     try
                     {
                         // 保存播放实例以便后续停止
                         _currentLegacyInstance = Duckov.AudioManager.PlayCustomBGM(legacyExtractionPath, loop: false);
+                        ApplyConfiguredVolume(_currentLegacyInstance);
                         ExtractionBGMLogger.Info($"已播放自定义撤离音效（旧逻辑）：{Path.GetFileName(legacyExtractionPath)} (事件: {stingerKey})");
                         return true; // 拦截原版
                     }
@@ -296,7 +359,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         {
             try
             {
-                StopActiveImmediate();
+                StopActive(fadeCountdown: false);
                 ExtractionBGMLogger.Debug("已停止所有撤离音效（热重载）");
             }
             catch (Exception ex)
@@ -305,18 +368,27 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             }
         }
 
-        private static void StopActiveImmediate()
+        private static void StopActive(bool fadeCountdown)
         {
             try
             {
-                // 真正停止当前播放的倒计时音效
+                // 停止当前播放的倒计时音效；倒计时取消使用短淡出，场景切换仍立即清理。
                 if (_currentCountdownInstance.HasValue && _currentCountdownInstance.Value.isValid())
                 {
                     try
                     {
-                        _currentCountdownInstance.Value.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
-                        _currentCountdownInstance.Value.release();
-                        ExtractionBGMLogger.Debug("已强制停止倒计时音效实例");
+                        var countdownInstance = _currentCountdownInstance.Value;
+                        if (fadeCountdown)
+                        {
+                            FadeOutAndReleaseCountdown(countdownInstance, CountdownCancelFadeOutSeconds);
+                            ExtractionBGMLogger.Debug($"倒计时音效淡出停止已启动: {CountdownCancelFadeOutSeconds:F2}s");
+                        }
+                        else
+                        {
+                            countdownInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
+                            countdownInstance.release();
+                            ExtractionBGMLogger.Debug("已立即停止倒计时音效实例");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -340,7 +412,9 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 }
 
                 // 重置状态标志
+                _countdownActive = false;
                 _startedThisRound = false;
+                _lastCountdownSuccessTime = -1f;
                 _currentAreaRef = null;
                 _currentCountdownInstance = null;
                 _currentLegacyInstance = null;
@@ -351,6 +425,75 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 ExtractionBGMLogger.Warning($"重置撤离音效状态失败：{ex.Message}");
             }
         }
+
+        private static void FadeOutAndReleaseCountdown(FMOD.Studio.EventInstance instance, float seconds)
+        {
+            try
+            {
+                var runner = ModBehaviour.Instance;
+                if (runner == null)
+                {
+                    StopCountdownWithAllowFadeout(instance);
+                    return;
+                }
+
+                runner.StartCoroutine(FadeOutCountdownCoroutine(instance, Mathf.Max(0.01f, seconds)));
+            }
+            catch (Exception ex)
+            {
+                ExtractionBGMLogger.Warning($"启动倒计时淡出失败：{ex.Message}");
+                StopCountdownWithAllowFadeout(instance);
+            }
+        }
+
+        private static IEnumerator FadeOutCountdownCoroutine(FMOD.Studio.EventInstance instance, float seconds)
+        {
+            float startVolume = ExtractionBGMConfig.Volume;
+
+            try
+            {
+                if (!instance.isValid()) yield break;
+                instance.getVolume(out var actual, out _);
+                if (!float.IsNaN(actual) && !float.IsInfinity(actual))
+                {
+                    startVolume = actual;
+                }
+            }
+            catch { }
+
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                if (!instance.isValid()) yield break;
+
+                float t = Mathf.Clamp01(elapsed / seconds);
+                try
+                {
+                    instance.setVolume(Mathf.Lerp(startVolume, 0f, t));
+                }
+                catch { }
+
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            StopCountdownWithAllowFadeout(instance);
+        }
+
+        private static void StopCountdownWithAllowFadeout(FMOD.Studio.EventInstance instance)
+        {
+            try
+            {
+                if (!instance.isValid()) return;
+                try { instance.setVolume(0f); } catch { }
+                instance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+                instance.release();
+                ExtractionBGMLogger.Debug("已淡出停止倒计时音效实例");
+            }
+            catch (Exception ex)
+            {
+                ExtractionBGMLogger.Warning($"淡出停止倒计时音效实例失败：{ex.Message}");
+            }
+        }
     }
 }
-

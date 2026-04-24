@@ -30,7 +30,7 @@ namespace DuckovCustomSounds.CustomItemSounds
             }
         }
 
-        private static IEnumerable<string> ExpandPhaseCandidates(string dir, string typeIdStr, string soundKey, ItemUsePhase phase)
+        private static IEnumerable<string> ExpandPhaseCandidates(string dir, string? typeIdStr, string soundKey, ItemUsePhase phase)
         {
             // 支持与枪械类似的“分段文件”命名：*_action/*_start 与 *_finish/*_end
             // 优先顺序：TypeID_相位 → soundKey_相位 → default_相位
@@ -86,7 +86,7 @@ namespace DuckovCustomSounds.CustomItemSounds
             }
 
             // 当未命中基准文件时，按基名（无扩展）尝试严格差分选择
-            private static string TryPickVariantStrictByBase(string dir, string baseNameNoExt)
+            private static string? TryPickVariantStrictByBase(string? dir, string? baseNameNoExt)
             {
                 if (string.IsNullOrWhiteSpace(dir) || string.IsNullOrWhiteSpace(baseNameNoExt)) return null;
                 try
@@ -145,7 +145,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                 catch { }
             }
 
-            public static bool TryGet(GameObject go, out string typeIdStr)
+            public static bool TryGet(GameObject? go, out string? typeIdStr)
             {
                 typeIdStr = null;
                 if (go == null) return false;
@@ -161,6 +161,15 @@ namespace DuckovCustomSounds.CustomItemSounds
         // --- 阶段追踪（用于停止 Action 阶段音效） ---
         internal enum ItemUsePhase { Action, Finish }
 
+        internal enum ItemUseStopReason
+        {
+            Unknown,
+            Completed,
+            ItemMissing,
+            HoldItemMismatch,
+            ExternalStop
+        }
+
         internal static class ItemUseSoundRegistry
         {
             private struct TrackedSound
@@ -172,7 +181,7 @@ namespace DuckovCustomSounds.CustomItemSounds
 
             private static readonly Dictionary<int, List<TrackedSound>> _map = new Dictionary<int, List<TrackedSound>>();
 
-            public static void Track(GameObject go, FMOD.Studio.EventInstance? eventInstance, ItemUsePhase phase)
+            public static void Track(GameObject? go, FMOD.Studio.EventInstance? eventInstance, ItemUsePhase phase)
             {
                 int id = 0;
                 try { id = go != null ? go.GetInstanceID() : 0; } catch { }
@@ -190,20 +199,21 @@ namespace DuckovCustomSounds.CustomItemSounds
                 }
             }
 
-            public static void StopByPhase(GameObject go, ItemUsePhase phase, FMOD.Studio.STOP_MODE mode = FMOD.Studio.STOP_MODE.ALLOWFADEOUT)
+            public static bool StopByPhase(GameObject? go, ItemUsePhase phase, FMOD.Studio.STOP_MODE mode = FMOD.Studio.STOP_MODE.ALLOWFADEOUT)
             {
                 int id = 0;
                 try { id = go != null ? go.GetInstanceID() : 0; } catch { }
-                if (id == 0) return;
+                if (id == 0) return false;
 
-                List<TrackedSound> snapshot = null;
+                List<TrackedSound>? snapshot = null;
                 lock (_map)
                 {
                     if (_map.TryGetValue(id, out var list) && list != null && list.Count > 0)
                         snapshot = list.ToList();
                 }
 
-                if (snapshot == null) return;
+                if (snapshot == null) return false;
+                bool stoppedAny = false;
                 foreach (var ts in snapshot)
                 {
                     if (ts.Phase == phase)
@@ -213,11 +223,30 @@ namespace DuckovCustomSounds.CustomItemSounds
                             if (ts.EventInstance.HasValue && ts.EventInstance.Value.isValid())
                             {
                                 ts.EventInstance.Value.stop(mode);
+                                stoppedAny = true;
                             }
                         }
                         catch { }
                     }
                 }
+
+                lock (_map)
+                {
+                    if (_map.TryGetValue(id, out var list))
+                    {
+                        list.RemoveAll(t => t.Phase == phase);
+                        if (list.Count == 0) _map.Remove(id);
+                    }
+                }
+
+                return stoppedAny;
+            }
+
+            public static void ForgetByPhase(GameObject? go, ItemUsePhase phase)
+            {
+                int id = 0;
+                try { id = go != null ? go.GetInstanceID() : 0; } catch { }
+                if (id == 0) return;
 
                 lock (_map)
                 {
@@ -238,6 +267,8 @@ namespace DuckovCustomSounds.CustomItemSounds
                 public bool HasActionPosted;
                 public bool HasFinishPosted;
                 public bool FinishCalled;
+                public bool Cancelled;
+                public ItemUseStopReason StopReason;
                 public float LastActionTime;
                 public float LastFinishTime;
                 public float LastFinishCalledTime;
@@ -248,13 +279,20 @@ namespace DuckovCustomSounds.CustomItemSounds
 
             private static readonly Dictionary<int, Cycle> _cycles = new Dictionary<int, Cycle>();
 
-            public static void ResetFor(GameObject go)
+            public static void ResetFor(GameObject? go)
             {
                 if (go == null) return;
-                try { _cycles[go.GetInstanceID()] = default; } catch { }
+                try
+                {
+                    _cycles[go.GetInstanceID()] = new Cycle
+                    {
+                        StopReason = ItemUseStopReason.Unknown
+                    };
+                }
+                catch { }
             }
 
-            public static void MarkPhase(GameObject go, ItemUsePhase phase)
+            public static void MarkPhase(GameObject? go, ItemUsePhase phase)
             {
                 if (go == null) return;
                 try
@@ -268,7 +306,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                 catch { }
             }
 
-            public static void MarkFinishCalled(GameObject go)
+            public static void MarkFinishCalled(GameObject? go)
             {
                 if (go == null) return;
                 try
@@ -276,13 +314,63 @@ namespace DuckovCustomSounds.CustomItemSounds
                     int id = go.GetInstanceID();
                     if (!_cycles.TryGetValue(id, out var c)) c = default;
                     c.FinishCalled = true;
+                    c.StopReason = ItemUseStopReason.Completed;
                     c.LastFinishCalledTime = Time.realtimeSinceStartup;
                     _cycles[id] = c;
                 }
                 catch { }
             }
 
-            public static void ClearObserved(GameObject go, ItemUsePhase phase)
+            public static void MarkCancelled(GameObject? go, ItemUseStopReason reason)
+            {
+                if (go == null) return;
+                try
+                {
+                    int id = go.GetInstanceID();
+                    if (!_cycles.TryGetValue(id, out var c)) c = default;
+                    if (c.StopReason == ItemUseStopReason.Completed) return;
+                    if (c.Cancelled && c.StopReason == reason) return;
+
+                    c.Cancelled = true;
+                    c.StopReason = reason;
+                    _cycles[id] = c;
+                    ItemLogger.Debug($"[ItemUse] 取消使用: reason={reason}");
+                }
+                catch { }
+            }
+
+            public static bool MarkStopped(GameObject? go, out Cycle c)
+            {
+                c = default;
+                if (go == null) return false;
+                try
+                {
+                    int id = go.GetInstanceID();
+                    if (!_cycles.TryGetValue(id, out c)) c = default;
+                    if (c.StopReason == ItemUseStopReason.Unknown)
+                    {
+                        c.StopReason = c.FinishCalled ? ItemUseStopReason.Completed : ItemUseStopReason.ExternalStop;
+                    }
+                    _cycles[id] = c;
+                    return true;
+                }
+                catch { return false; }
+            }
+
+            public static bool IsAbnormalStop(GameObject? go)
+            {
+                if (go == null) return false;
+                try
+                {
+                    if (!_cycles.TryGetValue(go.GetInstanceID(), out var c)) return false;
+                    if (c.StopReason == ItemUseStopReason.Completed) return false;
+                    if (c.StopReason == ItemUseStopReason.ItemMissing || c.StopReason == ItemUseStopReason.HoldItemMismatch || c.StopReason == ItemUseStopReason.ExternalStop) return true;
+                    return c.HasActionPosted && !c.FinishCalled;
+                }
+                catch { return false; }
+            }
+
+            public static void ClearObserved(GameObject? go, ItemUsePhase phase)
             {
                 if (go == null) return;
                 try
@@ -295,7 +383,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                 catch { }
             }
 
-            public static void MarkObserved(GameObject go, ItemUsePhase phase)
+            public static void MarkObserved(GameObject? go, ItemUsePhase phase)
             {
                 if (go == null) return;
                 try
@@ -308,7 +396,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                 catch { }
             }
 
-            public static bool WasObserved(GameObject go, ItemUsePhase phase)
+            public static bool WasObserved(GameObject? go, ItemUsePhase phase)
             {
                 if (go == null) return false;
                 try
@@ -322,14 +410,14 @@ namespace DuckovCustomSounds.CustomItemSounds
                 return false;
             }
 
-            public static bool TryGet(GameObject go, out Cycle c)
+            public static bool TryGet(GameObject? go, out Cycle c)
             {
                 c = default;
                 if (go == null) return false;
                 try { return _cycles.TryGetValue(go.GetInstanceID(), out c); } catch { return false; }
             }
 
-            public static void Clear(GameObject go)
+            public static void Clear(GameObject? go)
             {
                 if (go == null) return;
                 try { _cycles.Remove(go.GetInstanceID()); } catch { }
@@ -352,7 +440,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                     try { typeIdStr = _item.TypeID.ToString(); } catch { }
                     if (string.IsNullOrWhiteSpace(typeIdStr)) return;
 
-                    CharacterMainControl cmc = null;
+                    CharacterMainControl? cmc = null;
                     try { cmc = __instance.GetComponent<CharacterMainControl>(); } catch { }
                     if (cmc == null) { try { cmc = __instance.GetComponentInParent<CharacterMainControl>(); } catch { } }
                     if (cmc == null) { try { cmc = Traverse.Create(__instance).Field("characterController").GetValue<CharacterMainControl>(); } catch { } }
@@ -364,6 +452,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                     }
 
                     // 开启新一轮的“使用周期”跟踪
+                    try { ItemUseSoundRegistry.ForgetByPhase(__instance?.gameObject, ItemUsePhase.Action); } catch { }
                     try { ItemUseCycle.ResetFor(__instance?.gameObject); } catch { }
                 }
                 catch { }
@@ -381,6 +470,13 @@ namespace DuckovCustomSounds.CustomItemSounds
             public static void PostActionSound_Prefix(CA_UseItem __instance)
             {
                 s_CurrentPhase = ItemUsePhase.Action;
+                try
+                {
+                    string? typeIdStr = null;
+                    ItemUseContext.TryGet(__instance?.gameObject, out typeIdStr);
+                    ItemLogger.Debug($"[ItemUse] 开始使用: TypeID={typeIdStr ?? "N/A"}");
+                }
+                catch { }
                 try { ItemUseCycle.MarkPhase(__instance?.gameObject, ItemUsePhase.Action); } catch { }
                 try { ItemUseCycle.ClearObserved(__instance?.gameObject, ItemUsePhase.Action); } catch { }
             }
@@ -411,6 +507,55 @@ namespace DuckovCustomSounds.CustomItemSounds
             }
         }
 
+        // --- 标记取消原因 ---
+        [HarmonyPatch(typeof(CA_UseItem))]
+        public static class CA_UseItem_CancelReasonMarkers
+        {
+            [HarmonyPatch("OnUpdateAction")]
+            [HarmonyPrefix]
+            public static void Prefix(CA_UseItem __instance)
+            {
+                try
+                {
+                    if (__instance == null || !__instance.Running) return;
+
+                    Item? item = Traverse.Create(__instance).Field("item").GetValue<Item>();
+                    if (item == null)
+                    {
+                        ItemUseCycle.MarkCancelled(__instance?.gameObject, ItemUseStopReason.ItemMissing);
+                        return;
+                    }
+
+                    var controller = __instance.characterController;
+                    var holdAgent = controller?.CurrentHoldItemAgent;
+                    if (holdAgent == null || holdAgent.Item == null || holdAgent.Item != item)
+                    {
+                        ItemUseCycle.MarkCancelled(__instance?.gameObject, ItemUseStopReason.HoldItemMismatch);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        // --- 标记最终停止 ---
+        [HarmonyPatch(typeof(CA_UseItem))]
+        public static class CA_UseItem_OnStop_Marker
+        {
+            [HarmonyPatch("OnStop")]
+            [HarmonyPrefix]
+            public static void Prefix(CA_UseItem __instance)
+            {
+                try
+                {
+                    if (ItemUseCycle.MarkStopped(__instance?.gameObject, out var cyc))
+                    {
+                        ItemLogger.Debug($"[ItemUse] 停止使用: reason={cyc.StopReason}, normal={cyc.StopReason == ItemUseStopReason.Completed}");
+                    }
+                }
+                catch { }
+            }
+        }
+
         // --- 停止 Action 阶段音效 ---
         [HarmonyPatch(typeof(CA_UseItem))]
         public static class CA_UseItem_StopActionSounds
@@ -425,10 +570,11 @@ namespace DuckovCustomSounds.CustomItemSounds
                     if (go != null)
                     {
                         bool skipOriginalStop = false;
+                        bool isAbnormalStop = ItemUseCycle.IsAbnormalStop(go);
                         // 如果是正常完成且没有发布完成音，允许 Action 音效自然结束，避免误判为中断导致的戛然而止
                         if (ItemUseCycle.TryGet(go, out var cyc))
                         {
-                            if (cyc.FinishCalled && !cyc.HasFinishPosted && cyc.HasActionPosted)
+                            if (!isAbnormalStop && cyc.FinishCalled && !cyc.HasFinishPosted && cyc.HasActionPosted)
                             {
                                 skipOriginalStop = true;
                                 ItemLogger.Debug("[ItemUse] 正常完成但无完成音，跳过停止，允许 Action 自然结束");
@@ -441,14 +587,17 @@ namespace DuckovCustomSounds.CustomItemSounds
                         bool shouldSkipStopForMinAudible = false;
                         try
                         {
-                            float MIN_ACTION_AUDIBLE_SEC = Mathf.Max(0f, ItemConfig.MinActionAudibleSeconds);
-                            if (ItemUseCycle.TryGet(go, out var cyc2) && cyc2.HasActionPosted)
+                            if (!isAbnormalStop)
                             {
-                                float since = Time.realtimeSinceStartup - cyc2.LastActionTime;
-                                if (since < MIN_ACTION_AUDIBLE_SEC && !cyc2.FinishCalled)
+                                float MIN_ACTION_AUDIBLE_SEC = Mathf.Max(0f, ItemConfig.MinActionAudibleSeconds);
+                                if (ItemUseCycle.TryGet(go, out var cyc2) && cyc2.HasActionPosted)
                                 {
-                                    shouldSkipStopForMinAudible = true;
-                                    ItemLogger.Debug($"[ItemUse] Action 播放时长 {since:F2}s < {MIN_ACTION_AUDIBLE_SEC:F2}s, 跳过停止以避免过短");
+                                    float since = Time.realtimeSinceStartup - cyc2.LastActionTime;
+                                    if (since < MIN_ACTION_AUDIBLE_SEC && !cyc2.FinishCalled)
+                                    {
+                                        shouldSkipStopForMinAudible = true;
+                                        ItemLogger.Debug($"[ItemUse] Action 播放时长 {since:F2}s < {MIN_ACTION_AUDIBLE_SEC:F2}s, 跳过停止以避免过短");
+                                    }
                                 }
                             }
                         }
@@ -456,12 +605,16 @@ namespace DuckovCustomSounds.CustomItemSounds
 
                         if (!skipOriginalStop && !shouldSkipStopForMinAudible)
                         {
-                            ItemUseSoundRegistry.StopByPhase(go, ItemUsePhase.Action, FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
-                            ItemLogger.Debug("[ItemUse] 停止 Action 阶段音效（淡出）");
+                            bool stoppedActionSound = ItemUseSoundRegistry.StopByPhase(go, ItemUsePhase.Action, FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+                            if (stoppedActionSound)
+                            {
+                                ItemLogger.Debug("[ItemUse] 停止 Action 阶段音效（淡出）");
+                            }
                             return true; // 继续执行原 StopSound（会停止 actionInstance）
                         }
                         else
                         {
+                            ItemUseSoundRegistry.ForgetByPhase(go, ItemUsePhase.Action);
                             return false; // 跳过原 StopSound
                         }
                     }
@@ -488,7 +641,7 @@ namespace DuckovCustomSounds.CustomItemSounds
         /// <summary>
         /// 当本阶段未观察到任何 SFX/Item/use_* 调用时，依据 JSON 映射尝试主动注入音效。
         /// </summary>
-        private static void TryInjectIfMissing(GameObject go, ItemUsePhase phase)
+        private static void TryInjectIfMissing(GameObject? go, ItemUsePhase phase)
         {
             if (go == null) return;
             try
@@ -497,11 +650,11 @@ namespace DuckovCustomSounds.CustomItemSounds
                 if (ItemUseCycle.WasObserved(go, phase)) return;
 
                 // 获取 TypeID
-                string typeIdStr = null;
+                string? typeIdStr = null;
                 try { ItemUseContext.TryGet(go, out typeIdStr); } catch { }
 
                 // 解析应注入的 soundKey
-                string targetKey = ItemSoundMap.ResolveForInjection(typeIdStr, phase);
+                string? targetKey = ItemSoundMap.ResolveForInjection(typeIdStr, phase);
                 if (string.IsNullOrWhiteSpace(targetKey)) return; // 无注入配置
 
                 // 类别开关
@@ -512,7 +665,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                 }
 
                 string dir = ItemConfig.GetBaseDir();
-                string catDir = null;
+                string? catDir = null;
                 try { catDir = Path.Combine(dir, targetKey); } catch { }
 
                 // 允许 JSON 指定文件基名（fileBase），实现多个 TypeID 共享同一文件
@@ -543,7 +696,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                     filePath = fallbacks.FirstOrDefault(File.Exists);
                     if (filePath == null)
                     {
-                        string pickDefault = TryPickVariantStrictByBase(catDir, "default");
+                        string? pickDefault = TryPickVariantStrictByBase(catDir, "default");
                         if (string.IsNullOrEmpty(pickDefault)) pickDefault = TryPickVariantStrictByBase(dir, "default");
                         if (!string.IsNullOrEmpty(pickDefault)) filePath = pickDefault;
                     }
@@ -594,7 +747,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                     if (string.IsNullOrWhiteSpace(soundKey)) return;
 
                     // 获取 TypeID（若无则允许为 null）
-                    string typeIdStr = null;
+                    string? typeIdStr = null;
                     ItemUseContext.TryGet(gameObject, out typeIdStr);
 
                     // 若处于已知阶段，标记“已观察到原版事件”
@@ -620,7 +773,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                     }
 
                     string dir = ItemConfig.GetBaseDir();
-                    string catDir = null;
+                    string? catDir = null;
                     try { catDir = Path.Combine(dir, soundKey); } catch { }
 
                     if (string.IsNullOrEmpty(typeIdStr))
@@ -701,7 +854,7 @@ namespace DuckovCustomSounds.CustomItemSounds
                         if (filePath == null)
                         {
                             // 优先尝试分类目录 default 的差分，其次根目录 default 的差分
-                            string pickDefault = TryPickVariantStrictByBase(catDir, "default");
+                            string? pickDefault = TryPickVariantStrictByBase(catDir, "default");
                             if (string.IsNullOrEmpty(pickDefault)) pickDefault = TryPickVariantStrictByBase(dir, "default");
                             if (!string.IsNullOrEmpty(pickDefault)) filePath = pickDefault;
                         }

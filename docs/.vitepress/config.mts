@@ -7,14 +7,14 @@ export default defineConfig({
   lastUpdated: true,
   cleanUrls: true,
   head: [
-    ['link', { rel: 'icon', href: '/favicon.png' }]
+    ['link', { rel: 'icon', href: 'https://github.com/Guducat/DuckovCustomSounds/raw/v2.x/docs/.vitepress/public/favicon.png' }]
   ],
   locales: {
     root: { label: '简体中文', lang: 'zh-CN' },
     en: { label: 'English', lang: 'en-US', link: '/en/' }
   },
   themeConfig: {
-    logo: { src: '/DuckovCustomSounds.png', alt: 'DuckovCustomSounds' },
+    logo: { src: 'https://github.com/Guducat/DuckovCustomSounds/raw/v2.x/docs/.vitepress/public/DuckovCustomSounds.png', alt: 'DuckovCustomSounds' },
     
     // 1. 将所有语言共享的配置移到根级别
     socialLinks: [{ icon: 'github', link: 'https://github.com/Guducat/DuckovCustomSounds' }],
@@ -125,7 +125,7 @@ export default defineConfig({
       ]
     },
     editLink: {
-      pattern: 'https://github.com/Guducat/DuckovCustomSounds/edit/v1.x/docs/:path',
+      pattern: 'https://github.com/Guducat/DuckovCustomSounds/edit/v2.x/docs/:path',
       text: '在 GitHub 上编辑此页'
     },
     lastUpdated: { text: '最后更新' },
@@ -173,7 +173,7 @@ export default defineConfig({
           ]
         },
         editLink: {
-          pattern: 'https://github.com/Guducat/DuckovCustomSounds/edit/v1.x/docs/:path',
+          pattern: 'https://github.com/Guducat/DuckovCustomSounds/edit/v2.x/docs/:path',
           text: 'Edit this page on GitHub'
         },
         lastUpdated: { text: 'Last updated' },

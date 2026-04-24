@@ -11,34 +11,86 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
 {
     internal sealed class VoiceRuleEngine
     {
-        private VoiceConfig _config;
+        private VoiceConfig _config = new VoiceConfig();
+        private readonly Action<string> _info;
+        private readonly Action<string> _debug;
+        private readonly Action<string> _verbose;
+        private readonly string _logPrefix;
+        private readonly string _pathLogPrefix;
+        private readonly string _variantLogPrefix;
+
+        public VoiceRuleEngine()
+            : this(CESLogger.Info, CESLogger.Debug, CESLogger.Verbose, "CES:Rule")
+        {
+        }
+
+        public VoiceRuleEngine(Action<string> info, Action<string> debug, Action<string> verbose, string logPrefix)
+        {
+            _info = info ?? CESLogger.Info;
+            _debug = debug ?? CESLogger.Debug;
+            _verbose = verbose ?? CESLogger.Verbose;
+            _logPrefix = string.IsNullOrEmpty(logPrefix) ? "CES:Rule" : logPrefix;
+            var modulePrefix = ResolveModulePrefix(_logPrefix);
+            _pathLogPrefix = modulePrefix + ":Path";
+            _variantLogPrefix = modulePrefix + ":Variant";
+        }
+
+        private string RuleLog(string message) => $"[{_logPrefix}] {message}";
+        private void Info(string message) => _info(RuleLog(message));
+        private void Debug(string message) => _debug(RuleLog(message));
+        private void Verbose(string message) => _verbose(RuleLog(message));
+        private IEnumerable<string> BuildCandidates(string pattern, EnemyContext ctx, string soundKey, AudioManager.VoiceType voiceType, IEnumerable<string> preferredExts, bool includePatternWithoutSoundKey)
+        {
+            return PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, preferredExts, includePatternWithoutSoundKey, _verbose, _pathLogPrefix);
+        }
+
+        private IEnumerable<string> BuildCandidatesWithVoiceTypeString(string pattern, EnemyContext ctx, string soundKey, string voiceTypeString, IEnumerable<string> preferredExts, bool includePatternWithoutSoundKey)
+        {
+            return PathBuilder.BuildCandidatesWithVoiceTypeString(pattern, ctx, soundKey, voiceTypeString, preferredExts, includePatternWithoutSoundKey, _verbose, _pathLogPrefix);
+        }
+
+        private bool TryResolveExisting(IEnumerable<string> candidates, bool validateExists, int ownerId, out string? chosen, out List<string> tried)
+        {
+            var bindVariantIndexPerOwner = _config?.BindVariantIndexPerEnemy ?? false;
+            return PathBuilder.TryResolveExisting(candidates, validateExists, ownerId, out chosen, out tried, _verbose, _debug, _pathLogPrefix, _variantLogPrefix, bindVariantIndexPerOwner);
+        }
+
+        private static string ResolveModulePrefix(string logPrefix)
+        {
+            if (string.IsNullOrWhiteSpace(logPrefix)) return "CES";
+
+            var colon = logPrefix.IndexOf(':');
+            return colon > 0 ? logPrefix.Substring(0, colon) : logPrefix.Trim();
+        }
 
         public void Reload(VoiceConfig config)
         {
             _config = config ?? new VoiceConfig();
-            CESLogger.Info($"[CES:Rule] 规则已加载：{_config.Rules?.Count ?? 0} 条，默认模板: {_config.DefaultPattern}");
+            Info($"规则已加载：{_config.Rules?.Count ?? 0} 条，默认模板: {_config.DefaultPattern}");
         }
 
-        public bool TryRoute(EnemyContext ctx, string soundKey, AudioManager.VoiceType voiceType, out VoiceRoute route)
+        public bool TryRoute(EnemyContext? ctx, string? soundKey, AudioManager.VoiceType voiceType, out VoiceRoute? route)
         {
             route = null;
-            if (_config == null) return false;
+            if (ctx == null) return false;
+            var safeSoundKey = soundKey ?? string.Empty;
+            var preferredExts = _config.Fallback?.PreferredExtensions ?? Array.Empty<string>();
 
-            var speaker = ctx?.GameObject != null
+            var speaker = ctx.GameObject != null
                 ? ctx.GameObject.GetComponent<CharacterMainControl>()
                 : null;
             if (speaker != null)
             {
                 // Footstep/dash are not subject to EnemyVoiceFilter; only apply for real voice events
-                bool isFootOrDash = !string.IsNullOrEmpty(soundKey) && (
-                    soundKey.StartsWith("footstep_", StringComparison.OrdinalIgnoreCase) ||
-                    soundKey.Equals("dash", StringComparison.OrdinalIgnoreCase) ||
-                    soundKey.StartsWith("dash_", StringComparison.OrdinalIgnoreCase)
+                bool isFootOrDash = !string.IsNullOrEmpty(safeSoundKey) && (
+                    safeSoundKey.StartsWith("footstep_", StringComparison.OrdinalIgnoreCase) ||
+                    safeSoundKey.Equals("dash", StringComparison.OrdinalIgnoreCase) ||
+                    safeSoundKey.StartsWith("dash_", StringComparison.OrdinalIgnoreCase)
                 );
                 if (!isFootOrDash)
                 {
                     var voiceContext = EnemyVoiceFilter.CreateContext(ctx);
-                    if (!EnemyVoiceFilter.ShouldAllow(speaker, soundKey, voiceContext))
+                    if (!EnemyVoiceFilter.ShouldAllow(speaker, safeSoundKey, voiceContext))
                     {
                         route = new VoiceRoute
                         {
@@ -52,13 +104,13 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                 }
             }
 
-            CESLogger.Debug($"[CES:Rule] ctx.team={ (ctx!=null? ctx.GetTeamNormalized() : "null") }, rank={ (ctx!=null? ctx.GetRank() : "null") }");
+            Verbose($"ctx.team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}");
                 try
                 {
                     var ctxDto = DuckovCustomSounds.API.ExternalRouter.FromInternal(ctx, voiceType);
                     if (ctxDto.IsValid)
                     {
-                        if (DuckovCustomSounds.API.ExternalRouter.TryResolve(ctxDto, soundKey, voiceType.ToString(), out var extPath)
+                        if (DuckovCustomSounds.API.ExternalRouter.TryResolve(ctxDto, safeSoundKey, voiceType.ToString(), out var extPath)
                             && !string.IsNullOrEmpty(extPath))
                         {
                             route = new VoiceRoute { UseCustom = true, FileFullPath = extPath, MatchRule = "<external-provider>", TriedPaths = new List<string>() };
@@ -71,13 +123,13 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             // 0) SimpleRules（若启用则优先并且不再回退到复杂规则）
             if (_config.UseSimpleRules)
             {
-                CESLogger.Debug("[CES:Rule] SimpleRules 启用，使用简化匹配模式。");
-                if (TryRouteSimple(ctx, soundKey, voiceType, out route))
+                Verbose("SimpleRules 启用，使用简化匹配模式。");
+                if (TryRouteSimple(ctx, safeSoundKey, voiceType, out route))
                 {
                     return true;
                 }
                 // 简化模式下未命中：直接返回不使用自定义（保留原声），不进入复杂规则
-                CESLogger.Info("[CES:Rule] 未匹配到自定义，使用原声");
+                Debug("未匹配到自定义，使用原声");
                 route = new VoiceRoute { UseCustom = false, FileFullPath = null, MatchRule = "<simple-none>", TriedPaths = new List<string>() };
                 return false;
             }
@@ -88,25 +140,25 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                 foreach (var r in _config.Rules)
                 {
                     string detail;
-                    bool m = MatchesDetailed(r, ctx, soundKey, out detail);
-                    CESLogger.Debug($"[CES:Rule] 检查规则: {Describe(r)} => match={m} ({detail})");
+                    bool m = MatchesDetailed(r, ctx, safeSoundKey, out detail);
+                    Verbose($"检查规则: {Describe(r)} => match={m} ({detail})");
                     if (!m) continue;
 
                     var vtStr = !string.IsNullOrEmpty(r.ForceVoiceType) ? r.ForceVoiceType : voiceType.ToString();
-                    var pattern = string.IsNullOrEmpty(r.FilePattern) ? _config.DefaultPattern : r.FilePattern;
+                    var pattern = string.IsNullOrEmpty(r.FilePattern) ? _config.DefaultPattern : r.FilePattern!;
                     pattern = SanitizePatternLocal(pattern);
-                    CESLogger.Debug($"[CES:Rule] 使用模板: {pattern}, vt={vtStr}, soundKey={soundKey}");
+                    Verbose($"使用模板: {pattern}, vt={vtStr}, soundKey={safeSoundKey}");
 
-                    var cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, ParseVoiceType(vtStr, voiceType), _config.Fallback.PreferredExtensions, true);
-                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
+                    var cands = BuildCandidates(pattern, ctx, safeSoundKey, ParseVoiceType(vtStr, voiceType), preferredExts, true);
+                    if (TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
                     {
-                        CESLogger.Info($"[CES:Rule] 命中: {chosen}");
-                        route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = Describe(r), TriedPaths = tried };
+                        Info($"命中: {chosen}");
+                        route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = Describe(r), TriedPaths = tried ?? new List<string>() };
                         return true;
                     }
                     else
                     {
-                        CESLogger.Debug($"[CES:Rule] 未命中文件。尝试路径数={ (tried != null ? tried.Count : 0) }");
+                        Verbose($"未命中文件。尝试路径数={ (tried != null ? tried.Count : 0) }");
                     }
                     // 继续执行
                 }
@@ -115,17 +167,17 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             // 2) default pattern (with and without soundKey)
             {
                 var defPattern = SanitizePatternLocal(_config.DefaultPattern);
-                CESLogger.Debug($"[CES:Rule] 尝试默认模板: {defPattern}, vt={voiceType}, soundKey={soundKey}");
-                var cands = PathBuilder.BuildCandidates(defPattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
-                if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
+                Verbose($"尝试默认模板: {defPattern}, vt={voiceType}, soundKey={safeSoundKey}");
+                var cands = BuildCandidates(defPattern, ctx, safeSoundKey, voiceType, preferredExts, true);
+                if (TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
                 {
-                    CESLogger.Info($"[CES:Rule] 默认模板命中: {chosen}");
-                    route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = "<default>", TriedPaths = tried };
+                    Info($"默认模板命中: {chosen}");
+                    route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = "<default>", TriedPaths = tried ?? new List<string>() };
                     return true;
                 }
                 else
                 {
-                    CESLogger.Debug("[CES:Rule] 默认模板未命中。");
+                    Verbose("默认模板未命中。");
                 }
             }
 
@@ -134,32 +186,37 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             return false;
         }
 
-        private static string NormalizeIcon(string icon)
+        private static string NormalizeIcon(string? icon)
         {
             var s = (icon ?? string.Empty).Trim().ToLowerInvariant();
             if (s == "elete") s = "elite";
             return s;
         }
 
-        private bool TryRouteSimple(EnemyContext ctx, string soundKey, AudioManager.VoiceType voiceType, out VoiceRoute route)
+        private bool TryRouteSimple(EnemyContext? ctx, string? soundKey, AudioManager.VoiceType voiceType, out VoiceRoute? route)
         {
             route = null;
             try
             {
                 if (ctx == null) return false;
+                var context = ctx;
+                var safeSoundKey = soundKey ?? string.Empty;
+                var preferredExts = _config.Fallback?.PreferredExtensions ?? Array.Empty<string>();
+                var validateFileExists = _config.Debug.ValidateFileExists;
+                var ownerId = context.InstanceId;
                 var simpleRules = _config?.SimpleRules;
                 if (simpleRules == null || simpleRules.Count == 0) return false;
 
                 // NameKey 为空时，支持按照 SimpleRules.Team 进行匹配（用于玩家等 nameKey="" 的场景）
-                if (string.IsNullOrEmpty(ctx.NameKey))
+                if (string.IsNullOrEmpty(context.NameKey))
                 {
-                    var team = (ctx.GetTeamNormalized() ?? string.Empty).Trim().ToLowerInvariant();
-                    var ctxIcon2 = NormalizeIcon(ctx.IconType);
-                    CESLogger.Debug($"[CES:Rule] Simple(Team) 匹配: team='{team}', icon='{ctxIcon2}', 总SimpleRules={simpleRules.Count}");
+                    var team = (context.GetTeamNormalized() ?? string.Empty).Trim().ToLowerInvariant();
+                    var ctxIcon2 = NormalizeIcon(context.IconType);
+                    Verbose($"Simple(Team) 匹配: team='{team}', icon='{ctxIcon2}', 总SimpleRules={simpleRules.Count}");
                     var teamCandidates = simpleRules
                         .Where(r => r != null && !string.IsNullOrEmpty(r.Team) && string.Equals(r.Team.Trim(), team, StringComparison.OrdinalIgnoreCase))
                         .ToList();
-                    CESLogger.Debug($"[CES:Rule] Simple(Team) 候选规则数: {teamCandidates.Count}");
+                    Verbose($"Simple(Team) 候选规则数: {teamCandidates.Count}");
                     if (teamCandidates.Count == 0) return false;
 
                     IEnumerable<SimpleRuleConfig> orderedTeam = teamCandidates
@@ -173,21 +230,21 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
 
                         var iconPrefix = string.IsNullOrEmpty(r.IconType) ? "normal" : NormalizeIcon(r.IconType);
                         var pattern = $"{root.TrimEnd('/', '\\')}/{iconPrefix}_{{voiceType}}_{{soundKey}}{{ext}}";
-                        CESLogger.Debug($"[CES:Rule] Simple Team 使用模板: {pattern}, vt={voiceType}, soundKey={soundKey}, team={team}");
+                        Verbose($"Simple Team 使用模板: {pattern}, vt={voiceType}, soundKey={safeSoundKey}, team={team}");
 
-                        var cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
-                        if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen, out var tried))
+                        var cands = BuildCandidates(pattern, context, safeSoundKey, voiceType, preferredExts, true);
+                        if (TryResolveExisting(cands, validateFileExists, ownerId, out var chosen, out var tried))
                         {
-                            CESLogger.Debug($"[CES:Rule] Simple(Team) 命中: {chosen}");
-                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple-team:{team}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried };
+                            Verbose($"Simple(Team) 命中: {chosen}");
+                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple-team:{team}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried ?? new List<string>() };
                             return true;
                         }
                         else
                         {
-                            CESLogger.Debug($"[CES:Rule] Simple(Team) 未命中，尝试的路径数: {tried?.Count ?? 0}");
+                            Debug($"Simple(Team) 未命中，尝试的路径数: {tried?.Count ?? 0}");
                             if (tried != null)
                             {
-                                for (int i = 0; i < tried.Count; i++) CESLogger.Info($"[CES:Rule] Simple(Team) 尝试路径[{i}]: {tried[i]}");
+                                for (int i = 0; i < tried.Count; i++) Verbose($"Simple(Team) 尝试路径[{i}]: {tried[i]}");
                             }
                         }
                     }
@@ -195,8 +252,8 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                     return false;
                 }
 
-                var nk = ctx.NameKey;
-                var ctxIcon = NormalizeIcon(ctx.IconType);
+                var nk = context.NameKey;
+                var ctxIcon = NormalizeIcon(context.IconType);
 
                 var candidates = simpleRules
                     .Where(r => r != null && !string.IsNullOrEmpty(r.NameKey) && string.Equals(r.NameKey, nk, StringComparison.OrdinalIgnoreCase))
@@ -217,54 +274,54 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
 
                     // 提取 nameKey 的后半部分作为备选 voiceType（不强制回退为原始vt，避免重复）
                     var nameKeyParts = nk.Split('_');
-                    string fallbackVTText = nameKeyParts.Length > 1 ? nameKeyParts[1] : null;
+                    string? fallbackVTText = nameKeyParts.Length > 1 ? nameKeyParts[1] : null;
                     var vtOrigStr = voiceType.ToString();
 
-                    CESLogger.Debug($"[CES:Rule] Simple 使用模板: {pattern}, vt={voiceType}, soundKey={soundKey}, nameKey={nk}, fallbackVT={(fallbackVTText ?? "<none>")}");
+                    Verbose($"Simple 使用模板: {pattern}, vt={voiceType}, soundKey={safeSoundKey}, nameKey={nk}, fallbackVT={(fallbackVTText ?? "<none>")}");
 
                     // 1) 优先尝试 fallbackVT（如果与原始vt不同）
-                    IEnumerable<string> cands = null;
-                    string chosen;
-                    List<string> tried;
+                    IEnumerable<string>? cands = null;
+                    string? chosen;
+                    List<string>? tried;
                     if (!string.IsNullOrEmpty(fallbackVTText) && !string.Equals(fallbackVTText, vtOrigStr, StringComparison.OrdinalIgnoreCase))
                     {
                         // 支持既能解析为枚举，也能按原样字符串替换
                         if (Enum.TryParse<AudioManager.VoiceType>(fallbackVTText, true, out var fbEnum))
                         {
-                            cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, fbEnum, _config.Fallback.PreferredExtensions, true);
+                            cands = BuildCandidates(pattern, context, safeSoundKey, fbEnum, preferredExts, true);
                         }
                         else
                         {
-                            cands = PathBuilder.BuildCandidatesWithVoiceTypeString(pattern, ctx, soundKey, fallbackVTText, _config.Fallback.PreferredExtensions, true);
+                            cands = BuildCandidatesWithVoiceTypeString(pattern, context, safeSoundKey, fallbackVTText, preferredExts, true);
                         }
 
-                        if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out chosen, out tried))
+                        if (cands != null && TryResolveExisting(cands, validateFileExists, ownerId, out chosen, out tried))
                         {
-                            CESLogger.Info($"[CES:Rule] Simple 命中(使用fallbackVT): {chosen}");
-                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}:{fallbackVTText}>", TriedPaths = tried };
+                            Info($"Simple 命中(使用fallbackVT): {chosen}");
+                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}:{fallbackVTText}>", TriedPaths = tried ?? new List<string>() };
                             return true;
                         }
 
                         // 如果没命中，再尝试原始 voiceType
-                        CESLogger.Verbose($"[CES:Rule] Simple fallbackVT未命中，尝试原始vt: {voiceType}");
+                        Verbose($"Simple fallbackVT未命中，尝试原始vt: {voiceType}");
                     }
 
                     // 2) 回退到原始 vt（仅当与 fallbackVT 不重复时会执行到这里）
-                    cands = PathBuilder.BuildCandidates(pattern, ctx, soundKey, voiceType, _config.Fallback.PreferredExtensions, true);
-                    if (PathBuilder.TryResolveExisting(cands, _config.Debug.ValidateFileExists, ctx.InstanceId, out chosen, out tried))
+                    cands = BuildCandidates(pattern, context, safeSoundKey, voiceType, preferredExts, true);
+                    if (TryResolveExisting(cands, validateFileExists, ownerId, out chosen, out tried))
                     {
-                        CESLogger.Info($"[CES:Rule] Simple 命中(使用原始vt): {chosen}");
-                        route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried };
+                        Info($"Simple 命中(使用原始vt): {chosen}");
+                        route = new VoiceRoute { UseCustom = true, FileFullPath = chosen, MatchRule = $"<simple:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried ?? new List<string>() };
                         return true;
                     }
                     else
                     {
-                        CESLogger.Debug($"[CES:Rule] Simple 未命中，尝试的路径数: {tried?.Count ?? 0}");
+                        Debug($"Simple 未命中，尝试的路径数: {tried?.Count ?? 0}");
                         if (tried != null)
                         {
                             for (int i = 0; i < tried.Count; i++)
                             {
-                                CESLogger.Debug($"[CES:Rule] Simple 尝试路径[{i}]: {tried[i]}");
+                                Verbose($"Simple 尝试路径[{i}]: {tried[i]}");
                             }
                         }
 
@@ -275,21 +332,21 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                             if (Directory.Exists(baseDir))
                             {
                                 var safeSk = (soundKey ?? "unknown").Replace(' ', '_').Replace(':', '_');
-                                var exts = _config.Fallback?.PreferredExtensions ?? new[] { ".mp3", ".wav" };
+                                var exts = preferredExts;
                                 foreach (var ext in exts)
                                 {
                                     var search = $"{iconPrefix}_*_{safeSk}{ext}";
-                                    CESLogger.Debug($"[CES:Rule] Simple 通配搜索: dir={baseDir}, pattern={search}");
+                                    Verbose($"Simple 通配搜索: dir={baseDir}, pattern={search}");
                                     string[] files = Array.Empty<string>();
                                     try { files = Directory.GetFiles(baseDir, search, SearchOption.TopDirectoryOnly); }
-                                    catch (Exception ex) { CESLogger.Debug($"[CES:Rule] Simple 通配枚举异常: {ex.Message}"); }
+                                    catch (Exception ex) { Verbose($"Simple 通配枚举异常: {ex.Message}"); }
 
                                     if (files != null && files.Length > 0)
                                     {
-                                        if (PathBuilder.TryResolveExisting(files, _config.Debug.ValidateFileExists, ctx.InstanceId, out var chosen2, out var tried2))
+                                        if (TryResolveExisting(files, validateFileExists, ownerId, out var chosen2, out var tried2))
                                         {
-                                            CESLogger.Info($"[CES:Rule] Simple 通配命中: {chosen2}");
-                                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen2, MatchRule = $"<simple-wild:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried2 };
+                                            Info($"Simple 通配命中: {chosen2}");
+                                            route = new VoiceRoute { UseCustom = true, FileFullPath = chosen2, MatchRule = $"<simple-wild:{nk}:{(string.IsNullOrEmpty(r.IconType)?"*":iconPrefix)}>", TriedPaths = tried2 ?? new List<string>() };
                                             return true;
                                         }
                                     }
@@ -298,19 +355,19 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
                         }
                         catch (Exception ex)
                         {
-                            CESLogger.Debug($"[CES:Rule] Simple 通配处理异常: {ex.Message}");
+                            Debug($"Simple 通配处理异常: {ex.Message}");
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                CESLogger.Debug($"[CES:Rule] Simple 处理异常: {ex.Message}");
+                Debug($"Simple 处理异常: {ex.Message}");
             }
             return false;
         }
 
-        private static bool Matches(VoiceRuleConfig r, EnemyContext ctx, string soundKey)
+        private static bool Matches(VoiceRuleConfig? r, EnemyContext? ctx, string? soundKey)
         {
             if (r == null) return false;
             if (ctx == null) return false;
@@ -346,7 +403,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             }
             return true;
         }
-        private static bool MatchesDetailed(VoiceRuleConfig r, EnemyContext ctx, string soundKey, out string detail)
+        private static bool MatchesDetailed(VoiceRuleConfig? r, EnemyContext? ctx, string? soundKey, out string detail)
         {
             detail = string.Empty;
             if (r == null || ctx == null)
@@ -419,7 +476,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             return $"team={r.Team}, icon={r.IconType}, hp=[{r.MinHealth},{r.MaxHealth}], name~={r.NameKeyContains}, forcedVT={r.ForceVoiceType}, pattern={r.FilePattern}";
         }
 
-        private static AudioManager.VoiceType ParseVoiceType(string s, AudioManager.VoiceType fallback)
+        private static AudioManager.VoiceType ParseVoiceType(string? s, AudioManager.VoiceType fallback)
         {
             try
             {
@@ -429,9 +486,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             catch { return fallback; }
         }
 
-        private static string SanitizePatternLocal(string p)
+        private static string SanitizePatternLocal(string? p)
         {
-            if (string.IsNullOrEmpty(p)) return p;
+            if (string.IsNullOrEmpty(p)) return p ?? string.Empty;
             var t = p.Replace("{enemyType}/", string.Empty)
                      .Replace("/{enemyType}", string.Empty)
                      .Replace("{enemyType}", string.Empty);

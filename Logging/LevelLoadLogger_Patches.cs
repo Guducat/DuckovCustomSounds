@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
 using HarmonyLib;
-using UnityEngine;
 using UnityEngine.SceneManagement;
 
 namespace DuckovCustomSounds.Logging
@@ -13,6 +12,8 @@ namespace DuckovCustomSounds.Logging
     [HarmonyPatch] // disabled for validation
     internal static class LevelLoadLogger_Patches
     {
+        private static readonly ILog Log = LogManager.GetLogger("Core").ForScope("LevelLoadLogger");
+
         // 选择所有名为 LoadScene 的方法，由 Transpiler 自行识别包含 "Getting ready..." 的那个真正的加载方法
         static IEnumerable<MethodBase> TargetMethods()
         {
@@ -68,27 +69,27 @@ namespace DuckovCustomSounds.Logging
                 var active = SceneManager.GetActiveScene();
                 var id = TryGetSceneId(active.buildIndex);
                 var display = TryGetDisplayNameBySceneId(id);
-                Debug.Log($"[LevelLoadLogger] AfterSceneInit: {active.name}({active.buildIndex}), ID={id}, Display={display}");
+                Log.Info($"AfterSceneInit: {active.name}({active.buildIndex}), ID={id}, Display={display}");
             }
             catch (Exception ex)
             {
-                Debug.Log($"[LevelLoadLogger] Hook error: {ex.Message}");
+                Log.Warning($"Hook error: {ex.Message}");
             }
         }
 
         // 运行时反射访问，避免编译期依赖 Eflatun.SceneReference
-        private static string TryGetSceneId(int buildIndex)
+        private static string? TryGetSceneId(int buildIndex)
         {
             try
             {
                 var t = Type.GetType("Duckov.Scenes.SceneInfoCollection, TeamSoda.Duckov.Core");
                 var m = t?.GetMethod("GetSceneID", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(int) }, null);
-                return m != null ? (string)m.Invoke(null, new object[] { buildIndex }) : null;
+                return m?.Invoke(null, new object[] { buildIndex }) as string;
             }
             catch { return null; }
         }
 
-        private static string TryGetDisplayNameBySceneId(string sceneId)
+        private static string? TryGetDisplayNameBySceneId(string? sceneId)
         {
             if (string.IsNullOrEmpty(sceneId)) return null;
             try
@@ -104,4 +105,3 @@ namespace DuckovCustomSounds.Logging
         }
     }
 }
-

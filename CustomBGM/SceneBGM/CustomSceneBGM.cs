@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using MapDetection;
+using Duckov.Scenes;
+using UnityEngine.SceneManagement;
 
 namespace DuckovCustomSounds.CustomBGM.SceneBGM
 {
@@ -127,11 +129,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 // 4. 订阅场景加载事件（优先使用游戏自带 SceneLoader 事件）
                 _sceneLoaderSubscribed = SubscribeToSceneEvents();
 
-                // 5. 兜底：仅当 SceneLoader 订阅失败时才桥接 MapDetector
-                if (!_sceneLoaderSubscribed)
-                {
-                    TrySubscribeMapDetectorFallback();
-                }
+                // 5. MapDetector 始终作为加载界面桥接；普通场景仍以官方事件为准
+                TrySubscribeMapDetectorBridge();
 
                 _initialized = true;
                 SceneBGMLogger.Info("场景 BGM 系统初始化完成");
@@ -149,32 +148,12 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         {
             try
             {
-                // 从 assets 文件夹获取 SceneLoader 类型
-                var sceneLoaderType = System.Type.GetType("Assets.BGM.SceneLoader, Assembly-CSharp");
-                if (sceneLoaderType == null)
-                {
-                    SceneBGMLogger.Warning("未找到 SceneLoader 类型，场景 BGM 将无法自动播放");
-                    return false;
-                }
+                SceneLoader.onAfterSceneInitialize += OnSceneInitialized;
+                _sceneLoaderSubscribed = true;
 
-                // 获取 onAfterSceneInitialize 事件
-                var eventInfo = sceneLoaderType.GetEvent("onAfterSceneInitialize",
-                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                MultiSceneCore.OnSubSceneLoaded += OnSubSceneLoaded;
 
-                if (eventInfo == null)
-                {
-                    SceneBGMLogger.Warning("未找到 onAfterSceneInitialize 事件");
-                    return false;
-                }
-
-                // 创建委托并订阅事件
-                var delegateType = eventInfo.EventHandlerType;
-                var handler = Delegate.CreateDelegate(delegateType,
-                    typeof(CustomSceneBGM).GetMethod("OnSceneInitialized",
-                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static));
-
-                eventInfo.AddEventHandler(null, handler);
-                SceneBGMLogger.Info("已订阅场景加载事件 (SceneLoader.onAfterSceneInitialize)");
+                SceneBGMLogger.Info("已订阅场景加载事件 (SceneLoader.onAfterSceneInitialize, MultiSceneCore.OnSubSceneLoaded)");
                 return true;
             }
             catch (Exception ex)
@@ -187,16 +166,14 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// <summary>
         /// 场景初始化完成回调
         /// </summary>
-        private static void OnSceneInitialized(object context)
+        private static void OnSceneInitialized(SceneLoadingContext context)
         {
             try
             {
                 if (!_initialized || !SceneBGMConfig.Enabled)
                     return;
 
-                // 从 SceneLoadingContext 获取场景信息
-                string sceneId = GetSceneInfoFromContext(context, "sceneId");
-                string displayName = GetSceneInfoFromContext(context, "displayName");
+                ResolveSceneInfo(context, out string sceneId, out string displayName);
 
                 if (string.IsNullOrEmpty(sceneId) && string.IsNullOrEmpty(displayName))
                 {
@@ -233,10 +210,55 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             }
         }
 
+        private static void OnSubSceneLoaded(MultiSceneCore core, UnityEngine.SceneManagement.Scene scene)
+        {
+            try
+            {
+                if (!_initialized || !SceneBGMConfig.Enabled)
+                    return;
+
+                string sceneId = string.Empty;
+                string displayName = string.Empty;
+
+                try
+                {
+                    var entry = core?.GetSubSceneInfo();
+                    if (entry != null)
+                    {
+                        sceneId = entry.sceneID ?? string.Empty;
+                        displayName = entry.DisplayName ?? string.Empty;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SceneBGMLogger.Debug($"获取子场景信息失败: {ex.Message}");
+                }
+
+                if (string.IsNullOrEmpty(sceneId))
+                {
+                    sceneId = ResolveSceneIdFromUnityScene(scene);
+                }
+
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    displayName = ResolveDisplayName(sceneId, scene.name, string.Empty);
+                }
+
+                if (string.IsNullOrEmpty(sceneId) && string.IsNullOrEmpty(displayName))
+                    return;
+
+                ScheduleSceneMusic(sceneId, displayName, Mathf.Max(0f, SceneBGMConfig.SceneLoadDelay));
+            }
+            catch (Exception ex)
+            {
+                SceneBGMLogger.Error("处理子场景加载事件失败", ex);
+            }
+        }
+
         /// <summary>
-        /// MapDetector 桥接：订阅并在场景变化时触发播放（兜底方案）
+        /// MapDetector 桥接：补充加载界面的 SceneManager 场景变化事件
         /// </summary>
-        private static void TrySubscribeMapDetectorFallback()
+        private static void TrySubscribeMapDetectorBridge()
         {
             if (_mapSubscribed) return;
             try
@@ -244,7 +266,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 MapDetector.Initialize();
                 MapDetector.SubscribeToSceneChanges(OnMapSceneChanged);
                 _mapSubscribed = true;
-                SceneBGMLogger.Info("已通过 MapDetector 订阅场景变化 (fallback)");
+                SceneBGMLogger.Info("已通过 MapDetector 订阅场景变化 (loading bridge)");
             }
             catch (Exception ex)
             {
@@ -268,6 +290,14 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
                 if (string.IsNullOrEmpty(sceneName)) return;
 
+                string lower = sceneName.ToLowerInvariant();
+                bool isLoading = lower.Contains("loading");
+
+                if (_sceneLoaderSubscribed && !isLoading)
+                {
+                    return;
+                }
+
                 // 频繁场景切换（加载→主关卡→子关卡）去抖动
                 float now = Time.time;
                 if (sceneName == _lastQueuedScene && (now - _lastQueueTime) < MIN_REQUEUE_INTERVAL)
@@ -279,21 +309,10 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 _lastQueueTime = now;
 
                 // 加载界面尽快播放；其他场景按配置延迟
-                string lower = sceneName.ToLowerInvariant();
-                bool isLoading = lower.Contains("loading");
                 float delay = isLoading ? 0.05f : Mathf.Max(0f, SceneBGMConfig.SceneLoadDelay);
 
                 SceneBGMLogger.Debug($"[MapBridge] 计划{(isLoading ? "立即" : $"延迟 {delay}s")}播放: {sceneName}");
-                var runner = GetCoroutineRunner();
-                if (runner != null)
-                {
-                    runner.StartCoroutine(DelayedPlaySceneMusic(sceneName, sceneName, delay));
-                }
-                else
-                {
-                    // 取不到协程运行器时直接播放
-                    SceneBGMManager.PlaySceneMusic(sceneName, sceneName);
-                }
+                ScheduleSceneMusic(sceneName, sceneName, delay);
             }
             catch (Exception ex)
             {
@@ -302,28 +321,106 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         }
 
         /// <summary>
-        /// 从 SceneLoadingContext 获取场景信息（反射）
+        /// 从 SceneLoadingContext 获取场景信息
         /// </summary>
-        private static string GetSceneInfoFromContext(object context, string propertyName)
+        private static void ResolveSceneInfo(SceneLoadingContext context, out string sceneId, out string displayName)
+        {
+            sceneId = string.Empty;
+            displayName = string.Empty;
+
+            try
+            {
+                string sceneName = context.sceneName ?? string.Empty;
+
+                if (context.useLocation && !string.IsNullOrEmpty(context.location.SceneID))
+                {
+                    sceneId = context.location.SceneID;
+                    displayName = GetLocationDisplayName(context);
+                }
+
+                if (string.IsNullOrEmpty(sceneId) && !string.IsNullOrEmpty(sceneName))
+                {
+                    var targetScene = SceneManager.GetSceneByName(sceneName);
+                    sceneId = ResolveSceneIdFromUnityScene(targetScene);
+                }
+
+                if (string.IsNullOrEmpty(sceneId))
+                {
+                    sceneId = ResolveSceneIdFromUnityScene(SceneManager.GetActiveScene());
+                }
+
+                if (string.IsNullOrEmpty(sceneId))
+                    sceneId = sceneName;
+
+                displayName = ResolveDisplayName(sceneId, sceneName, displayName);
+            }
+            catch (Exception ex)
+            {
+                SceneBGMLogger.Debug($"获取场景信息失败: {ex.Message}");
+            }
+        }
+
+        private static string ResolveSceneIdFromUnityScene(UnityEngine.SceneManagement.Scene scene)
         {
             try
             {
-                if (context == null)
-                    return string.Empty;
-
-                var property = context.GetType().GetProperty(propertyName);
-                if (property != null)
+                if (scene.IsValid() && scene.buildIndex >= 0)
                 {
-                    var value = property.GetValue(context);
-                    return value?.ToString() ?? string.Empty;
+                    return SceneInfoCollection.GetSceneID(scene.buildIndex) ?? string.Empty;
                 }
             }
             catch (Exception ex)
             {
-                SceneBGMLogger.Debug($"获取场景信息失败 ({propertyName}): {ex.Message}");
+                SceneBGMLogger.Debug($"通过 SceneInfoCollection 获取场景 ID 失败: {ex.Message}");
             }
 
             return string.Empty;
+        }
+
+        private static string ResolveDisplayName(string sceneId, string sceneName, string fallback)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(sceneId))
+                {
+                    var info = SceneInfoCollection.GetSceneInfo(sceneId);
+                    if (info != null && !string.IsNullOrEmpty(info.DisplayName))
+                        return info.DisplayName;
+                }
+            }
+            catch (Exception ex)
+            {
+                SceneBGMLogger.Debug($"获取场景显示名失败: {ex.Message}");
+            }
+
+            if (!string.IsNullOrEmpty(fallback))
+                return fallback;
+
+            return !string.IsNullOrEmpty(sceneName) ? sceneName : sceneId;
+        }
+
+        private static string GetLocationDisplayName(SceneLoadingContext context)
+        {
+            try
+            {
+                return context.location.DisplayName ?? string.Empty;
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static void ScheduleSceneMusic(string sceneId, string displayName, float delay)
+        {
+            var runner = GetCoroutineRunner();
+            if (runner != null && delay > 0f)
+            {
+                runner.StartCoroutine(DelayedPlaySceneMusic(sceneId, displayName, delay));
+                return;
+            }
+
+            SceneBGMManager.PlaySceneMusic(sceneId, displayName);
         }
 
         /// <summary>

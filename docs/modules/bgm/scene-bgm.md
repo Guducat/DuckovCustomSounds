@@ -2,50 +2,57 @@
 title: 场景 BGM
 ---
 
-# 场景 BGM(开发中，功能未启用，将来可能会调整)
+# 场景 BGM
 
-场景 BGM 采用“两段式”结构：进入一次（Enter）+ 常驻循环（Loop），并支持按场景名/类型关键词匹配与默认回退。
+场景 BGM 采用两段式结构：进入一次（Enter）+ 常驻循环（Loop），支持按场景名/类型关键词/默认回退匹配。
 
 ## 目录与命名
 
 ```
-DuckovCustomSounds/
-└─ SceneBGM/
-   ├─ Enter/                # 入场一次性音乐（不循环）
-   │  ├─ zero_enter.mp3
-   │  ├─ fram_enter.mp3
-   │  └─ default_enter.mp3  # 兜底
-   └─ Loop/                 # 常驻循环音乐
-      ├─ zero_loop.mp3
-      ├─ fram_loop.mp3
-      └─ default_loop.mp3   # 兜底
+SceneBGM/
+├── Enter/                  # 入场音乐（不循环，播放一次）
+│   ├── zero_enter.mp3
+│   ├── fram_enter.mp3
+│   └── default_enter.mp3
+└── Loop/                   # 常驻循环音乐
+    ├── zero_loop.mp3
+    ├── fram_loop.mp3
+    └── default_loop.mp3
 ```
 
-- 推荐格式：`.mp3`；同时支持 `.wav/.ogg/.flac`。
-- 命名规则
-  - 精准匹配：`<场景名>_enter.mp3` / `<场景名>_loop.mp3`（优先级最高）
-    - 例：`zero_enter.mp3` / `zero_loop.mp3`、`fram_enter.mp3` / `fram_loop.mp3`
-  - 类型关键词匹配：`factory_enter.mp3`、`farm_enter.mp3`、`expedition_enter.mp3` 等
-  - 默认：`default_enter.mp3` / `default_loop.mp3`
+### 匹配优先级
 
-## 配置（ModConfig）
+1. **精准场景名**：`<场景名>_enter.mp3` / `<场景名>_loop.mp3`
+2. **场景名无后缀**：`<场景名>.mp3`（无 `_enter`/`_loop` 后缀，如 `loadingscreen_getout.mp3`）
+3. **sceneId 匹配**：`<sceneId>_enter.mp3` / `<sceneId>_loop.mp3`（如 `level_farm_main_enter.mp3`）
+4. **类型关键词**：`loading_*`、`lab_*`、`factory_*`、`farm_*`、`zero_*`、`expedition_*`、`outskirts_*`
+5. **默认**：`default_enter.mp3` / `default_loop.mp3`
 
-- 启用 Enter/Loop
-- Enter 音量、Loop 音量（以 UI 为准）
-- 覆盖原生（可选）
+注意：加载界面属于"loading"类型，Enter 不会对加载场景播放默认音乐（避免黑屏时误播）。
 
-改动即时生效；音量变化会平滑过渡。
+## ModConfig 设置
+
+| 设置 | 默认 | 说明 |
+|------|------|------|
+| 启用场景音乐系统 | 开 | 总开关 |
+| 启用进入场景 BGM | 开 | 播放 Enter 音乐 |
+| 进入音乐音量 | 80% | 0-100% |
+| 启用循环场景 BGM | 开 | 播放 Loop 音乐 |
+| 循环音乐音量 | 60% | 0-100% |
+| 覆盖默认场景音乐 | 开 | Loop 是否覆盖游戏原场景音乐 |
+
+改动即时生效；音量变化平滑过渡。
 
 ## 典型流程
 
-1) 关卡初始化完成 → 延迟 `sceneLoadDelay` 秒避免干扰  
-2) 若存在 Enter 曲目 → 按 `enterFadeDuration` 淡入，播放结束  
-3) 开始 Loop 曲目 → 与 Enter 交叉渐变 `crossfadeDuration`  
-4) 退出关卡时自动停止
+1. 关卡初始化完成 → 延迟 `sceneLoadDelay` 秒
+2. 如果有 Enter 音乐 → 淡入播放，结束后自动销毁
+3. 切入 Loop 音乐 → 与 Enter 交叉渐变
+4. 退出关卡时自动停止
 
-## 高级（config.json）
+## 高级配置（config.json）
 
-位置：`DuckovCustomSounds/SceneBGM/config.json`
+文件位置：`SceneBGM/config.json`。首次运行自动生成。
 
 ```json
 {
@@ -56,18 +63,13 @@ DuckovCustomSounds/
 }
 ```
 
-- `enterFadeDuration`：Enter 淡入/淡出时间（秒）
-- `loopFadeDuration`：Loop 淡入/淡出时间（秒）
-- `sceneLoadDelay`：场景加载后延迟（秒）
-- `crossfadeDuration`：Enter→Loop 的交叉渐变时间（秒）
+| 参数 | 说明 |
+|------|------|
+| `enterFadeDuration` | Enter 淡入/淡出时间（秒） |
+| `loopFadeDuration` | Loop 淡入/淡出时间（秒） |
+| `sceneLoadDelay` | 场景加载后延迟（秒） |
+| `crossfadeDuration` | Enter→Loop 交叉渐变时间（秒） |
 
-## 优先级与协同
+## 优先级
 
-- Boss BGM > 场景 Loop > 场景 Enter
-- Boss 激活时，场景 BGM 自动降级/停播；Boss 结束后按当前状态恢复。
-
-## 原理与实现
-
-- 使用“解析器 + 控制器 + 管理器”模式：解析匹配曲目，控制淡入淡出，统一管理跨状态切换。
-- 匹配顺序为“精准场景名 > 类型关键词 > 默认”，并在切换时避免爆音或多重播放。
-
+Boss BGM > 场景 Loop > 场景 Enter。Boss 激活时场景 BGM 自动降级或停止。

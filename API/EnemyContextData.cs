@@ -11,21 +11,20 @@ namespace DuckovCustomSounds.API
         /// <summary>上下文所属实体的 InstanceID（可用于 StopByOwner 等）</summary>
         public int InstanceId { get; set; }
         /// <summary>队伍（归一化为小写，如 scavs/bear/usec/rogue/boss/...）</summary>
-        public string Team { get; set; }
+        public string Team { get; set; } = string.Empty;
         /// <summary>阶级/档位（boss/elite/normal 等）</summary>
-        public string Rank { get; set; }
+        public string Rank { get; set; } = string.Empty;
         /// <summary>敌人类型（拍扁后的字符串）</summary>
-        public string EnemyType { get; set; }
+        public string EnemyType { get; set; } = string.Empty;
         /// <summary>名字键（游戏内标识）</summary>
-        public string NameKey { get; set; }
+        public string NameKey { get; set; } = string.Empty;
         /// <summary>当前生命值（快照）</summary>
         public float Health { get; set; }
         /// <summary>图标类型（原始）</summary>
-        public string IconType { get; set; }
+        public string IconType { get; set; } = string.Empty;
         /// <summary>Transform（用于 3D 跟随；可能为 null）</summary>
-        public Transform Transform { get; set; }
+        public Transform? Transform { get; set; }
         /// <summary>是否有效（内部校验）</summary>
         public bool IsValid { get; set; }
     }
 }
-

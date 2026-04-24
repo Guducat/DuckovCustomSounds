@@ -19,7 +19,7 @@ namespace DuckovCustomSounds.CustomGunSounds
         private static readonly Dictionary<int, float> s_LastShootAt = new Dictionary<int, float>(128);
         private static readonly object s_RateLock = new object();
 
-        private static bool ShouldThrottleShoot(GameObject go, string typeIdStr, string soundKey)
+        private static bool ShouldThrottleShoot(GameObject go, string? typeIdStr, string soundKey)
         {
             try
             {
@@ -109,7 +109,7 @@ namespace DuckovCustomSounds.CustomGunSounds
             int id = GetOwnerId(gun);
             if (id == 0) return;
 
-            List<TrackedReload> toStop = null;
+            List<TrackedReload>? toStop = null;
             lock (s_ReloadLock)
             {
                 if (s_ReloadPlaying.TryGetValue(id, out var list) && list != null && list.Count > 0)
@@ -288,9 +288,9 @@ namespace DuckovCustomSounds.CustomGunSounds
         }
 
         // --- 获取枪械信息 ---
-        private static (ItemAgent_Gun gun, string typeIdStr) GetGunAndTypeId(GameObject gameObject)
+        private static (ItemAgent_Gun? gun, string? typeIdStr) GetGunAndTypeId(GameObject gameObject)
         {
-            ItemAgent_Gun gun = null;
+            ItemAgent_Gun? gun = null;
             try
             {
                 if (gameObject != null)
@@ -301,7 +301,7 @@ namespace DuckovCustomSounds.CustomGunSounds
             }
             catch { }
 
-            string typeIdStr = null;
+            string? typeIdStr = null;
             try
             {
                 if (gun != null)
@@ -311,9 +311,7 @@ namespace DuckovCustomSounds.CustomGunSounds
                         var item = gun.Item;
                         if (item != null)
                         {
-                            var typeId = item.TypeID;
-                            if (typeId != null)
-                                typeIdStr = typeId.ToString();
+                            typeIdStr = item.TypeID.ToString();
                         }
                     }
                     catch { }
@@ -690,4 +688,3 @@ namespace DuckovCustomSounds.CustomGunSounds
         }
     }
 }
-

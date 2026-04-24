@@ -2,11 +2,13 @@
 bin/
 obj/
 .idea/
+assets/
 node_modules/
 package-lock.json
 # VitePress cache and build output
 docs/.vitepress/dist
 docs/.vitepress/cache
+/.fastRequest/config/fastRequestCurrentProjectConfig.json
 *.user
 *.suo
 *.vs

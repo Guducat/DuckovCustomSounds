@@ -10,8 +10,8 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
     /// </summary>
     internal static class BossBGMFader
     {
-        private static GameObject _host;
-        private static BossBGMFaderHost _runner;
+        private static GameObject? _host;
+        private static BossBGMFaderHost? _runner;
 
         private static void EnsureHost()
         {
@@ -24,6 +24,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         public static void FadeOutAndRelease(FMOD.Studio.EventInstance instance, string bossName, float seconds)
         {
             EnsureHost();
+            if (_runner == null) return;
             _runner.StartFade(instance, bossName, Mathf.Max(0.01f, seconds));
             BossBGMLogger.Info($"[BossBGM] 死亡淡出启动: {bossName}, {seconds:F1}s");
         }
@@ -40,7 +41,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         private class Entry
         {
             public FMOD.Studio.EventInstance Inst;
-            public string Name;
+            public string Name = string.Empty;
             public float TimeLeft;
             public bool Stopped;
         }
@@ -123,4 +124,3 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         }
     }
 }
-

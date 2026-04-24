@@ -11,7 +11,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
     internal static class BossBGMManager
     {
         private static List<BossBGMController> activeBosses = new List<BossBGMController>();
-        private static BossBGMController currentActiveBoss = null;
+        private static BossBGMController? currentActiveBoss = null;
 
         private static float _lastSwitchTime = -999f;
 
@@ -79,7 +79,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             }
 
             // 找到距离最近的 BOSS
-            BossBGMController closest = null;
+            BossBGMController? closest = null;
             float minDistance = float.MaxValue;
 
             foreach (var boss in activeBosses)
@@ -105,18 +105,20 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             // 切换活跃 BOSS（带防抖/粘滞）
             if (closest != currentActiveBoss)
             {
-                bool wasActive = currentActiveBoss != null;
-                bool willBeActive = closest != null;
+                var activeBoss = currentActiveBoss;
+                var nextBoss = closest;
+                bool wasActive = activeBoss != null;
+                bool willBeActive = nextBoss != null;
 
                 // 如果已有活跃者且候选存在，则应用防抖与距离优势判断
-                if (wasActive && willBeActive)
+                if (activeBoss != null && nextBoss != null)
                 {
                     // 1) 切换冷却
                     float elapsed = Time.time - _lastSwitchTime;
                     float minInterval = BossBGMConfig.MinSwitchIntervalSeconds;
                     if (elapsed < minInterval)
                     {
-                        BossBGMLogger.Debug($"[BossBGM] 切换冷却中：已过 {elapsed:F2}s / 冷却 {minInterval:F2}s，保持当前 {currentActiveBoss.GetBossName()}");
+                        BossBGMLogger.Debug($"[BossBGM] 切换冷却中：已过 {elapsed:F2}s / 冷却 {minInterval:F2}s，保持当前 {activeBoss.GetBossName()}");
                         return;
                     }
 
@@ -125,26 +127,26 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                     float required = BossBGMConfig.MinDistanceDeltaToSwitch;
                     if (delta < required)
                     {
-                        BossBGMLogger.Debug($"[BossBGM] 距离优势不足：当前 {currentActiveBoss.GetBossName()}={currentDistance:F1}m, 新最近 {closest.GetBossName()}={minDistance:F1}m, 阈值={required:F1}m");
+                        BossBGMLogger.Debug($"[BossBGM] 距离优势不足：当前 {activeBoss.GetBossName()}={currentDistance:F1}m, 新最近 {nextBoss.GetBossName()}={minDistance:F1}m, 阈值={required:F1}m");
                         return;
                     }
                 }
 
                 // 旧 BOSS 设置为非活跃（静音）
-                if (currentActiveBoss != null && currentActiveBoss.IsValid())
+                if (activeBoss != null && activeBoss.IsValid())
                 {
-                    currentActiveBoss.SetPriority(false);
-                    BossBGMLogger.Debug($"BOSS BGM 静音: {currentActiveBoss.GetBossName()}");
+                    activeBoss.SetPriority(false);
+                    BossBGMLogger.Debug($"BOSS BGM 静音: {activeBoss.GetBossName()}");
                 }
 
                 // 新 BOSS 设置为活跃（淡入）
-                if (closest != null)
+                if (nextBoss != null)
                 {
-                    closest.SetPriority(true);
-                    BossBGMLogger.Info($"切换活跃 BOSS BGM: {closest.GetBossName()} (新距离 {minDistance:F1}m / 原 {currentDistance:F1}m / 优势 {Mathf.Max(0f, currentDistance - minDistance):F1}m)");
+                    nextBoss.SetPriority(true);
+                    BossBGMLogger.Info($"切换活跃 BOSS BGM: {nextBoss.GetBossName()} (新距离 {minDistance:F1}m / 原 {currentDistance:F1}m / 优势 {Mathf.Max(0f, currentDistance - minDistance):F1}m)");
                 }
 
-                currentActiveBoss = closest;
+                currentActiveBoss = nextBoss;
                 _lastSwitchTime = Time.time;
 
                 // 通知场景 BGM 系统状态变化

@@ -13,7 +13,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
     /// </summary>
     internal static class SceneBGMConfig
     {
-        private const string ModName = "SceneBGM";
+        private static readonly ModConfigScope Scope = ModConfigScopes.SceneBGM;
 
         // 总开关
         public static bool Enabled { get; private set; } = true;
@@ -38,8 +38,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         private static bool _initialized;
 
         // 配置变更事件（用于热配置）
-        public static event Action OnEnterBGMConfigChanged;
-        public static event Action OnLoopBGMConfigChanged;
+        public static event Action? OnEnterBGMConfigChanged;
+        public static event Action? OnLoopBGMConfigChanged;
 
         /// <summary>
         /// 加载配置
@@ -91,16 +91,16 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         private static void SetupModConfigUI()
         {
             // 总开关
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用场景音乐系统", Enabled);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enabled", "启用场景音乐系统", Enabled);
 
             // 进入场景 BGM 分组
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enterBGM_enabled", "[进入BGM] 启用进入场景 BGM", EnterBGMEnabled);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "enterBGM_volume", "[进入BGM] 进入音乐音量 (0~100%)", typeof(float), EnterBGMVolume * 100f, new Vector2(0f, 100f));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enterBGM_enabled", "[进入BGM] 启用进入场景 BGM", EnterBGMEnabled);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "enterBGM_volume", "[进入BGM] 进入音乐音量 (0~100%)", typeof(float), EnterBGMVolume * 100f, new Vector2(0f, 100f));
 
             // 场景循环 BGM 分组
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "loopBGM_enabled", "[循环BGM] 启用场景循环 BGM", LoopBGMEnabled);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "loopBGM_volume", "[循环BGM] 循环音乐音量 (0~100%)", typeof(float), LoopBGMVolume * 100f, new Vector2(0f, 100f));
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "loopBGM_overrideDefault", "[循环BGM] 覆盖默认场景音乐", OverrideDefaultBGM);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "loopBGM_enabled", "[循环BGM] 启用场景循环 BGM", LoopBGMEnabled);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "loopBGM_volume", "[循环BGM] 循环音乐音量 (0~100%)", typeof(float), LoopBGMVolume * 100f, new Vector2(0f, 100f));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "loopBGM_overrideDefault", "[循环BGM] 覆盖默认场景音乐", OverrideDefaultBGM);
         }
 
         /// <summary>
@@ -113,16 +113,16 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             float prevEnterVolume = EnterBGMVolume;
             float prevLoopVolume = LoopBGMVolume;
 
-            Enabled = ModConfigAPI.SafeLoad(ModName, "enabled", Enabled);
+            Enabled = ModConfigAPI.SafeLoad(Scope, "enabled", Enabled);
 
-            EnterBGMEnabled = ModConfigAPI.SafeLoad(ModName, "enterBGM_enabled", EnterBGMEnabled);
-            float enterVolumePercent = ModConfigAPI.SafeLoad(ModName, "enterBGM_volume", EnterBGMVolume * 100f);
+            EnterBGMEnabled = ModConfigAPI.SafeLoad(Scope, "enterBGM_enabled", EnterBGMEnabled);
+            float enterVolumePercent = ModConfigAPI.SafeLoad(Scope, "enterBGM_volume", EnterBGMVolume * 100f);
             EnterBGMVolume = Mathf.Clamp01(enterVolumePercent / 100f);
 
-            LoopBGMEnabled = ModConfigAPI.SafeLoad(ModName, "loopBGM_enabled", LoopBGMEnabled);
-            float loopVolumePercent = ModConfigAPI.SafeLoad(ModName, "loopBGM_volume", LoopBGMVolume * 100f);
+            LoopBGMEnabled = ModConfigAPI.SafeLoad(Scope, "loopBGM_enabled", LoopBGMEnabled);
+            float loopVolumePercent = ModConfigAPI.SafeLoad(Scope, "loopBGM_volume", LoopBGMVolume * 100f);
             LoopBGMVolume = Mathf.Clamp01(loopVolumePercent / 100f);
-            OverrideDefaultBGM = ModConfigAPI.SafeLoad(ModName, "loopBGM_overrideDefault", OverrideDefaultBGM);
+            OverrideDefaultBGM = ModConfigAPI.SafeLoad(Scope, "loopBGM_overrideDefault", OverrideDefaultBGM);
 
             // 触发配置变更事件（用于热配置）
             if (prevEnterEnabled != EnterBGMEnabled || !Mathf.Approximately(prevEnterVolume, EnterBGMVolume))
@@ -140,6 +140,9 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// </summary>
         private static void OnOptionsChanged(string key)
         {
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
+
             LoadFromModConfig();
             SceneBGMLogger.Debug($"配置已更新: Enabled={Enabled}, EnterBGM={EnterBGMEnabled}, LoopBGM={LoopBGMEnabled}");
         }

@@ -12,49 +12,49 @@ namespace DuckovCustomSounds.SoundPack
         /// 声音包唯一标识符（文件夹名称）
         /// </summary>
         [JsonIgnore]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// 声音包显示名称（必需）
         /// </summary>
         [JsonProperty("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
 
         /// <summary>
         /// 作者（必需）
         /// </summary>
         [JsonProperty("author")]
-        public string Author { get; set; }
+        public string Author { get; set; } = string.Empty;
 
         /// <summary>
         /// 版本号（必需）
         /// </summary>
         [JsonProperty("version")]
-        public string Version { get; set; }
+        public string Version { get; set; } = string.Empty;
 
         /// <summary>
         /// 描述（可选）
         /// </summary>
         [JsonProperty("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         /// <summary>
         /// 兼容的 Mod 版本（可选）
         /// </summary>
         [JsonProperty("compatibleModVersion")]
-        public string CompatibleModVersion { get; set; }
+        public string CompatibleModVersion { get; set; } = string.Empty;
 
         /// <summary>
         /// 必需的模块列表（可选）
         /// </summary>
         [JsonProperty("requiredModules")]
-        public string[] RequiredModules { get; set; }
+        public string[] RequiredModules { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// 额外的可选字段（如 homepage, qq 等）
         /// </summary>
         [JsonProperty("optional")]
-        public OptionalFields Optional { get; set; }
+        public OptionalFields Optional { get; set; } = new OptionalFields();
 
         /// <summary>
         /// 验证元数据完整性
@@ -79,10 +79,10 @@ namespace DuckovCustomSounds.SoundPack
         public class OptionalFields
         {
             [JsonProperty("homepage")]
-            public string Homepage { get; set; }
+            public string Homepage { get; set; } = string.Empty;
 
             [JsonProperty("qq")]
-            public string qq { get; set; }
+            public string qq { get; set; } = string.Empty;
         }
     }
 }

@@ -17,6 +17,7 @@ namespace DuckovCustomSounds.CustomBGM.Core
         public static bool IsDebugEnabled => LogManager.ShouldLog("BGM", LogLevel.Debug);
         public static bool IsVerboseEnabled => LogManager.ShouldLog("BGM", LogLevel.Verbose);
 
+        public static ILog ForScope(params string[] scopes) => _logger.ForScope(scopes);
         public static void Error(string msg, Exception? ex = null) => _logger.Error(msg, ex);
         public static void Warning(string msg) => _logger.Warning(msg);
         public static void Info(string msg) => _logger.Info(msg);

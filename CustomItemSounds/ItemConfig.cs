@@ -12,7 +12,7 @@ namespace DuckovCustomSounds.CustomItemSounds
     /// </summary>
     public static class ItemConfig
     {
-        public const string ModName = "Item";
+        private static readonly ModConfigScope Scope = ModConfigScopes.Item;
 
         // 当前生效的设置（运行时读取）
         public static bool Enabled { get; private set; } = true;
@@ -88,20 +88,20 @@ namespace DuckovCustomSounds.CustomItemSounds
             ModConfigAPI.SafeAddOnOptionsChangedDelegate(_onChangedHandler);
 
             // 简单中文描述（如需国际化可接入 LocalizationManager）
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用自定义物品音效", Enabled);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "volume", "音量倍率 (0~2)", typeof(float), Volume, new Vector2(0f, 2f));
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "min_action_audible_sec", "Action最短可听时间(秒)", typeof(float), MinActionAudibleSeconds, new Vector2(0f, 3f));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enabled", "启用自定义物品音效", Enabled);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "音量倍率(0~2)", typeof(float), Volume, new Vector2(0f, 2f));
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "min_action_audible_sec", "Action最短可听时间(秒)", typeof(float), MinActionAudibleSeconds, new Vector2(0f, 3f));
 
             // 分类开关
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enable_food", "启用 食物/饮料 声音", EnableFood);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enable_bandage", "启用 绷带/药品 声音", EnableBandage);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enable_syringe", "启用 注射器 声音", EnableSyringe);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enable_food", "启用 食物/饮料 声音", EnableFood);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enable_bandage", "启用 绷带/药品 声音", EnableBandage);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enable_syringe", "启用 注射器 声音", EnableSyringe);
         }
 
         private static void OnOptionsChanged(string key)
         {
-            if (string.IsNullOrEmpty(key)) return;
-            if (!key.StartsWith(ModName + "_", StringComparison.OrdinalIgnoreCase)) return;
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
 
             var oldEnabled = Enabled;
             LoadFromModConfig();
@@ -119,17 +119,17 @@ namespace DuckovCustomSounds.CustomItemSounds
         private static void LoadFromModConfig()
         {
             // 当 ModConfig 不可用时，SafeLoad 会返回默认值，不抛异常
-            Enabled = ModConfigAPI.SafeLoad<bool>(ModName, "enabled", Enabled);
-            Volume = Mathf.Clamp(ModConfigAPI.SafeLoad<float>(ModName, "volume", Volume), 0f, 2f);
-            ReplaceOriginal = ModConfigAPI.SafeLoad<bool>(ModName, "replaceOriginal", ReplaceOriginal);
-            RootDir = ModConfigAPI.SafeLoad<string>(ModName, "rootDir", RootDir ?? string.Empty) ?? string.Empty;
+            Enabled = ModConfigAPI.SafeLoad<bool>(Scope, "enabled", Enabled);
+            Volume = Mathf.Clamp(ModConfigAPI.SafeLoad<float>(Scope, "volume", Volume), 0f, 2f);
+            ReplaceOriginal = ModConfigAPI.SafeLoad<bool>(Scope, "replaceOriginal", ReplaceOriginal);
+            RootDir = ModConfigAPI.SafeLoad<string>(Scope, "rootDir", RootDir ?? string.Empty) ?? string.Empty;
 
 
-            MinActionAudibleSeconds = Mathf.Clamp(ModConfigAPI.SafeLoad<float>(ModName, "min_action_audible_sec", MinActionAudibleSeconds), 0f, 3f);
+            MinActionAudibleSeconds = Mathf.Clamp(ModConfigAPI.SafeLoad<float>(Scope, "min_action_audible_sec", MinActionAudibleSeconds), 0f, 3f);
 
-            EnableFood = ModConfigAPI.SafeLoad<bool>(ModName, "enable_food", EnableFood);
-            EnableBandage = ModConfigAPI.SafeLoad<bool>(ModName, "enable_bandage", ModConfigAPI.SafeLoad<bool>(ModName, "enable_meds", EnableBandage));
-            EnableSyringe = ModConfigAPI.SafeLoad<bool>(ModName, "enable_syringe", EnableSyringe);
+            EnableFood = ModConfigAPI.SafeLoad<bool>(Scope, "enable_food", EnableFood);
+            EnableBandage = ModConfigAPI.SafeLoad<bool>(Scope, "enable_bandage", ModConfigAPI.SafeLoad<bool>(Scope, "enable_meds", EnableBandage));
+            EnableSyringe = ModConfigAPI.SafeLoad<bool>(Scope, "enable_syringe", EnableSyringe);
         }
 
         public static string GetBaseDir()

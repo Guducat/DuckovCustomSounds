@@ -8,8 +8,8 @@ namespace DuckovCustomSounds.CustomFootStepSounds
 {
     internal static class CustomFootStepSounds
     {
-        public static VoiceConfig Config { get; private set; }
-        public static VoiceRuleEngine Engine { get; private set; }
+        public static VoiceConfig Config { get; private set; } = null!;
+        public static VoiceRuleEngine Engine { get; private set; } = null!;
         private static bool _loaded;
         private static bool _initialized;
 
@@ -46,7 +46,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             try
             {
                 Config = FootstepConfigLoader.Load();
-                if (Engine == null) Engine = new VoiceRuleEngine();
+                if (Engine == null) Engine = new VoiceRuleEngine(FootstepLogger.Info, FootstepLogger.Debug, FootstepLogger.Verbose, "CFS:Rule");
                 Engine.Reload(Config);
                 FootstepSoundTracker.EnsureStarted();
                 _loaded = true;
@@ -67,7 +67,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             try
             {
                 Config = FootstepConfigLoader.Load();
-                if (Engine == null) Engine = new VoiceRuleEngine();
+                if (Engine == null) Engine = new VoiceRuleEngine(FootstepLogger.Info, FootstepLogger.Debug, FootstepLogger.Verbose, "CFS:Rule");
                 Engine.Reload(Config);
                 FootstepLogger.Info("[CFS] 配置已重新加载");
             }
@@ -84,4 +84,3 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         }
     }
 }
-

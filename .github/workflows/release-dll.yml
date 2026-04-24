@@ -1,0 +1,61 @@
+name: Release DLL
+
+on:
+  push:
+    tags:
+      - 'v2.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.repository == 'Guducat/DuckovCustomSounds'
+    runs-on: ubuntu-latest
+
+    env:
+      CONFIGURATION: ExRelease
+      MANAGED_DIR: DuckovCustomSounds-BuildRefs/DuckovGameManagedDLL
+      ZIP_NAME: DuckovCustomSounds-${{ github.ref_name }}.zip
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Check out build references
+        uses: actions/checkout@v4
+        with:
+          repository: Guducat/DuckovCustomSounds-BuildRefs
+          ssh-key: ${{ secrets.BUILD_REFS_SSH_KEY }}
+          path: DuckovCustomSounds-BuildRefs
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Validate build references
+        run: |
+          test -d "$MANAGED_DIR"
+          test -f "$MANAGED_DIR/TeamSoda.Duckov.Core.dll"
+          test -f "$MANAGED_DIR/UnityEngine.CoreModule.dll"
+
+      - name: Restore
+        run: dotnet restore DuckovCustomSounds.csproj
+
+      - name: Build
+        run: dotnet build DuckovCustomSounds.csproj -c "$CONFIGURATION" --no-restore /p:DuckovManagedDir="$MANAGED_DIR"
+
+      - name: Package
+        run: |
+          mkdir -p release
+          cp DuckovCustomSounds-Export/DuckovCustomSounds.dll release/
+          cp DuckovCustomSounds-Export/0Harmony.dll release/
+          cd release
+          zip "../$ZIP_NAME" *
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" "$ZIP_NAME" --verify-tag --title "${GITHUB_REF_NAME}" --generate-notes

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections;
+using System.IO;
 using UnityEngine;
 using System.Reflection;
 using FMOD;
-using Debug = UnityEngine.Debug;
 using Duckov; // AudioManager, AICharacterController, AudioObject, CharacterMainControl
 using DuckovCustomSounds.CustomEnemySounds;
 using DuckovCustomSounds.Logging;
@@ -23,12 +23,17 @@ namespace DuckovCustomSounds
 
         public static string ErrorMessage = "";
         private static ILog CoreLog => LogManager.GetLogger("Core");
-        private Action<string, bool> _mapSceneChangedHandler;
+        private Action<string, bool>? _mapSceneChangedHandler;
 
-        public static ModBehaviour Instance;
+        public static ModBehaviour? Instance;
 
         // 初始化完成标志（防止 Update() 在初始化完成前执行）
         private static bool _fullyInitialized = false;
+        private const float LoggingHotReloadInterval = 1.0f;
+        private float loggingHotReloadTimer = 0f;
+        private DateTime loggingSettingsLastWriteUtc = DateTime.MinValue;
+        private bool loggingDebugOffExists;
+        private bool loggingNoLogExists;
 
         // 2. Mod 根文件夹 (永远指向根目录，用于 settings.json 等全局配置)
         public const string RootFolderName = "DuckovCustomSounds";
@@ -48,6 +53,7 @@ namespace DuckovCustomSounds
 
                 // 1. 加载/生成统一日志配置（settings.json）- 使用根目录
                 LogManager.Initialize(RootFolderName);
+                LoggingConfig.Initialize();
 
 
                 // 2. 读取并应用模块设置（例如 overrideExtractionBGM）
@@ -109,11 +115,9 @@ namespace DuckovCustomSounds
                     CoreLog.Info($"DuckovCustomPlayerQuak 未加载或初始化失败：{ex.Message}");
                 }
 
-                // ⚠️ 保持禁用：击杀反馈系统（按要求不启用）
-                //DuckovCustomSounds.CustomKillFeedback.KillFeedbackManager.Initialize();
-
                 // 应用基于文件的快速开关（仅在 settings.json 未显式指定时生效）
                 LogManager.ApplyFileSwitches(RootFolderName);
+                CaptureLoggingHotReloadState();
 
                 // 6.5. 运行 DuckovCustomPlayerQuak 模块验证（仅在 Debug 模式下）
                 #if DEBUG
@@ -232,22 +236,19 @@ namespace DuckovCustomSounds
 			        }
 
 		        // 6. 指挥其他模块卸载它们自己的资源（每个模块独立 try-catch，避免连锁失败）
-		        try { CustomEnemySounds.CustomEnemySounds.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载敌人音效模块失败: {ex.Message}"); }
+		        try { CustomEnemySounds.CustomEnemySounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载敌人音效模块失败: {ex.Message}"); }
 
 		        // 启用 BGM 模块卸载
-		        try { CustomBGM.CustomBGM.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载 BGM 模块失败: {ex.Message}"); }
-		        try { DuckovCustomSounds.CustomBGM.BossBGM.BossBGMManager.Clear(); } catch (Exception ex) { Debug.LogWarning($"清理 BOSS BGM 系统失败: {ex.Message}"); }
-		        try { DuckovCustomSounds.CustomBGM.SceneBGM.CustomSceneBGM.StopAll(); } catch (Exception ex) { Debug.LogWarning($"清理场景 BGM 系统失败: {ex.Message}"); }
+		        try { CustomBGM.CustomBGM.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载 BGM 模块失败: {ex.Message}"); }
+		        try { DuckovCustomSounds.CustomBGM.BossBGM.BossBGMManager.Clear(); } catch (Exception ex) { CoreLog.Warning($"清理 BOSS BGM 系统失败: {ex.Message}"); }
+		        try { DuckovCustomSounds.CustomBGM.SceneBGM.CustomSceneBGM.StopAll(); } catch (Exception ex) { CoreLog.Warning($"清理场景 BGM 系统失败: {ex.Message}"); }
 
 		        // 启用其他模块卸载
-		        //没有Unload try { DuckovCustomSounds.CustomGrenadeSounds.CustomGrenadeSounds.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载手雷音效模块失败: {ex.Message}"); }
-		        //没有Unload try { DuckovCustomSounds.CustomGunSounds.CustomGunSounds.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载枪械音效模块失败: {ex.Message}"); }
-		        //没有Unload try { DuckovCustomSounds.CustomMeleeSounds.CustomMeleeSounds.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载近战音效模块失败: {ex.Message}"); }
-		        //没有Unload try { DuckovCustomSounds.CustomItemSounds.CustomItemSounds.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载物品音效模块失败: {ex.Message}"); }
-		        try { DuckovCustomSounds.CustomFootStepSounds.CustomFootStepSounds.Unload(); } catch (Exception ex) { Debug.LogWarning($"卸载脚步音效模块失败: {ex.Message}"); }
-
-		        // ⚠️ 保持禁用：击杀反馈系统（按要求不启用）
-		        //try { DuckovCustomSounds.CustomKillFeedback.KillFeedbackManager.Unload(); } catch { }
+		        //没有Unload try { DuckovCustomSounds.CustomGrenadeSounds.CustomGrenadeSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载手雷音效模块失败: {ex.Message}"); }
+		        //没有Unload try { DuckovCustomSounds.CustomGunSounds.CustomGunSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载枪械音效模块失败: {ex.Message}"); }
+		        //没有Unload try { DuckovCustomSounds.CustomMeleeSounds.CustomMeleeSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载近战音效模块失败: {ex.Message}"); }
+		        //没有Unload try { DuckovCustomSounds.CustomItemSounds.CustomItemSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载物品音效模块失败: {ex.Message}"); }
+		        try { DuckovCustomSounds.CustomFootStepSounds.CustomFootStepSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载脚步音效模块失败: {ex.Message}"); }
 
 		        // 7. 卸载所有补丁（反射卸载，避免缺失 Harmony 时抛异常）
 		        if (harmony != null)
@@ -269,7 +270,7 @@ namespace DuckovCustomSounds
 	        catch (Exception ex)
 	        {
 		        // 卸载过程发生致命错误，静默失败（避免影响游戏退出）
-		        try { Debug.LogError($"[CustomSounds] Mod 卸载时发生严重错误: {ex}"); } catch { }
+		        try { CoreLog.Error("Mod 卸载时发生严重错误", ex); } catch { }
 	        }
         }
 
@@ -284,6 +285,7 @@ namespace DuckovCustomSounds
         private string lastCheckedSceneName = "";
         private bool lastInLevel = false;
         private bool lastIsBase = false;
+        private MapSceneKind lastSceneKind = MapSceneKind.Unknown;
         private float sceneCheckTimer = 0f;
         private const float SCENE_CHECK_INTERVAL = 0.5f; // 每0.5秒检查一次场景状态
 
@@ -293,35 +295,37 @@ namespace DuckovCustomSounds
             if (!_fullyInitialized)
                 return;
 
+            CheckLoggingHotReload();
+
             // 减少每帧检测频率，使用计时器控制
             sceneCheckTimer += Time.deltaTime;
-            bool needSceneCheck = false;
-            
             // 定期检查场景状态（而不是每帧都检查）
             if (sceneCheckTimer >= SCENE_CHECK_INTERVAL)
             {
                 sceneCheckTimer = 0f;
-                needSceneCheck = true;
                 
                 var __active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
                 bool __inLevel = false;
                 try { __inLevel = LevelManager.LevelInited; } catch { __inLevel = false; }
                 bool __isBase = false;
                 try { __isBase = MapDetector.IsInBase(); } catch { __isBase = false; }
+                MapSceneKind __sceneKind = MapSceneKind.Unknown;
+                try { __sceneKind = MapDetector.GetCurrentSceneKind(); } catch { __sceneKind = MapSceneKind.Unknown; }
                 
                 // 只有当场景状态发生变化时才处理
-                if (__active.name != lastCheckedSceneName || __inLevel != lastInLevel || __isBase != lastIsBase)
+                if (__active.name != lastCheckedSceneName || __inLevel != lastInLevel || __isBase != lastIsBase || __sceneKind != lastSceneKind)
                 {
                     lastCheckedSceneName = __active.name;
                     lastInLevel = __inLevel;
                     lastIsBase = __isBase;
+                    lastSceneKind = __sceneKind;
                     
-                    if (__isBase || !__inLevel)
+                    if (__sceneKind != MapSceneKind.Combat || !__inLevel)
                     {
                         // 首次遇到非战斗条件时输出一次日志，并重置计时器
                         if (!bossBatchProcessed && bossBatchCheckTimer == 0f)
                         {
-                            try { CoreLog.Info($"ModBehaviour.Update: 当前不是战斗关卡，跳过批量检测: active={__active.name}({__active.buildIndex}), isBase={__isBase}, LevelInited={__inLevel}"); } catch {}
+                            try { CoreLog.Info($"ModBehaviour.Update: 当前不是战斗关卡，跳过批量检测: active={__active.name}({__active.buildIndex}), sceneKind={__sceneKind}, isBase={__isBase}, LevelInited={__inLevel}"); } catch {}
                         }
                         bossBatchCheckTimer = 0f;
                     }
@@ -341,7 +345,7 @@ namespace DuckovCustomSounds
             }
             
             // 只有在需要时才处理BOSS批量检测逻辑
-            if (!bossBatchProcessed && !lastIsBase && lastInLevel)
+            if (!bossBatchProcessed && lastSceneKind == MapSceneKind.Combat && !lastIsBase && lastInLevel)
             {
                 bossBatchCheckTimer += Time.deltaTime;
                 float startDelay = 15.0f; // 增大检查间距，解决大地图上BOSS登记不出来的问题
@@ -380,17 +384,82 @@ namespace DuckovCustomSounds
             }
         }
 
+        private void CheckLoggingHotReload()
+        {
+            loggingHotReloadTimer += Time.deltaTime;
+            if (loggingHotReloadTimer < LoggingHotReloadInterval)
+                return;
+
+            loggingHotReloadTimer = 0f;
+            ReadLoggingHotReloadState(out var settingsLastWriteUtc, out var debugOffExists, out var noLogExists);
+
+            if (settingsLastWriteUtc == loggingSettingsLastWriteUtc &&
+                debugOffExists == loggingDebugOffExists &&
+                noLogExists == loggingNoLogExists)
+            {
+                return;
+            }
+
+            loggingSettingsLastWriteUtc = settingsLastWriteUtc;
+            loggingDebugOffExists = debugOffExists;
+            loggingNoLogExists = noLogExists;
+
+            try
+            {
+                if (LogManager.ReloadSettings(RootFolderName))
+                {
+                    CoreLog.Info("日志配置已热重载");
+                }
+            }
+            catch (Exception ex)
+            {
+                try { CoreLog.Warning($"日志配置热重载失败: {ex.Message}"); } catch { }
+            }
+        }
+
+        private void CaptureLoggingHotReloadState()
+        {
+            loggingHotReloadTimer = 0f;
+            ReadLoggingHotReloadState(out loggingSettingsLastWriteUtc, out loggingDebugOffExists, out loggingNoLogExists);
+        }
+
+        private static void ReadLoggingHotReloadState(out DateTime settingsLastWriteUtc, out bool debugOffExists, out bool noLogExists)
+        {
+            settingsLastWriteUtc = DateTime.MinValue;
+            debugOffExists = false;
+            noLogExists = false;
+
+            try
+            {
+                var settingsPath = Path.Combine(RootFolderName, "settings.json");
+                if (File.Exists(settingsPath))
+                {
+                    settingsLastWriteUtc = File.GetLastWriteTimeUtc(settingsPath);
+                }
+
+                debugOffExists = File.Exists(Path.Combine(RootFolderName, "debug_off"));
+                noLogExists = File.Exists(Path.Combine(RootFolderName, ".nolog"));
+            }
+            catch
+            {
+                settingsLastWriteUtc = DateTime.MinValue;
+                debugOffExists = false;
+                noLogExists = false;
+            }
+        }
+
 
 	        public void ResetBossBatchProcessing()
 	        {
 	            bossBatchCheckTimer = 0f;
 	            bossBatchProcessed = false;
 	            
-	            // 重置场景状态缓存变量
-	            lastCheckedSceneName = "";
-	            lastInLevel = false;
-	            lastIsBase = false;
-	            sceneCheckTimer = 0f;
+		            // 重置场景状态缓存变量
+		            lastCheckedSceneName = "";
+		            lastInLevel = false;
+		            lastIsBase = false;
+		            lastSceneKind = MapSceneKind.Unknown;
+		            sceneCheckTimer = 0f;
 	           
 	            // BOSS 批量检测状态重置日志（已修复乱码问题）
 	            try { CoreLog.Info("BOSS 批量检测已重置，准备重新开始检测"); } catch {}

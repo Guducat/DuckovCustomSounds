@@ -85,8 +85,8 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             {
                 try
                 {
-                    // 仅拦截撤离成功Stinger（使用字典精确匹配）
-                    if (!ExtractionSounds.ExtractionStingerKeys.Contains(key))
+                    // 仅拦截撤离成功 Stinger
+                    if (!ExtractionSounds.IsExtractionStingerKey(key))
                     {
                         ExtractionBGMLogger.Debug($"放行非撤离Stinger事件: {key}");
                         return true; // 非撤离Stinger，放行
@@ -107,4 +107,3 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         }
     }
 }
-

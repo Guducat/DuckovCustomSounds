@@ -35,14 +35,14 @@ namespace DuckovCustomSounds.CustomEnemySounds
             try
             {
                 CESLogger.Debug("[CES:Hook] AICharacterController.Init Postfix ENTER");
-                CESLogger.Info("[CES:Hook] AI.Init Postfix: ENTER");
+                CESLogger.Verbose("[CES:Hook] AI.Init Postfix: ENTER");
                 CustomEnemySounds.EnsureLoaded();
-                if (_characterMainControl == null) { CESLogger.Info("[CES:Hook] AI.Init Postfix: _characterMainControl==null, skip Register()"); return; }
+                if (_characterMainControl == null) { CESLogger.Debug("[CES:Hook] AI.Init Postfix: _characterMainControl==null, skip Register()"); return; }
                 try
                 {
-                    CESLogger.Info("[CES:Hook] AI.Init Postfix: Register() begin");
+                    CESLogger.Verbose("[CES:Hook] AI.Init Postfix: Register() begin");
                     var __ctx = EnemyContextRegistry.Register(_characterMainControl, voiceType, footStepMatType);
-                    CESLogger.Info($"[CES:Hook] AI.Init Postfix: Register() done -> hasCtx={(__ctx!=null)}");
+                    CESLogger.Verbose($"[CES:Hook] AI.Init Postfix: Register() done -> hasCtx={(__ctx!=null)}");
                 }
                 catch (Exception regEx)
                 {
@@ -54,8 +54,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 if (DuckovCustomSounds.CustomBGM.BossBGM.BossBGMConfig.Enabled &&
                     DuckovCustomSounds.CustomBGM.BossBGM.BossMusicResolver.HasAnyMusic)
                 {
-                    var go = _characterMainControl != null ? _characterMainControl.gameObject : null;
-                    EnemyContext ctx = null;
+                    var go = _characterMainControl.gameObject;
+                    EnemyContext? ctx = null;
                     if (go != null && EnemyContextRegistry.TryGet(go, out ctx) && ctx != null)
                     {
                         if (ctx.GetRank() == "boss" && IsSureBoss(ctx))
@@ -92,7 +92,9 @@ namespace DuckovCustomSounds.CustomEnemySounds
         {
             try
             {
-                EnemyContextRegistry.UpdateVoiceType(__instance?.gameObject, value);
+                var go = __instance != null ? __instance.gameObject : null;
+                if (go == null) return;
+                EnemyContextRegistry.UpdateVoiceType(go, value);
             }
             catch
             {
@@ -107,7 +109,9 @@ namespace DuckovCustomSounds.CustomEnemySounds
         {
             try
             {
-                EnemyContextRegistry.Remove(__instance?.gameObject);
+                var go = __instance != null ? __instance.gameObject : null;
+                if (go == null) return;
+                EnemyContextRegistry.Remove(go);
             }
             catch
             {
@@ -132,7 +136,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         $"[CES:Hook] AudioObject.PostQuak Postfix ENTER: soundKey={soundKey}, 原始EventInstance有效={evValid}");
 
                     // 绑定/获取敌人上下文
-                    EnemyContext ctx = null;
+                    EnemyContext? ctx = null;
                     if (go != null)
                     {
                         if (!EnemyContextRegistry.TryGet(go, out ctx) || ctx == null)
@@ -152,7 +156,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
                     if (ctx == null)
                     {
-                        CESLogger.Info("[CES:Hook] Postfix: ctx==null，保留原声");
+                        CESLogger.Debug("[CES:Hook] Postfix: ctx==null，保留原声");
                         return;
                     }
                     var speaker = ctx.GameObject != null
@@ -164,7 +168,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         if (!EnemyVoiceFilter.ShouldAllow(speaker, soundKey, voiceContext))
                         {
                             CESLogger.Debug("[CES:Hook] EnemyVoiceFilter blocked this voice event.");
-                            if (evValid)
+                            if (evValid && __result.HasValue)
                             {
                                 try
                                 {
@@ -185,18 +189,18 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
 
                     // richer context logging
-                    CESLogger.Info(
+                    CESLogger.Debug(
                         $"[CES:Hook] Postfix: 开始规则匹配: soundKey={soundKey}, vt={ctx.VoiceType}, team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}, icon={ctx.IconType}, nameKey={ctx.NameKey}, footMat={ctx.FootStepMaterialType}");
-                    VoiceRoute route = null;
+                    VoiceRoute? route = null;
                     bool matched = CustomEnemySounds.Engine != null &&
                                    CustomEnemySounds.Engine.TryRoute(ctx, soundKey, ctx.VoiceType, out route);
                     var routeInfo = route != null
                         ? ($"UseCustom={route.UseCustom}, Path={(route.FileFullPath ?? "null")} ")
                         : "null";
-                    CESLogger.Info($"[CES:Hook] Postfix: 匹配结果: matched={matched}, route={routeInfo}");
+                    CESLogger.Debug($"[CES:Hook] Postfix: 匹配结果: matched={matched}, route={routeInfo}");
                     if (!matched || route == null || !(route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                     {
-                        CESLogger.Info("[CES:Rule] 未匹配到自定义，使用原声");
+                        CESLogger.Debug("[CES:Rule] 未匹配到自定义，使用原声");
                         return;
                     }
 
@@ -215,7 +219,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                     float maxDistance = 0f;
                     bool hasDistance = false;
 
-                    if (evValid)
+                    if (evValid && __result.HasValue)
                     {
                         try
                         {
@@ -273,6 +277,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
                                 AudioDistanceHelper.ApplyToEventInstance(eventInstance.Value, minDistance, maxDistance);
                             }
 
+                            try { eventInstance.Value.setVolume(EnemyVoiceOptions.Volume); } catch { }
+
                             // 追踪 EventInstance（用于优先级中断）
                             try
                             {
@@ -309,7 +315,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
         private static float _lastDeathGlobalTime = -999f;
 
-        private static void TryPlayDeathVoice(UnityEngine.GameObject go)
+        private static void TryPlayDeathVoice(UnityEngine.GameObject? go)
         {
             try
             {
@@ -322,7 +328,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 float __now = Time.realtimeSinceStartup;
                 float __min = DuckovCustomSounds.ModSettings.DeathVoiceMinInterval;
                 if (__min > 0f && (__now - _lastDeathGlobalTime) < __min) return;
-                EnemyContext ctx = null;
+                EnemyContext? ctx = null;
                 if (!EnemyContextRegistry.TryGet(go, out ctx) || ctx == null)
                 {
                     try
@@ -338,12 +344,12 @@ namespace DuckovCustomSounds.CustomEnemySounds
 
                 if (ctx == null)
                 {
-                    CESLogger.Info("[CES:Hook] Death: ctx==null，跳过");
+                    CESLogger.Debug("[CES:Hook] Death: ctx==null，跳过");
                     return;
                 }
 
-                CESLogger.Info($"[CES:Hook] Death: 开始规则匹配: soundKey=death, ctx.VoiceType={ctx.VoiceType}");
-                VoiceRoute route = null;
+                CESLogger.Debug($"[CES:Hook] Death: 开始规则匹配: soundKey=death, ctx.VoiceType={ctx.VoiceType}");
+                VoiceRoute? route = null;
                 bool matched = CustomEnemySounds.Engine != null &&
                                CustomEnemySounds.Engine.TryRoute(ctx, "death", ctx.VoiceType, out route);
                 var routeInfo = route != null
@@ -352,7 +358,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                 CESLogger.Debug($"[CES:Hook] Death: 匹配结果: matched={matched}, route={routeInfo}");
                 if (!matched || route == null || !(route.UseCustom && !string.IsNullOrEmpty(route.FileFullPath)))
                 {
-                    CESLogger.Info("[CES:Hook] Death: 未匹配自定义，跳过");
+                    CESLogger.Debug("[CES:Hook] Death: 未匹配自定义，跳过");
                     return;
                 }
 
@@ -376,8 +382,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         // 立即绑定3D位置，避免首帧未赋位导致远距离衰减过大（对象很快销毁/禁用时尤为明显）
                         try
                         {
-                            if (go != null)
-                                eventInstance.Value.set3DAttributes(go.transform.position.To3DAttributes());
+                            eventInstance.Value.set3DAttributes(go.transform.position.To3DAttributes());
                         }
                         catch { }
 
@@ -385,6 +390,8 @@ namespace DuckovCustomSounds.CustomEnemySounds
                         {
                             AudioDistanceHelper.ApplyToEventInstance(eventInstance.Value, minDistance, maxDistance);
                         }
+
+                        try { eventInstance.Value.setVolume(EnemyVoiceOptions.Volume); } catch { }
 
                         _deathPlayed.Add(id);
                         _lastDeathGlobalTime = Time.realtimeSinceStartup;
@@ -458,7 +465,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
             if (_deathEventHooked) return;
             try
             {
-                CESLogger.Info("[CES:Hook] Subscribe Health.OnDead");
+                CESLogger.Debug("[CES:Hook] Subscribe Health.OnDead");
                 Health.OnDead += OnHealthDead_Handler;
                 _deathEventHooked = true;
             }
@@ -486,9 +493,9 @@ namespace DuckovCustomSounds.CustomEnemySounds
         {
             try
             {
-                CESLogger.Info("[CES:Hook] Death via Health.OnDead");
+                CESLogger.Debug("[CES:Hook] Death via Health.OnDead");
                 var comp = h as UnityEngine.Component;
-                TryPlayDeathVoice(comp != null ? comp.gameObject : null);
+                TryPlayDeathVoice(comp?.gameObject);
             }
             catch (Exception ex)
             {

@@ -32,10 +32,11 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
     /// </summary>
     internal static class ExtractionBGMConfig
     {
-        private const string ModName = "ExtractionBGM";
+        private static readonly ModConfigScope Scope = ModConfigScopes.ExtractionBGM;
 
         // ModConfig UI 配置项
         public static ExtractionBGMMode Mode { get; private set; } = ExtractionBGMMode.Disabled;
+        public static float Volume { get; private set; } = 1.0f;
 
         private static readonly Action<string> _onChangedHandler = OnOptionsChanged;
         private static bool _initialized;
@@ -76,7 +77,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                     ExtractionBGMLogger.Debug("ModConfig 不可用，使用默认配置");
                 }
 
-                ExtractionBGMLogger.Info($"配置加载完成: Mode={Mode}");
+                ExtractionBGMLogger.Info($"配置加载完成: Mode={Mode}, Volume={Volume:F2}");
             }
             catch (Exception ex)
             {
@@ -97,7 +98,8 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 { "成功音效替换模式: 仅替换成功Stinger", (int)ExtractionBGMMode.SuccessStingerMode }
             };
 
-            ModConfigAPI.SafeAddDropdownList(ModName, "mode", "撤离音乐模式", modeOptions, typeof(int), (int)Mode);
+            ModConfigAPI.SafeAddDropdownList(Scope, "mode", "撤离音乐模式", modeOptions, typeof(int), (int)Mode);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "撤离音效音量 (0~100%)", typeof(float), Volume * 100f, new Vector2(0f, 100f));
         }
 
         /// <summary>
@@ -105,11 +107,14 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         /// </summary>
         private static void LoadFromModConfig()
         {
-            int modeInt = ModConfigAPI.SafeLoad(ModName, "mode", (int)Mode);
+            int modeInt = ModConfigAPI.SafeLoad(Scope, "mode", (int)Mode);
             if (Enum.IsDefined(typeof(ExtractionBGMMode), modeInt))
             {
                 Mode = (ExtractionBGMMode)modeInt;
             }
+
+            float volumePercent = ModConfigAPI.SafeLoad(Scope, "volume", Volume * 100f);
+            Volume = Mathf.Clamp01(volumePercent / 100f);
         }
 
         /// <summary>
@@ -117,13 +122,17 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         /// </summary>
         private static void OnOptionsChanged(string key)
         {
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
+
             var oldMode = Mode;
+            var oldVolume = Volume;
             LoadFromModConfig();
 
             // 如果模式切换，停止当前播放的音效
             if (oldMode != Mode)
             {
-                ExtractionBGMLogger.Info($"配置已热重载: {oldMode} → {Mode}");
+                ExtractionBGMLogger.Info($"配置已热重载: {oldMode} → {Mode}, Volume={Volume:F2}");
                 try
                 {
                     // 停止所有撤离音效，避免模式切换时的冲突
@@ -133,6 +142,12 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 {
                     ExtractionBGMLogger.Warning($"停止撤离音效失败: {ex.Message}");
                 }
+            }
+
+            if (Math.Abs(oldVolume - Volume) > 0.01f)
+            {
+                ExtractionBGMLogger.Info($"音量已更新: {oldVolume:F2} -> {Volume:F2}");
+                ExtractionSounds.ApplyVolumeToCurrentSounds();
             }
         }
 

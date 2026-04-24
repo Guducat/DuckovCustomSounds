@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Duckov.Modding;
 using DuckovCustomSounds.ModConfig;
+using UnityEngine;
 
 namespace DuckovCustomSounds.CustomEnemySounds.Config
 {
@@ -10,7 +11,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Config
     /// </summary>
     internal static class EnemyVoiceOptions
     {
-        private const string ModName = "EnemyVoice";
+        private static readonly ModConfigScope Scope = ModConfigScopes.EnemyVoice;
+        public static float Volume { get; private set; } = 1.0f;
+
         private static bool _initialized;
         private static bool _uiRegistered;
         private static readonly Action<string> OptionsChangedHandler = OnOptionsChanged;
@@ -66,8 +69,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Config
                     { "3) 混合: 距离智能切换", (int)EnemyVoiceTriggerMode.Hybrid }
                 };
 
-                ModConfigAPI.SafeAddBoolDropdownList(ModName, "npc_combat_voices", "允许 NPC-对-NPC 战斗语音", ModSettings.EnableNPCtoNPCCombatVoices);
-                ModConfigAPI.SafeAddDropdownList(ModName, "voice_mode", "语音触发模式", triggerModeOptions, typeof(int), (int)ModSettings.EnemyVoiceMode);
+                ModConfigAPI.SafeAddBoolDropdownList(Scope, "npc_combat_voices", "允许 NPC-对-NPC 战斗语音", ModSettings.EnableNPCtoNPCCombatVoices);
+                ModConfigAPI.SafeAddDropdownList(Scope, "voice_mode", "语音触发模式", triggerModeOptions, typeof(int), (int)ModSettings.EnemyVoiceMode);
+                ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "语音音量倍率(0~2)", typeof(float), Volume, new Vector2(0f, 2f));
 
                 _uiRegistered = true;
             }
@@ -79,9 +83,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Config
 
         private static void OnOptionsChanged(string key)
         {
-            if (string.IsNullOrEmpty(key))
-                return;
-            if (!key.StartsWith(ModName + "_", StringComparison.OrdinalIgnoreCase))
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
                 return;
 
             LoadFromModConfig();
@@ -91,19 +93,23 @@ namespace DuckovCustomSounds.CustomEnemySounds.Config
         {
             if (!ModConfigAPI.IsAvailable())
             {
-                ModSettings.ApplyEnemyVoiceSettings(ModSettings.EnableNPCtoNPCCombatVoices, ModSettings.EnemyVoiceMode, persist: false);
+                Volume = ModSettings.EnemyVoiceVolumeScale;
+                ModSettings.ApplyEnemyVoiceSettings(ModSettings.EnableNPCtoNPCCombatVoices, ModSettings.EnemyVoiceMode, Volume, persist: false);
                 return;
             }
 
-            bool enableNpcVoices = ModConfigAPI.SafeLoad(ModName, "npc_combat_voices", ModSettings.EnableNPCtoNPCCombatVoices);
-            int modeValue = ModConfigAPI.SafeLoad(ModName, "voice_mode", (int)ModSettings.EnemyVoiceMode);
+            bool enableNpcVoices = ModConfigAPI.SafeLoad(Scope, "npc_combat_voices", ModSettings.EnableNPCtoNPCCombatVoices);
+            int modeValue = ModConfigAPI.SafeLoad(Scope, "voice_mode", (int)ModSettings.EnemyVoiceMode);
+            Volume = Mathf.Clamp(ModConfigAPI.SafeLoad(Scope, "volume", ModSettings.EnemyVoiceVolumeScale), 0f, 2f);
 
             EnemyVoiceTriggerMode mode = Enum.IsDefined(typeof(EnemyVoiceTriggerMode), modeValue)
                 ? (EnemyVoiceTriggerMode)modeValue
                 : EnemyVoiceTriggerMode.Original;
 
-            bool changed = enableNpcVoices != ModSettings.EnableNPCtoNPCCombatVoices || mode != ModSettings.EnemyVoiceMode;
-            ModSettings.ApplyEnemyVoiceSettings(enableNpcVoices, mode, persist: changed);
+            bool changed = enableNpcVoices != ModSettings.EnableNPCtoNPCCombatVoices
+                || mode != ModSettings.EnemyVoiceMode
+                || Math.Abs(Volume - ModSettings.EnemyVoiceVolumeScale) > 0.01f;
+            ModSettings.ApplyEnemyVoiceSettings(enableNpcVoices, mode, Volume, persist: changed);
         }
     }
 }

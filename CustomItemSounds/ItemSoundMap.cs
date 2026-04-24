@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Newtonsoft.Json;
@@ -17,7 +17,7 @@ namespace DuckovCustomSounds.CustomItemSounds
         private const string FileName = "item_sound_map.json";
 
         private static MapData _data = new MapData();
-        private static string _configPath;
+        private static string? _configPath;
         private static bool _initialized;
 
         internal static void Initialize()
@@ -46,14 +46,17 @@ namespace DuckovCustomSounds.CustomItemSounds
         {
             try
             {
-                var dir = Path.GetDirectoryName(_configPath);
+                var configPath = _configPath;
+                if (string.IsNullOrWhiteSpace(configPath)) return;
+
+                var dir = Path.GetDirectoryName(configPath);
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
-                if (!File.Exists(_configPath))
+                if (!File.Exists(configPath))
                 {
                     var def = CreateDefault();
                     var json = JsonConvert.SerializeObject(def, Formatting.Indented);
-                    File.WriteAllText(_configPath, json);
-                    ItemLogger.Info($"[ItemMap] 已生成默认映射: {_configPath}");
+                    File.WriteAllText(configPath, json);
+                    ItemLogger.Info($"[ItemMap] 已生成默认映射: {configPath}");
                 }
             }
             catch (Exception ex)
@@ -66,8 +69,9 @@ namespace DuckovCustomSounds.CustomItemSounds
         {
             try
             {
-                if (!File.Exists(_configPath)) { _data = new MapData(); return; }
-                var text = File.ReadAllText(_configPath);
+                var configPath = _configPath;
+                if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath)) { _data = new MapData(); return; }
+                var text = File.ReadAllText(configPath);
                 _data = JsonConvert.DeserializeObject<MapData>(text) ?? new MapData();
                 Sanitize(_data);
             }
@@ -107,7 +111,7 @@ namespace DuckovCustomSounds.CustomItemSounds
         /// 用于“拦截并替换”路径：如果此 TypeID 配置了自定义 soundKey/actionKey/finishKey，则返回替换后的键；
         /// 否则按别名表替换（如 meds->bandage）；若仍无替换，则返回原键。
         /// </summary>
-        internal static string ResolveForReplace(string typeIdStr, string originalKey, CustomItemSounds_Patches.ItemUsePhase? phase)
+        internal static string ResolveForReplace(string? typeIdStr, string originalKey, CustomItemSounds_Patches.ItemUsePhase? phase)
         {
             try
             {
@@ -132,7 +136,7 @@ namespace DuckovCustomSounds.CustomItemSounds
         /// 否则回退 defaultWhenNoEvent；都没有则返回 null。
         /// forceWhenNoEvent=false 则返回 null（不注入）。
         /// </summary>
-        internal static string ResolveForInjection(string typeIdStr, CustomItemSounds_Patches.ItemUsePhase phase)
+        internal static string? ResolveForInjection(string? typeIdStr, CustomItemSounds_Patches.ItemUsePhase phase)
         {
             try
             {
@@ -159,7 +163,7 @@ namespace DuckovCustomSounds.CustomItemSounds
         /// 可选文件基名（fileBase）解析：允许多个 TypeID 共享同一个实际文件名（如 64.mp3）。
         /// 若未配置，返回 null，调用方应回退使用 soundKey。
         /// </summary>
-        internal static string ResolveFileBase(string typeIdStr, string soundKey, CustomItemSounds_Patches.ItemUsePhase? phase)
+        internal static string? ResolveFileBase(string? typeIdStr, string soundKey, CustomItemSounds_Patches.ItemUsePhase? phase)
         {
             try
             {
@@ -176,24 +180,23 @@ namespace DuckovCustomSounds.CustomItemSounds
 
         private sealed class MapData
         {
-            public string defaultWhenNoEvent { get; set; }
+            public string? defaultWhenNoEvent { get; set; }
             public Dictionary<string, ItemEntry> items { get; set; } = new Dictionary<string, ItemEntry>(StringComparer.OrdinalIgnoreCase);
             public Dictionary<string, string> aliases { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         }
 
         private sealed class ItemEntry
         {
-            public string soundKey { get; set; }
-            public string actionKey { get; set; }
-            public string finishKey { get; set; }
+            public string? soundKey { get; set; }
+            public string? actionKey { get; set; }
+            public string? finishKey { get; set; }
 
             // 允许文件基名覆盖（多 TypeID 共用同一 <fileBase>.*）
-            public string fileBase { get; set; }
-            public string actionFileBase { get; set; }
-            public string finishFileBase { get; set; }
+            public string? fileBase { get; set; }
+            public string? actionFileBase { get; set; }
+            public string? finishFileBase { get; set; }
 
             public bool? forceWhenNoEvent { get; set; } // 缺省=true
         }
     }
 }
-

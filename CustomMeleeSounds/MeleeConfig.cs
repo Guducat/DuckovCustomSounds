@@ -10,7 +10,7 @@ namespace DuckovCustomSounds.CustomMeleeSounds
     /// </summary>
     internal static class MeleeConfig
     {
-        private const string ModName = "Melee";
+        private static readonly ModConfigScope Scope = ModConfigScopes.Melee;
 
         // ModConfig UI 配置项
         public static bool Enabled { get; private set; } = true;
@@ -65,8 +65,8 @@ namespace DuckovCustomSounds.CustomMeleeSounds
         /// </summary>
         private static void SetupModConfigUI()
         {
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用自定义近战音效", Enabled);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "volume", "音量 (0~2)", typeof(float), Volume, new Vector2(0f, 2f));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enabled", "启用自定义近战音效", Enabled);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "音量倍率(0~2)", typeof(float), Volume, new Vector2(0f, 2f));
         }
 
         /// <summary>
@@ -74,8 +74,8 @@ namespace DuckovCustomSounds.CustomMeleeSounds
         /// </summary>
         private static void LoadFromModConfig()
         {
-            Enabled = ModConfigAPI.SafeLoad(ModName, "enabled", Enabled);
-            Volume = ModConfigAPI.SafeLoad(ModName, "volume", Volume);
+            Enabled = ModConfigAPI.SafeLoad(Scope, "enabled", Enabled);
+            Volume = ModConfigAPI.SafeLoad(Scope, "volume", Volume);
             Volume = Mathf.Clamp(Volume, 0f, 2f); // 钳制范围
         }
 
@@ -84,6 +84,9 @@ namespace DuckovCustomSounds.CustomMeleeSounds
         /// </summary>
         private static void OnOptionsChanged(string key)
         {
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
+
             var oldEnabled = Enabled;
             var oldVolume = Volume;
 

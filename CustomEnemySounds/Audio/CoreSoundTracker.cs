@@ -15,20 +15,20 @@ namespace DuckovCustomSounds.CustomEnemySounds.Audio
     /// </summary>
     internal static class CoreSoundTracker
     {
-        private class Entry
+        private sealed class Entry
         {
             public int OwnerId;                      // GameObject InstanceID
-            public string SoundKey;                  // 声音键
+            public string SoundKey = string.Empty;   // 声音键
             public int Priority;                     // 优先级
             public FMOD.Studio.EventInstance EventInstance; // 新接口返回的 EventInstance
-            public string Path;                      // 文件路径
+            public string Path = string.Empty;       // 文件路径
             public float AddedAt;                    // 添加时间
         }
 
         // 以发声体 GameObject.InstanceID 为键，确保同一对象同一时间只有一个条目
         private static readonly Dictionary<int, Entry> _byOwner = new Dictionary<int, Entry>();
         private static bool _running;
-        private static Coroutine _routine;
+        private static Coroutine? _routine;
 
         public static void EnsureStarted()
         {
@@ -56,9 +56,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Audio
             {
                 OwnerId = ownerId,
                 EventInstance = eventInstance,
-                Path = path,
+                Path = path ?? string.Empty,
                 AddedAt = Time.realtimeSinceStartup,
-                SoundKey = soundKey,
+                SoundKey = soundKey ?? string.Empty,
                 Priority = priority,
             };
         }
@@ -164,7 +164,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Audio
                     {
                         try { e.EventInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE); } catch { }
                         try { e.EventInstance.release(); } catch { }
-                        CESLogger.Debug($"[CES:Core] 结束自定义语音 -> {e.Path}");
+                        CESLogger.Verbose($"[CES:Core] 结束自定义语音 -> {e.Path}");
                         _byOwner.Remove(key);
                     }
                     // 注意：新接口自动跟随 GameObject，无需手动更新 3D 属性

@@ -35,7 +35,7 @@ namespace DuckovCustomSounds.API
         /// </summary>
         public static bool TryResolve(EnemyContextData ctx, string soundKey, string voiceType, out string fullPath)
         {
-            fullPath = null;
+            fullPath = string.Empty;
             IVoicePackProvider[] snapshot;
             lock (_gate) { snapshot = new List<IVoicePackProvider>(_providers.Values).ToArray(); }
             foreach (var p in snapshot)
@@ -65,7 +65,7 @@ namespace DuckovCustomSounds.API
         /// <summary>
         /// 由内部调用：将内部 EnemyContext 映射为对外 DTO
         /// </summary>
-        internal static EnemyContextData FromInternal(EnemyContext ctx, AudioManager.VoiceType voiceType)
+        internal static EnemyContextData FromInternal(EnemyContext? ctx, AudioManager.VoiceType voiceType)
         {
             if (ctx == null) return new EnemyContextData { IsValid = false };
             return new EnemyContextData
@@ -73,14 +73,13 @@ namespace DuckovCustomSounds.API
                 InstanceId = ctx.InstanceId,
                 Team = ctx.GetTeamNormalized(),
                 Rank = ctx.GetRank(),
-                EnemyType = ctx.EnemyType,
-                NameKey = ctx.NameKey,
+                EnemyType = ctx.EnemyType ?? string.Empty,
+                NameKey = ctx.NameKey ?? string.Empty,
                 Health = ctx.Health,
-                IconType = ctx.IconType,
+                IconType = ctx.IconType ?? string.Empty,
                 Transform = ctx.GameObject != null ? ctx.GameObject.transform : null,
                 IsValid = true,
             };
         }
     }
 }
-

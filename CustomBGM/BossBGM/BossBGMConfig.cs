@@ -13,11 +13,12 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
     /// </summary>
     internal static class BossBGMConfig
     {
-        private const string ModName = "BossBGM";
+        private static readonly ModConfigScope Scope = ModConfigScopes.BossBGM;
 
         // ModConfig UI 配置项
         public static bool Enabled { get; private set; } = true;
         public static float TriggerDistance { get; private set; } = 40f; // 增大检测距离，解决30米太近的问题
+        public static float Volume { get; private set; } = 0.7f;
 
         // config.json 高级配置项
         public static float FadeDuration { get; private set; } = 2f;
@@ -78,7 +79,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                     BossBGMLogger.Debug("ModConfig 不可用，使用默认配置");
                 }
 
-                BossBGMLogger.Info($"配置加载完成: Enabled={Enabled}, Distance={TriggerDistance}m, Fade={FadeDuration}s, Update={UpdateInterval}s, ManagerUpdate={ManagerUpdateInterval}s, MinSwitch={MinSwitchIntervalSeconds}s, MinDelta={MinDistanceDeltaToSwitch}m, Resume={ResumePlaybackEnabled}, DelayedStop={DelayedStopEnabled}({DelayedStopSeconds}s), DeathFade={BossDeathFadeOutSeconds}s");
+                BossBGMLogger.Info($"配置加载完成: Enabled={Enabled}, Distance={TriggerDistance}m, Volume={Volume:F2}, Fade={FadeDuration}s, Update={UpdateInterval}s, ManagerUpdate={ManagerUpdateInterval}s, MinSwitch={MinSwitchIntervalSeconds}s, MinDelta={MinDistanceDeltaToSwitch}m, Resume={ResumePlaybackEnabled}, DelayedStop={DelayedStopEnabled}({DelayedStopSeconds}s), DeathFade={BossDeathFadeOutSeconds}s");
             }
             catch (Exception ex)
             {
@@ -91,8 +92,9 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// </summary>
         private static void SetupModConfigUI()
         {
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用 BOSS BGM", Enabled);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "triggerDistance", "触发距离 (米, 10~200)", typeof(float), TriggerDistance, new Vector2(10f, 200f));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enabled", "启用首领音乐", Enabled);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "triggerDistance", "触发距离 (米, 10~200)", typeof(float), TriggerDistance, new Vector2(10f, 200f));
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "首领音乐音量 (0~100%)", typeof(float), Volume * 100f, new Vector2(0f, 100f));
         }
 
         /// <summary>
@@ -100,9 +102,11 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// </summary>
         private static void LoadFromModConfig()
         {
-            Enabled = ModConfigAPI.SafeLoad(ModName, "enabled", Enabled);
-            TriggerDistance = ModConfigAPI.SafeLoad(ModName, "triggerDistance", TriggerDistance);
+            Enabled = ModConfigAPI.SafeLoad(Scope, "enabled", Enabled);
+            TriggerDistance = ModConfigAPI.SafeLoad(Scope, "triggerDistance", TriggerDistance);
             TriggerDistance = Mathf.Clamp(TriggerDistance, 10f, 200f); // 钳制范围
+            float volumePercent = ModConfigAPI.SafeLoad(Scope, "volume", Volume * 100f);
+            Volume = Mathf.Clamp01(volumePercent / 100f);
         }
 
         /// <summary>
@@ -110,8 +114,11 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// </summary>
         private static void OnOptionsChanged(string key)
         {
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
+
             LoadFromModConfig();
-            BossBGMLogger.Debug($"配置已更新: Enabled={Enabled}, Distance={TriggerDistance}m");
+            BossBGMLogger.Debug($"配置已更新: Enabled={Enabled}, Distance={TriggerDistance}m, Volume={Volume:F2}");
         }
 
         /// <summary>
@@ -134,6 +141,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                 if (config != null)
                 {
                     // 只从 config.json 加载高级配置项
+                    Volume = Mathf.Clamp01(config.Volume);
                     FadeDuration = config.FadeDuration;
                     UpdateInterval = config.UpdateInterval;
                     ManagerUpdateInterval = config.ManagerUpdateInterval;
@@ -152,7 +160,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                     // D: BOSS 死亡淡出
                     BossDeathFadeOutSeconds = config.BossDeathFadeOutSeconds;
 
-                    BossBGMLogger.Debug($"高级配置加载: Fade={FadeDuration}s, UpdateInterval={UpdateInterval}s, ManagerUpdate={ManagerUpdateInterval}s, MinSwitch={MinSwitchIntervalSeconds}s, MinDelta={MinDistanceDeltaToSwitch}m, Resume={ResumePlaybackEnabled}, DelayedStop={DelayedStopEnabled}, Delay={DelayedStopSeconds}s, DeathFade={BossDeathFadeOutSeconds}s");
+                    BossBGMLogger.Debug($"高级配置加载: Volume={Volume:F2}, Fade={FadeDuration}s, UpdateInterval={UpdateInterval}s, ManagerUpdate={ManagerUpdateInterval}s, MinSwitch={MinSwitchIntervalSeconds}s, MinDelta={MinDistanceDeltaToSwitch}m, Resume={ResumePlaybackEnabled}, DelayedStop={DelayedStopEnabled}, Delay={DelayedStopSeconds}s, DeathFade={BossDeathFadeOutSeconds}s");
                 }
             }
             catch (Exception ex)
@@ -170,6 +178,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             {
                 var config = new ConfigData
                 {
+                    Volume = 0.7f,
                     FadeDuration = 2f,
                     UpdateInterval = 0.1f,
                     ManagerUpdateInterval = 0.5f,
@@ -203,6 +212,9 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         [Serializable]
         private class ConfigData
         {
+            [JsonProperty("volume")]
+            public float Volume = 0.7f;
+
             [JsonProperty("fadeDuration")]
             public float FadeDuration = 2f;
 

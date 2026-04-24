@@ -10,7 +10,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
     /// </summary>
     internal static class FootstepConfig
     {
-        private const string ModName = "Footstep";
+        private static readonly ModConfigScope Scope = ModConfigScopes.Footstep;
 
         // ModConfig UI 配置项
         public static bool Enabled { get; private set; } = true;
@@ -29,6 +29,8 @@ namespace DuckovCustomSounds.CustomFootStepSounds
 
             try
             {
+                LoadFromSettingsFallback();
+
                 // 如果 ModConfig 可用，注册 UI 与变更回调
                 if (ModConfigAPI.IsAvailable())
                 {
@@ -65,8 +67,8 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         /// </summary>
         private static void SetupModConfigUI()
         {
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用自定义脚步音效", Enabled);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "volume", "音量 (0~2)", typeof(float), Volume, new Vector2(0f, 2f));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enabled", "启用自定义脚步音效", Enabled);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "音量倍率(0~2)", typeof(float), Volume, new Vector2(0f, 2f));
         }
 
         /// <summary>
@@ -74,9 +76,22 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         /// </summary>
         private static void LoadFromModConfig()
         {
-            Enabled = ModConfigAPI.SafeLoad(ModName, "enabled", Enabled);
-            Volume = ModConfigAPI.SafeLoad(ModName, "volume", Volume);
+            Enabled = ModConfigAPI.SafeLoad(Scope, "enabled", Enabled);
+            Volume = ModConfigAPI.SafeLoad(Scope, "volume", Volume);
             Volume = Mathf.Clamp(Volume, 0f, 2f); // 钳制范围
+        }
+
+        private static void LoadFromSettingsFallback()
+        {
+            try
+            {
+                Enabled = DuckovCustomSounds.ModSettings.EnableCustomFootStepSounds;
+                Volume = Mathf.Clamp(DuckovCustomSounds.ModSettings.FootstepVolumeScale, 0f, 2f);
+            }
+            catch (Exception ex)
+            {
+                FootstepLogger.Warning($"settings.json 回退加载失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -84,6 +99,9 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         /// </summary>
         private static void OnOptionsChanged(string key)
         {
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
+
             var oldEnabled = Enabled;
             var oldVolume = Volume;
 

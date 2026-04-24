@@ -143,9 +143,9 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             }
         }
 
-        private static string SanitizePattern(string p)
+        private static string SanitizePattern(string? p)
         {
-            if (string.IsNullOrEmpty(p)) return p;
+            if (string.IsNullOrEmpty(p)) return string.Empty;
             var t = p.Replace("{enemyType}/", string.Empty)
                      .Replace("/{enemyType}", string.Empty)
                      .Replace("{enemyType}", string.Empty);
@@ -158,4 +158,3 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         }
     }
 }
-

@@ -9,10 +9,11 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
     {
         private static readonly ILog _log = LogManager.GetLogger("ExtractionBGM");
 
+        public static ILog ForScope(params string[] scopes) => _log.ForScope(scopes);
         public static void Debug(string message) => _log.Debug(message);
         public static void Info(string message) => _log.Info(message);
         public static void Warning(string message) => _log.Warning(message);
-        public static void Error(string message, System.Exception ex = null)
+        public static void Error(string message, System.Exception? ex = null)
         {
             if (ex != null)
                 _log.Error($"{message}: {ex.Message}");

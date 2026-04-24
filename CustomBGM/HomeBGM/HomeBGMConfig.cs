@@ -5,13 +5,13 @@ using DuckovCustomSounds.ModConfig;
 namespace DuckovCustomSounds.CustomBGM.HomeBGM
 {
     /// <summary>
-    /// HomeBGM 配置管理
+    /// 基地音乐配置管理
     /// 优先使用 ModConfig UI 配置（支持热重载）
     /// 回退到 settings.json
     /// </summary>
     internal static class HomeBGMConfig
     {
-        private const string ModName = "HomeBGM";
+        private static readonly ModConfigScope Scope = ModConfigScopes.HomeBGM;
 
         // ModConfig UI 配置项
         public static bool Enabled { get; private set; } = true;
@@ -75,14 +75,14 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
         /// </summary>
         private static void SetupModConfigUI()
         {
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enabled", "启用主页BGM", Enabled);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "enableStartMusic", "启用进入基地音效 (start.mp3)", EnableStartMusic);
-            ModConfigAPI.SafeAddInputWithSlider(ModName, "volume", "音乐音量 (%)", typeof(int), (int)(Volume * 100), new UnityEngine.Vector2(0, 100));
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "useSFXBus", "使用 SFX 总线播放（实验性，可能改善立体声效果，但受 SFX 音量控制影响）", UseSFXBus);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "randomEnabled", "随机播放(Next)", RandomEnabled);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "randomizePrevious", "上一曲也随机", RandomizePrevious);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "avoidImmediateRepeat", "避免连续重复同一曲目", AvoidImmediateRepeat);
-            ModConfigAPI.SafeAddBoolDropdownList(ModName, "autoPlayNext", "自动播放下一曲", AutoPlayNext);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enabled", "启用基地音乐", Enabled);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "enableStartMusic", "启用进入基地音效", EnableStartMusic);
+            ModConfigAPI.SafeAddInputWithSlider(Scope, "volume", "音乐音量 (%)", typeof(int), (int)(Volume * 100), new UnityEngine.Vector2(0, 100));
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "useSFXBus", "音乐走音效总线", UseSFXBus);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "randomEnabled", "下一首随机播放", RandomEnabled);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "randomizePrevious", "上一首随机播放", RandomizePrevious);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "avoidImmediateRepeat", "避免连续重复播放", AvoidImmediateRepeat);
+            ModConfigAPI.SafeAddBoolDropdownList(Scope, "autoPlayNext", "自动播放下一曲", AutoPlayNext);
         }
 
         /// <summary>
@@ -90,18 +90,18 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
         /// </summary>
         private static void LoadFromModConfig()
         {
-            Enabled = ModConfigAPI.SafeLoad(ModName, "enabled", Enabled);
-            EnableStartMusic = ModConfigAPI.SafeLoad(ModName, "enableStartMusic", EnableStartMusic);
+            Enabled = ModConfigAPI.SafeLoad(Scope, "enabled", Enabled);
+            EnableStartMusic = ModConfigAPI.SafeLoad(Scope, "enableStartMusic", EnableStartMusic);
 
             // 加载音量配置（0-100 整数，转换为 0.0-1.0 浮点数）
-            int volumePercent = ModConfigAPI.SafeLoad(ModName, "volume", (int)(Volume * 100));
+            int volumePercent = ModConfigAPI.SafeLoad(Scope, "volume", (int)(Volume * 100));
             Volume = Mathf.Clamp01(volumePercent / 100f);
 
-            UseSFXBus = ModConfigAPI.SafeLoad(ModName, "useSFXBus", UseSFXBus);
-            RandomEnabled = ModConfigAPI.SafeLoad(ModName, "randomEnabled", RandomEnabled);
-            RandomizePrevious = ModConfigAPI.SafeLoad(ModName, "randomizePrevious", RandomizePrevious);
-            AvoidImmediateRepeat = ModConfigAPI.SafeLoad(ModName, "avoidImmediateRepeat", AvoidImmediateRepeat);
-            AutoPlayNext = ModConfigAPI.SafeLoad(ModName, "autoPlayNext", AutoPlayNext);
+            UseSFXBus = ModConfigAPI.SafeLoad(Scope, "useSFXBus", UseSFXBus);
+            RandomEnabled = ModConfigAPI.SafeLoad(Scope, "randomEnabled", RandomEnabled);
+            RandomizePrevious = ModConfigAPI.SafeLoad(Scope, "randomizePrevious", RandomizePrevious);
+            AvoidImmediateRepeat = ModConfigAPI.SafeLoad(Scope, "avoidImmediateRepeat", AvoidImmediateRepeat);
+            AutoPlayNext = ModConfigAPI.SafeLoad(Scope, "autoPlayNext", AutoPlayNext);
         }
 
         /// <summary>
@@ -109,6 +109,9 @@ namespace DuckovCustomSounds.CustomBGM.HomeBGM
         /// </summary>
         private static void OnOptionsChanged(string key)
         {
+            if (!ModConfigAPI.IsKeyForMod(key, Scope))
+                return;
+
             var oldEnabled = Enabled;
             var oldRandom = RandomEnabled;
             var oldAutoNext = AutoPlayNext;

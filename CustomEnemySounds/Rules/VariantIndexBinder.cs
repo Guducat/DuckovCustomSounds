@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -23,9 +24,9 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
         /// <summary>
         /// 获取或分配绑定索引。仅在启用时有效；未启用直接返回 0。
         /// </summary>
-        public static int GetOrAllocate(int ownerId, int availableCount)
+        public static int GetOrAllocate(int ownerId, int availableCount, bool? enabled = null, Action<string>? debugLog = null, string logPrefix = "CES:Variant")
         {
-            if (!Enabled)
+            if (!(enabled ?? Enabled))
             {
                 return 0;
             }
@@ -34,10 +35,15 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             {
                 return idx;
             }
-            int newIndex = Random.Range(0, availableCount); // [0, availableCount)
+            int newIndex = UnityEngine.Random.Range(0, availableCount); // [0, availableCount)
             _byOwner[ownerId] = newIndex;
-            CESLogger.Debug($"[CES:Variant] 为敌人 {ownerId} 绑定变体索引 {newIndex}（共 {availableCount} 个变体）");
+            (debugLog ?? CESLogger.Debug)($"[{NormalizePrefix(logPrefix)}] 为对象 {ownerId} 绑定变体索引 {newIndex}（共 {availableCount} 个变体）");
             return newIndex;
+        }
+
+        private static string NormalizePrefix(string prefix)
+        {
+            return string.IsNullOrWhiteSpace(prefix) ? "CES:Variant" : prefix.Trim();
         }
 
         public static void Remove(int ownerId)

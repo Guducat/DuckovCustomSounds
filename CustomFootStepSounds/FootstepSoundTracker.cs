@@ -5,23 +5,41 @@ using FMOD;
 
 namespace DuckovCustomSounds.CustomFootStepSounds
 {
+    internal enum FootstepSoundKind
+    {
+        Footstep,
+        Dash
+    }
+
     /// <summary>
     /// 跟踪脚步/冲刺等循环或短促 SFX 的生命周期，独立于语音的 CoreSoundTracker，避免互相中断。
     /// 使用新接口 PostCustomSound 替代 FMOD Core API。
     /// </summary>
     internal static class FootstepSoundTracker
     {
+        private readonly struct PlaybackSlot
+        {
+            public readonly int OwnerId;
+            public readonly FootstepSoundKind Kind;
+
+            public PlaybackSlot(int ownerId, FootstepSoundKind kind)
+            {
+                OwnerId = ownerId;
+                Kind = kind;
+            }
+        }
+
         private class Entry
         {
             public int OwnerId;                      // GameObject InstanceID
-            public string SoundKey;                  // 声音键
+            public string SoundKey = string.Empty;   // 声音键
             public FMOD.Studio.EventInstance EventInstance; // 新接口返回的 EventInstance
-            public string Path;                      // 文件路径
+            public string Path = string.Empty;       // 文件路径
         }
 
-        private static readonly Dictionary<int, Entry> _byOwner = new Dictionary<int, Entry>();
+        private static readonly Dictionary<PlaybackSlot, Entry> _bySlot = new Dictionary<PlaybackSlot, Entry>();
         private static bool _running;
-        private static Coroutine _routine;
+        private static Coroutine? _routine;
 
         public static void EnsureStarted()
         {
@@ -32,17 +50,18 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             FootstepLogger.Debug("[CFS:Core] FootstepSoundTracker 启动");
         }
 
-        public static void Track(int ownerId, FMOD.Studio.EventInstance eventInstance, string path, string soundKey)
+        public static void Track(int ownerId, FMOD.Studio.EventInstance eventInstance, string path, string soundKey, FootstepSoundKind kind)
         {
             if (!_running) EnsureStarted();
-            // 对于脚步声：同一 owner 仅保留一个条目（新替旧），避免叠加
-            if (_byOwner.TryGetValue(ownerId, out var old))
+            // 同一 owner 的同类声音新替旧；脚步与 dash 允许同时播放。
+            var slot = new PlaybackSlot(ownerId, kind);
+            if (_bySlot.TryGetValue(slot, out var old))
             {
                 try { old.EventInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE); } catch { }
                 try { old.EventInstance.release(); } catch { }
-                _byOwner.Remove(ownerId);
+                _bySlot.Remove(slot);
             }
-            _byOwner[ownerId] = new Entry
+            _bySlot[slot] = new Entry
             {
                 OwnerId = ownerId,
                 EventInstance = eventInstance,
@@ -55,11 +74,15 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         {
             try
             {
-                if (_byOwner.TryGetValue(ownerId, out var e))
+                var keys = new List<PlaybackSlot>(_bySlot.Keys);
+                for (int i = keys.Count - 1; i >= 0; i--)
                 {
+                    var key = keys[i];
+                    if (key.OwnerId != ownerId || !_bySlot.TryGetValue(key, out var e)) continue;
+
                     try { e.EventInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE); } catch { }
                     try { e.EventInstance.release(); } catch { }
-                    _byOwner.Remove(ownerId);
+                    _bySlot.Remove(key);
                 }
             }
             catch { }
@@ -70,13 +93,13 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             _running = false;
             try
             {
-                foreach (var kv in _byOwner)
+                foreach (var kv in _bySlot)
                 {
                     var e = kv.Value;
                     try { e.EventInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE); } catch { }
                     try { e.EventInstance.release(); } catch { }
                 }
-                _byOwner.Clear();
+                _bySlot.Clear();
             }
             catch { }
             FootstepLogger.Debug("[CFS:Core] FootstepSoundTracker 停止");
@@ -87,11 +110,11 @@ namespace DuckovCustomSounds.CustomFootStepSounds
             var wait = new WaitForSeconds(0.05f);
             while (_running)
             {
-                var keys = new List<int>(_byOwner.Keys);
+                var keys = new List<PlaybackSlot>(_bySlot.Keys);
                 for (int i = keys.Count - 1; i >= 0; i--)
                 {
-                    int key = keys[i];
-                    if (!_byOwner.TryGetValue(key, out var e)) continue;
+                    var key = keys[i];
+                    if (!_bySlot.TryGetValue(key, out var e)) continue;
 
                     // 使用 EventInstance 的 isValid() 和 isPlaying() 查询
                     bool valid = false;
@@ -120,7 +143,7 @@ namespace DuckovCustomSounds.CustomFootStepSounds
                     {
                         try { e.EventInstance.stop(FMOD.Studio.STOP_MODE.IMMEDIATE); } catch { }
                         try { e.EventInstance.release(); } catch { }
-                        _byOwner.Remove(key);
+                        _bySlot.Remove(key);
                     }
                     // 注意：新接口自动跟随 GameObject，无需手动更新 3D 属性
                 }
@@ -129,4 +152,3 @@ namespace DuckovCustomSounds.CustomFootStepSounds
         }
     }
 }
-

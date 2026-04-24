@@ -10,6 +10,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
     {
         private static readonly ILog Log = LogManager.GetLogger("SceneBGM");
 
+        public static ILog ForScope(params string[] scopes) => Log.ForScope(scopes);
+
         public static void Info(string message)
         {
             Log.Info(message);
@@ -25,7 +27,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             Log.Warning(message);
         }
 
-        public static void Error(string message, Exception ex = null)
+        public static void Error(string message, Exception? ex = null)
         {
             if (ex != null)
             {

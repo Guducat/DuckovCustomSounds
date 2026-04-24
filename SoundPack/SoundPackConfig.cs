@@ -11,7 +11,7 @@ namespace DuckovCustomSounds.SoundPack
     /// </summary>
     public static class SoundPackConfig
     {
-        private const string ModName = "DuckovCustomSounds";
+        private static readonly ModConfigScope Scope = ModConfigScopes.SoundPack;
         private static readonly ILog Log = LogManager.GetLogger("SoundPack");
 
         private static readonly Action<string> _onChangedHandler = OnOptionsChanged;
@@ -94,7 +94,7 @@ namespace DuckovCustomSounds.SoundPack
                 // valueType: typeof(int)
                 // defaultValue: 当前索引
                 ModConfigAPI.SafeAddDropdownList(
-                    modName: ModName,
+                    scope: Scope,
                     key: "soundPack",
                     description: "更换声音包（需重启游戏）",
                     options: soundPackOptions,
@@ -118,7 +118,7 @@ namespace DuckovCustomSounds.SoundPack
             try
             {
                 // 检查是否是声音包选项变更
-                if (key != "soundPack" && !string.IsNullOrEmpty(key))
+                if (!ModConfigAPI.IsKeyForOption(key, Scope, "soundPack"))
                 {
                     return; // 不是声音包选项，忽略
                 }
@@ -135,7 +135,7 @@ namespace DuckovCustomSounds.SoundPack
                     return;
                 }
 
-                int selectedIndex = ModConfigAPI.SafeLoad<int>(ModName, "soundPack", 0);
+                int selectedIndex = ModConfigAPI.SafeLoad<int>(Scope, "soundPack", 0);
 
                 // 验证索引有效性
                 if (selectedIndex < 0 || selectedIndex >= packIds.Count)

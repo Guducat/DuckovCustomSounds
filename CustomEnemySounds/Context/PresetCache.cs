@@ -94,7 +94,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             Load();
         }
 
-        public static CharacterRandomPreset Resolve(CharacterMainControl cmc)
+        public static CharacterRandomPreset? Resolve(CharacterMainControl? cmc)
         {
             EnsureLoaded();
             if (cmc == null) return null;
@@ -123,7 +123,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
             return GetByNameKey(nameKey);
         }
 
-        public static CharacterRandomPreset GetByNameKey(string nameKey)
+        public static CharacterRandomPreset? GetByNameKey(string? nameKey)
         {
             EnsureLoaded();
             if (string.IsNullOrEmpty(nameKey)) return null;
@@ -169,7 +169,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Context
         {
             if (preset == null) return string.Empty;
             var iconObj = ReflectionCache.GetValue(preset, "characterIconType");
-            return iconObj?.ToString().Trim().ToLowerInvariant() ?? string.Empty;
+            return iconObj?.ToString()?.Trim().ToLowerInvariant() ?? string.Empty;
         }
     }
 }

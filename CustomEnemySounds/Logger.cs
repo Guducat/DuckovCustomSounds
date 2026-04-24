@@ -32,6 +32,7 @@ namespace DuckovCustomSounds.CustomEnemySounds
             try { LogManager.ApplyFileSwitches(modRoot); } catch { }
         }
 
+        public static ILog ForScope(params string[] scopes) => _logger.ForScope(scopes);
         public static void Error(string msg, Exception? ex = null) => _logger.Error(msg, ex);
         public static void Warning(string msg) => _logger.Warning(msg);
         public static void Info(string msg) => _logger.Info(msg);

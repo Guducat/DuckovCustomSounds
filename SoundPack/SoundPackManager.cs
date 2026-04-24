@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
+using DuckovCustomSounds.CustomBGM.Core;
 using DuckovCustomSounds.Logging;
 
 namespace DuckovCustomSounds.SoundPack
@@ -182,11 +183,7 @@ namespace DuckovCustomSounds.SoundPack
                     string folderPath = Path.Combine(RootFolderName, folder);
                     if (Directory.Exists(folderPath))
                     {
-                        // 检查文件夹中是否有音频文件
-                        var audioFiles = Directory.GetFiles(folderPath, "*.mp3")
-                            .Concat(Directory.GetFiles(folderPath, "*.wav"))
-                            .Concat(Directory.GetFiles(folderPath, "*.ogg"));
-                        if (audioFiles.Any())
+                        if (AudioFileExtensions.GetMusicFiles(folderPath).Any())
                         {
                             return true;
                         }
@@ -203,7 +200,7 @@ namespace DuckovCustomSounds.SoundPack
         /// <summary>
         /// 从 pack.json 加载声音包信息
         /// </summary>
-        private static SoundPackInfo LoadPackInfo(string packFolder, string packJsonPath)
+        private static SoundPackInfo? LoadPackInfo(string packFolder, string packJsonPath)
         {
             try
             {

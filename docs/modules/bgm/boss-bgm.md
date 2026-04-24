@@ -4,31 +4,33 @@ title: Boss BGM
 
 # Boss BGM
 
-为特定 Boss 提供专属 BGM。进入触发距离内自动淡入，离开或死亡时平滑淡出；多 Boss 并存时按“最近/更高优先级”规则选择。
+为特定 Boss 播放专属 BGM。进入触发距离内自动淡入，离开或死亡时平滑淡出。多 Boss 并存时按最近且优先级最高的规则选择。
 
 ## 目录与命名
 
 ```
-DuckovCustomSounds/
-└─ BossBGM/
-   ├─ default_boss.mp3      # 兜底
-   ├─ BALeader.mp3          # Cname_BALeader → BALeader.mp3
-   ├─ Boss_Sniper.ogg       # Cname_Boss_Sniper → Boss_Sniper.ogg
-   └─ ServerGuardian.flac   # Cname_ServerGuardian → ServerGuardian.flac
+BossBGM/
+├─ default_boss.mp3    # 默认回退
+├─ BALeader.mp3        # Cname_BALeader → BALeader.mp3
+├─ Boss_Sniper.ogg     # Cname_Boss_Sniper → Boss_Sniper.ogg
+└─ ServerGuardian.flac # Cname_ServerGuardian → ServerGuardian.flac
 ```
 
-- 将敌人 `NameKey` 去掉前缀 `Cname_` 作为文件名；未命中时退回 `default_boss.*`。
-- 支持 `.mp3/.wav/.ogg/.flac`。
+- 文件名 = 敌人 NameKey 去掉 `Cname_` 前缀。
+- 找不到专属文件时用 `default_boss.*`；再没有就不播。
+- 支持 `.mp3`/`.wav`/`.ogg`/`.flac` 及所有 `AudioFileExtensions` 支持的格式。
 
-## 配置（ModConfig）
+## ModConfig 设置
 
-- 启用 Boss BGM
-- 触发距离（米）
-- （其余高级参数见下）
+| 设置 | 默认 | 范围 |
+|------|------|------|
+| 启用 Boss BGM | 开 | 开/关 |
+| 触发距离 | 50 米 | 10-200 米 |
+| 音量 | 70% | 0-100% |
 
-## 高级（config.json）
+## 高级配置（config.json）
 
-位置：`DuckovCustomSounds/BossBGM/config.json`。首次运行会自动生成。
+文件位置：`BossBGM/config.json`。首次运行自动生成。
 
 ```json
 {
@@ -44,22 +46,18 @@ DuckovCustomSounds/
 }
 ```
 
-- `fadeDuration`：淡入/淡出时间（秒）
-- `updateInterval`：单体更新频率（秒）
-- `managerUpdateInterval`：管理器更新频率（秒）
-- `minSwitchIntervalSeconds`：切换抖动保护（秒）
-- `minDistanceDeltaToSwitch`：切换所需最小距离变化量（米）
-- `resumePlaybackEnabled`：从暂停处恢复而非重头播放
-- `delayedStopEnabled`/`delayedStopSeconds`：离开后延时停止（避免边界反复进出）
-- `bossDeathFadeOutSeconds`：目标死亡后的淡出时间
+| 参数 | 说明 |
+|------|------|
+| `fadeDuration` | 淡入/淡出时间（秒） |
+| `updateInterval` | 单体更新频率（秒） |
+| `managerUpdateInterval` | 管理器更新频率（秒） |
+| `minSwitchIntervalSeconds` | 切换防抖间隔（秒） |
+| `minDistanceDeltaToSwitch` | 切换最小距离变化（米） |
+| `resumePlaybackEnabled` | 是否从暂停处恢复播放 |
+| `delayedStopEnabled` | 离开后延迟停止（避免边界反复） |
+| `delayedStopSeconds` | 延迟停止时间（秒） |
+| `bossDeathFadeOutSeconds` | Boss 死亡后淡出时间（秒） |
 
-## 优先级与协同
+## 优先级
 
-- Boss BGM 的优先级高于场景与标题/主页 BGM。
-- 多 Boss 并存时，仅保留优先目标的 BGM；切换时应用防抖与淡入淡出。
-
-## 原理与实现
-
-- 基于敌人 `NameKey` 与距离监控的管理器模型，周期性评估优先目标并进行切换。
-- 进入范围触发淡入；离开、死亡或场景切换时淡出并释放实例。
-
+Boss BGM 优先级高于场景 BGM 和标题/主页 BGM。多 Boss 时只播一个，切换有防抖和淡入淡出处理。

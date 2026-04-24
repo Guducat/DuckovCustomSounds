@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using DuckovCustomSounds.CustomBGM.Core;
 
 namespace DuckovCustomSounds.CustomBGM.SceneBGM
 {
@@ -10,12 +11,12 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
     /// </summary>
     internal static class SceneMusicResolver
     {
-        private static string sceneBGMFolder;
-        private static string enterMusicFolder;
-        private static string loopMusicFolder;
+        private static string sceneBGMFolder = string.Empty;
+        private static string enterMusicFolder = string.Empty;
+        private static string loopMusicFolder = string.Empty;
 
-        private static Dictionary<string, string> enterPathCache = new Dictionary<string, string>();
-        private static Dictionary<string, string> loopPathCache = new Dictionary<string, string>();
+        private static Dictionary<string, string?> enterPathCache = new Dictionary<string, string?>();
+        private static Dictionary<string, string?> loopPathCache = new Dictionary<string, string?>();
 
         private static HashSet<string> availableEnterMusic = new HashSet<string>();
         private static HashSet<string> availableLoopMusic = new HashSet<string>();
@@ -114,23 +115,17 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             if (!Directory.Exists(folder))
                 return;
 
-            string[] extensions = { "*.mp3", "*.wav", "*.ogg", "*.flac" };
-
-            foreach (string ext in extensions)
+            foreach (string file in AudioFileExtensions.GetMusicFiles(folder))
             {
                 try
                 {
-                    string[] files = Directory.GetFiles(folder, ext, SearchOption.TopDirectoryOnly);
-                    foreach (string file in files)
-                    {
-                        string fileName = Path.GetFileNameWithoutExtension(file);
-                        collection.Add(fileName.ToLowerInvariant());
-                        SceneBGMLogger.Debug($"发现{label}音乐文件: {fileName}");
-                    }
+                    string fileName = Path.GetFileNameWithoutExtension(file);
+                    collection.Add(fileName.ToLowerInvariant());
+                    SceneBGMLogger.Debug($"发现{label}音乐文件: {fileName}");
                 }
                 catch (Exception ex)
                 {
-                    SceneBGMLogger.Warning($"扫描{label}文件失败 ({ext}): {ex.Message}");
+                    SceneBGMLogger.Warning($"扫描{label}文件失败 ({file}): {ex.Message}");
                 }
             }
         }
@@ -143,7 +138,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// 3. 回退到 "default_enter.mp3"
         /// 4. 都不存在返回 null
         /// </summary>
-        public static string ResolveEnterMusicPath(string sceneId, string displayName)
+        public static string? ResolveEnterMusicPath(string? sceneId, string? displayName)
         {
             return ResolveMusicPath(sceneId, displayName, enterMusicFolder, enterPathCache, "enter", "进入");
         }
@@ -156,7 +151,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// 3. 回退到 "default_loop.mp3"
         /// 4. 都不存在返回 null
         /// </summary>
-        public static string ResolveLoopMusicPath(string sceneId, string displayName)
+        public static string? ResolveLoopMusicPath(string? sceneId, string? displayName)
         {
             return ResolveMusicPath(sceneId, displayName, loopMusicFolder, loopPathCache, "loop", "循环");
         }
@@ -164,24 +159,25 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// <summary>
         /// 解析音乐路径（通用方法）
         /// </summary>
-        private static string ResolveMusicPath(string sceneId, string displayName, string folder, Dictionary<string, string> cache, string suffix, string label)
+        private static string? ResolveMusicPath(string? sceneId, string? displayName, string folder, Dictionary<string, string?> cache, string suffix, string label)
         {
             string cacheKey = sceneId ?? displayName ?? "unknown";
 
             // 检查缓存
-            if (cache.TryGetValue(cacheKey, out string cached))
+            if (cache.TryGetValue(cacheKey, out string? cached))
             {
                 return cached;
             }
 
             // 清理场景名称
-            string cleanName = CleanSceneName(displayName ?? sceneId);
+            string cleanName = CleanSceneName(displayName ?? sceneId ?? "unknown");
+            string cleanSceneId = CleanSceneName(sceneId);
 
             SceneBGMLogger.Debug($"解析{label}音乐路径: sceneId={sceneId}, displayName={displayName}, cleanName={cleanName}");
 
             // 1. 尝试精确匹配场景名称（带后缀）
             string exactName = $"{cleanName}_{suffix}";
-            string exactPath = FindMusicFile(folder, exactName);
+            string? exactPath = FindMusicFile(folder, exactName);
             if (exactPath != null)
             {
                 cache[cacheKey] = exactPath;
@@ -191,7 +187,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
             // 1.2 补充规则：精确匹配（无后缀），用于兼容如 "loadingscreen_getout.mp3"
             string exactNoSuffixName = cleanName;
-            string exactNoSuffixPath = FindMusicFile(folder, exactNoSuffixName);
+            string? exactNoSuffixPath = FindMusicFile(folder, exactNoSuffixName);
             if (exactNoSuffixPath != null)
             {
                 cache[cacheKey] = exactNoSuffixPath;
@@ -199,12 +195,31 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 return exactNoSuffixPath;
             }
 
+            // 1.3 补充规则：使用 sceneId 精确匹配（带后缀），用于支持如 "level_farm_main_enter.mp3"
+            string sceneIdExactName = $"{cleanSceneId}_{suffix}";
+            string? sceneIdExactPath = FindMusicFile(folder, sceneIdExactName);
+            if (sceneIdExactPath != null)
+            {
+                cache[cacheKey] = sceneIdExactPath;
+                SceneBGMLogger.Info($"匹配到场景{label}音乐（sceneId）: {sceneId} -> {Path.GetFileName(sceneIdExactPath)} ({sceneIdExactPath})");
+                return sceneIdExactPath;
+            }
+
+            // 1.4 补充规则：使用 sceneId 精确匹配（无后缀）
+            string? sceneIdNoSuffixPath = FindMusicFile(folder, cleanSceneId);
+            if (sceneIdNoSuffixPath != null)
+            {
+                cache[cacheKey] = sceneIdNoSuffixPath;
+                SceneBGMLogger.Info($"匹配到场景{label}音乐（sceneId无后缀）: {sceneId} -> {Path.GetFileName(sceneIdNoSuffixPath)} ({sceneIdNoSuffixPath})");
+                return sceneIdNoSuffixPath;
+            }
+
             // 2. 尝试场景类型匹配
-            string sceneType = GetSceneType(cleanName);
+            string? sceneType = GetSceneType(cleanName);
             if (!string.IsNullOrEmpty(sceneType))
             {
                 string typeName = $"{sceneType}_{suffix}";
-                string typePath = FindMusicFile(folder, typeName);
+                string? typePath = FindMusicFile(folder, typeName);
                 if (typePath != null)
                 {
                     cache[cacheKey] = typePath;
@@ -216,7 +231,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             // 3. 回退到默认音乐（但 Enter 对加载场景不使用默认，避免初始黑屏误播）
             if (string.Equals(suffix, "enter", StringComparison.OrdinalIgnoreCase))
             {
-                string typeForDefault = sceneType ?? GetSceneType(cleanName);
+                string? typeForDefault = sceneType ?? GetSceneType(cleanName);
                 if (string.Equals(typeForDefault, "loading", StringComparison.OrdinalIgnoreCase))
                 {
                     SceneBGMLogger.Info($"跳过默认场景{label}音乐（加载界面不播 enter）: {cleanName}");
@@ -225,7 +240,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 }
             }
             string defaultName = $"default_{suffix}";
-            string defaultPath = FindMusicFile(folder, defaultName);
+            string? defaultPath = FindMusicFile(folder, defaultName);
             if (defaultPath != null)
             {
                 cache[cacheKey] = defaultPath;
@@ -234,15 +249,46 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             }
 
             // 没有找到任何音乐
-            SceneBGMLogger.Debug($"未找到场景{label}音乐: {cleanName}");
+            string missingMusicNames = BuildMissingMusicNames(cleanName, cleanSceneId, sceneId ?? string.Empty, sceneType, suffix);
+            SceneBGMLogger.Debug($"未找到场景{label}音乐: {cleanName}({missingMusicNames})");
             cache[cacheKey] = null; // 缓存负结果，避免重复查找
             return null;
+        }
+
+        private static string BuildMissingMusicNames(string cleanName, string cleanSceneId, string sceneId, string? sceneType, string suffix)
+        {
+            var names = new List<string>();
+            AddMusicName(names, $"{cleanName}_{suffix}");
+            AddMusicName(names, cleanName);
+            AddMusicName(names, $"{cleanSceneId}_{suffix}");
+            AddMusicName(names, cleanSceneId);
+            AddMusicName(names, sceneId);
+            if (!string.IsNullOrEmpty(sceneType))
+            {
+                AddMusicName(names, $"{sceneType}_{suffix}");
+            }
+            AddMusicName(names, $"default_{suffix}");
+            return string.Join(", ", names);
+        }
+
+        private static void AddMusicName(List<string> names, string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+
+            foreach (string existing in names)
+            {
+                if (string.Equals(existing, name, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+
+            names.Add(name);
         }
 
         /// <summary>
         /// 清理场景名称（转换为文件名友好格式）
         /// </summary>
-        private static string CleanSceneName(string sceneName)
+        private static string CleanSceneName(string? sceneName)
         {
             if (string.IsNullOrEmpty(sceneName))
                 return "unknown";
@@ -263,7 +309,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// <summary>
         /// 获取场景类型（用于类型匹配）
         /// </summary>
-        private static string GetSceneType(string cleanName)
+        private static string? GetSceneType(string cleanName)
         {
             // 场景类型映射（可以根据实际游戏场景扩展）
             Dictionary<string, List<string>> typeMapping = new Dictionary<string, List<string>>
@@ -295,20 +341,9 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// <summary>
         /// 查找音乐文件（按优先级尝试不同扩展名）
         /// </summary>
-        private static string FindMusicFile(string folder, string baseName)
+        private static string? FindMusicFile(string folder, string baseName)
         {
-            string[] extensions = { ".mp3", ".wav", ".ogg", ".flac" };
-
-            foreach (string ext in extensions)
-            {
-                string filePath = Path.Combine(folder, baseName + ext);
-                if (File.Exists(filePath))
-                {
-                    return filePath;
-                }
-            }
-
-            return null;
+            return AudioFileExtensions.FindMusicFile(folder, baseName);
         }
 
         /// <summary>
@@ -318,6 +353,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         {
             enterPathCache.Clear();
             loopPathCache.Clear();
+            AudioFileExtensions.ClearCache(enterMusicFolder);
+            AudioFileExtensions.ClearCache(loopMusicFolder);
             SceneBGMLogger.Debug("路径缓存已清除");
         }
 
