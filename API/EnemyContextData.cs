@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace DuckovCustomSounds.API
 {
@@ -8,7 +8,7 @@ namespace DuckovCustomSounds.API
     /// </summary>
     public class EnemyContextData
     {
-        /// <summary>上下文所属实体的 InstanceID（可用于 StopByOwner 等）</summary>
+        /// <summary>上下文所属实体的 InstanceID</summary>
         public int InstanceId { get; set; }
         /// <summary>队伍（归一化为小写，如 scavs/bear/usec/rogue/boss/...）</summary>
         public string Team { get; set; } = string.Empty;

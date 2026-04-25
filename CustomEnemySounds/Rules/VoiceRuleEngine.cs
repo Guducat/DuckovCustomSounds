@@ -107,7 +107,7 @@ namespace DuckovCustomSounds.CustomEnemySounds.Rules
             Verbose($"ctx.team={ctx.GetTeamNormalized()}, rank={ctx.GetRank()}");
                 try
                 {
-                    var ctxDto = DuckovCustomSounds.API.ExternalRouter.FromInternal(ctx, voiceType);
+                    var ctxDto = DuckovCustomSounds.API.ExternalRouter.FromInternal(ctx);
                     if (ctxDto.IsValid)
                     {
                         if (DuckovCustomSounds.API.ExternalRouter.TryResolve(ctxDto, safeSoundKey, voiceType.ToString(), out var extPath)

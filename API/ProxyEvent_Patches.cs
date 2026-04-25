@@ -1,68 +1,63 @@
-﻿using System;
+using System;
 using System.IO;
+using Duckov;
 using HarmonyLib;
-using Duckov; // AudioManager
 using UnityEngine;
 
 namespace DuckovCustomSounds.API
 {
     /// <summary>
-    /// 
+    /// 兼容历史 DCS:/ 假事件。新代码应优先使用 Duckov.AudioManager.PostCustomSFX。
     /// </summary>
     [HarmonyPatch(typeof(AudioManager))]
     public static class DcsProxyEventPatch
     {
         private const string Prefix = "DCS:/";
 
-        [HarmonyPatch("Post", new Type[] { typeof(string), typeof(GameObject) })]
+        [HarmonyPatch(nameof(AudioManager.Post), new Type[] { typeof(string), typeof(GameObject) })]
         [HarmonyPrefix]
         public static bool Prefix_Post(ref FMOD.Studio.EventInstance? __result, string eventName, GameObject gameObject)
         {
+            if (string.IsNullOrEmpty(eventName) || !eventName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            __result = new FMOD.Studio.EventInstance?();
+            if (!TryResolveFilePath(eventName, out var fullPath))
+            {
+                return false;
+            }
+
             try
             {
-                if (string.IsNullOrEmpty(eventName) || !eventName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
-                    return true; // 非 DCS 代理事件 -> 放行
-
-                // 解析路径：支持绝对路径；相对路径相对于本 Mod 目录
-                var tail = eventName.Substring(Prefix.Length).Trim();
-                if (string.IsNullOrEmpty(tail))
-                {
-                    __result = new FMOD.Studio.EventInstance?();
-                    return false; // 吞掉无效事件，避免 FMOD 报错
-                }
-
-                var full = tail;
-                if (!Path.IsPathRooted(full))
-                {
-                    full = Path.Combine(DuckovCustomSounds.ModBehaviour.ModFolderName, tail.Replace('/', Path.DirectorySeparatorChar));
-                }
-
-                var req = new PlaybackRequest
-                {
-                    Source = gameObject,
-                    FileFullPath = full,
-                    SoundKey = "external",
-                    MinDistance = 1.5f,
-                    MaxDistance = 25f,
-                    FollowTransform = true,
-                };
-
-                if (CustomModController.Play3D(req, out var _))
-                {
-                    __result = new FMOD.Studio.EventInstance?();
-                    return false; // 拦截并消费
-                }
-
-                // 播放失败也消费，避免无效 FMOD 事件名引起异常
-                __result = new FMOD.Studio.EventInstance?();
-                return false;
+                AudioManager.PostCustomSFX(fullPath, gameObject, loop: false);
             }
             catch
             {
-                // 发生异常则放行，避免影响原有逻辑
-                return true;
             }
+
+            return false;
+        }
+
+        internal static bool TryResolveFilePath(string eventName, out string fullPath)
+        {
+            fullPath = string.Empty;
+            if (string.IsNullOrEmpty(eventName) || !eventName.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var tail = eventName.Substring(Prefix.Length).Trim();
+            if (string.IsNullOrEmpty(tail))
+            {
+                return false;
+            }
+
+            fullPath = Path.IsPathRooted(tail)
+                ? tail
+                : Path.Combine(ModBehaviour.ModFolderName, tail.Replace('/', Path.DirectorySeparatorChar));
+            return true;
         }
     }
 }
-
