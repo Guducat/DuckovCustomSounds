@@ -1,4 +1,4 @@
-name: Release DLL
+name: Release Package
 
 on:
   push:
@@ -20,17 +20,17 @@ jobs:
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Check out build references
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: Guducat/DuckovCustomSounds-BuildRefs
           ssh-key: ${{ secrets.BUILD_REFS_SSH_KEY }}
           path: DuckovCustomSounds-BuildRefs
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
@@ -39,6 +39,9 @@ jobs:
           test -d "$MANAGED_DIR"
           test -f "$MANAGED_DIR/TeamSoda.Duckov.Core.dll"
           test -f "$MANAGED_DIR/UnityEngine.CoreModule.dll"
+          test -f DuckovCustomSounds-BuildRefs/0Harmony.dll
+          test -f DuckovCustomSounds-BuildRefs/info.ini
+          test -f DuckovCustomSounds-BuildRefs/preview.png
 
       - name: Restore
         run: dotnet restore DuckovCustomSounds.csproj
@@ -46,11 +49,13 @@ jobs:
       - name: Build
         run: dotnet build DuckovCustomSounds.csproj -c "$CONFIGURATION" --no-restore /p:DuckovManagedDir="$MANAGED_DIR"
 
-      - name: Package
+      - name: Package release archive
         run: |
           mkdir -p release
           cp DuckovCustomSounds-Export/DuckovCustomSounds.dll release/
-          cp DuckovCustomSounds-Export/0Harmony.dll release/
+          cp DuckovCustomSounds-BuildRefs/0Harmony.dll release/
+          cp DuckovCustomSounds-BuildRefs/info.ini release/
+          cp DuckovCustomSounds-BuildRefs/preview.png release/
           cd release
           zip "../$ZIP_NAME" *
 
