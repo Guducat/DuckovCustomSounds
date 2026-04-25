@@ -1,0 +1,16 @@
+{
+  "name": "Your Sound Pack Name",
+  "author": "Your Name",
+  "version": "1.0.0",
+  "description": "描述你的声音包内容和特色",
+  "compatibleModVersion": "2.0.0",
+  "requiredModules": [
+    "CustomBGM",
+    "CustomFootsteps",
+    "CustomEnemySounds"
+  ],
+  "optional": {
+    "homepage": "https://your-website.com",
+    "qq": "https://im.qq.com"
+  }
+}

@@ -1,0 +1,27 @@
+using System;
+using DuckovCustomSounds.Logging;
+
+namespace DuckovCustomSounds.CustomGunSounds
+{
+    internal static class GunLogger
+    {
+        private static readonly ILog _logger = LogManager.GetLogger("Gun");
+
+        // 快速日志级别检查（避免不必要的字符串构建）
+        public static bool IsErrorEnabled => LogManager.ShouldLog("Gun", LogLevel.Error);
+        public static bool IsWarningEnabled => LogManager.ShouldLog("Gun", LogLevel.Warning);
+        public static bool IsInfoEnabled => LogManager.ShouldLog("Gun", LogLevel.Info);
+        public static bool IsDebugEnabled => LogManager.ShouldLog("Gun", LogLevel.Debug);
+        public static bool IsVerboseEnabled => LogManager.ShouldLog("Gun", LogLevel.Verbose);
+
+        public static void Error(string msg, Exception? ex = null) => _logger.Error(msg, ex);
+        public static void Warning(string msg) => _logger.Warning(msg);
+        public static void Info(string msg) => _logger.Info(msg);
+        public static void Debug(string msg) => _logger.Debug(msg);
+        public static void Verbose(string msg) => _logger.Verbose(msg);
+
+        // 向后兼容：Warn() -> Warning()
+        [Obsolete("Use Warning() instead")]
+        public static void Warn(string msg) => Warning(msg);
+    }
+}

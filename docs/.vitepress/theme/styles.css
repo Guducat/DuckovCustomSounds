@@ -1,0 +1,130 @@
+:root {
+  --dcs-brand: #ea580c;
+  --dcs-muted: #64748b;
+  --vp-c-brand-1: #ea580c;
+  --vp-c-brand-2: #c2410c;
+  --vp-c-brand-3: #9a3412;
+  --vp-c-brand-soft: rgba(234, 88, 12, 0.1);
+  --vp-home-hero-name-color: #f97316;
+  --vp-home-hero-name-background: linear-gradient(120deg, #f97316 30%, #ea580c);
+  --vp-button-brand-bg: #ea580c;
+  --vp-button-brand-hover-bg: #c2410c;
+  --vp-button-brand-active-bg: #9a3412;
+}
+
+/* Hero区域样式 */
+.VPHero .name {
+  background: var(--vp-home-hero-name-background);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.VPHero .text {
+  color: var(--vp-c-text-1);
+}
+
+.VPHero .tagline {
+  color: var(--vp-c-text-2);
+}
+
+/* 按钮样式 */
+.VPButton.brand {
+  background-color: var(--vp-button-brand-bg);
+  color: #ffffff;
+  border: 1px solid var(--vp-button-brand-bg);
+}
+
+.VPButton.brand:hover {
+  background-color: var(--vp-button-brand-hover-bg);
+  border-color: var(--vp-button-brand-hover-bg);
+}
+
+.VPButton.brand:active {
+  background-color: var(--vp-button-brand-active-bg);
+  border-color: var(--vp-button-brand-active-bg);
+}
+
+/* 导航栏样式 */
+.VPNav {
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+
+.VPNavBarTitle .title {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+/* 侧边栏样式 */
+.VPSidebarItem .item {
+  color: var(--vp-c-text-1);
+}
+
+.VPSidebarItem .item:hover {
+  color: var(--vp-c-brand-1);
+}
+
+.VPSidebarItem .item.active {
+  color: var(--vp-c-brand-1);
+  font-weight: 600;
+}
+
+/* 链接样式 */
+.vp-doc a {
+  color: var(--vp-c-brand-1);
+  font-weight: 500;
+}
+
+.vp-doc a:hover {
+  color: var(--vp-c-brand-2);
+}
+
+/* 代码块样式 */
+.vp-doc div[class*='language-'] {
+  border-color: var(--vp-c-brand-soft);
+}
+
+.vp-doc div[class*='language-']::before {
+  color: var(--vp-c-brand-1);
+}
+
+/* 自定义组件样式 */
+.vp-doc .video-embed {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  aspect-ratio: 16 / 9;
+  margin: 12px 0 24px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(2, 6, 23, 0.15);
+}
+
+.vp-doc .video-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.vp-doc .light-chart {
+  width: 100%;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: white;
+}
+
+.vp-doc .light-chart svg {
+  display: block;
+}
+
+.vp-doc .light-chart .axis text {
+  fill: var(--dcs-muted);
+  font-size: 12px;
+}
+
+.vp-doc .light-chart .axis line,
+.vp-doc .light-chart .axis path {
+  stroke: rgba(100, 116, 139, 0.35);
+}
+

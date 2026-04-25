@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <Nullable>enable</Nullable>
+        <DuckovPath>G:\SteamLibrary\steamapps\common\Escape from Duckov</DuckovPath>
+        <FileVersion>2.0.0</FileVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\TeamSoda.*" />
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\ItemStatsSystem.dll" />
+        <Reference Include="FMODUnity">
+            <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\FMODUnity.dll</HintPath>
+        </Reference>
+        <Reference Include="$(DuckovPath)\Duckov_Data\Managed\Unity*" />
+        <Reference Include="Newtonsoft.Json">
+          <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\Newtonsoft.Json.dll</HintPath>
+        </Reference>
+        <Reference Include="SodaLocalization">
+          <HintPath>G:\SteamLibrary\steamapps\common\Escape from Duckov\Duckov_Data\Managed\SodaLocalization.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Lib.Harmony" Version="2.4.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Compile Remove="assets\**\*.cs" />
+    </ItemGroup>
+
+</Project>

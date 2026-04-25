@@ -1,0 +1,29 @@
+# 临时文件
+bin/
+obj/
+.idea/
+node_modules/
+package-lock.json
+# VitePress cache and build output
+docs/.vitepress/dist
+docs/.vitepress/cache
+*.user
+*.suo
+*.vs
+*.vscode
+*.iml
+*.pidb
+*.pdb
+*.log
+*.tmp
+*.bak
+*.swp
+*.DS_Store
+*.git
+*.gitignore
+*.gitattributes
+*.gitmodules
+*.gitkeep
+*.gitlab-ci.yml
+*.travis.yml
+*.circleci
