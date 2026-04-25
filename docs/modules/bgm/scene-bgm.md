@@ -25,10 +25,14 @@ SceneBGM/
 1. **精准场景名**：`<场景名>_enter.mp3` / `<场景名>_loop.mp3`
 2. **场景名无后缀**：`<场景名>.mp3`（无 `_enter`/`_loop` 后缀，如 `loadingscreen_getout.mp3`）
 3. **sceneId 匹配**：`<sceneId>_enter.mp3` / `<sceneId>_loop.mp3`（如 `level_farm_main_enter.mp3`）
-4. **类型关键词**：`loading_*`、`lab_*`、`factory_*`、`farm_*`、`zero_*`、`expedition_*`、`outskirts_*`
-5. **默认**：`default_enter.mp3` / `default_loop.mp3`
+4. **sceneId 变体兼容**：`Level_Farm_01`、`Level_GroundZero_1` 会继续尝试 `level_farm_main_*`、`level_groundzero_main_*`
+5. **类型关键词**：`loading_*`、`lab_*`、`factory_*`、`farm_*`、`zero_*`、`warehouse_*`、`expedition_*`、`outskirts_*`
+6. **默认**：`default_enter.mp3` / `default_loop.mp3`
 
 注意：加载界面属于"loading"类型，Enter 不会对加载场景播放默认音乐（避免黑屏时误播）。
+
+#### v2.1.1 更新
+`Level_HiddenWarehouse_Main` 同时兼容 `level_warehouse_main_*`，因为`仓库区`更改过场景名等数据，适合资源包使用稳定地图名。
 
 ## ModConfig 设置
 

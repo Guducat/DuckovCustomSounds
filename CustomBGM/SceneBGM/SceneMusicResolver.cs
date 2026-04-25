@@ -175,114 +175,201 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
             SceneBGMLogger.Debug($"解析{label}音乐路径: sceneId={sceneId}, displayName={displayName}, cleanName={cleanName}");
 
-            // 1. 尝试精确匹配场景名称（带后缀）
-            string exactName = $"{cleanName}_{suffix}";
-            string? exactPath = FindMusicFile(folder, exactName);
-            if (exactPath != null)
-            {
-                cache[cacheKey] = exactPath;
-                SceneBGMLogger.Info($"匹配到场景{label}音乐（精确）: {cleanName} -> {Path.GetFileName(exactPath)} ({exactPath})");
-                return exactPath;
-            }
+            var candidates = BuildMusicCandidates(cleanName, cleanSceneId, sceneId ?? string.Empty, suffix);
+            string? sceneType = GetFirstSceneType(cleanName, cleanSceneId);
 
-            // 1.2 补充规则：精确匹配（无后缀），用于兼容如 "loadingscreen_getout.mp3"
-            string exactNoSuffixName = cleanName;
-            string? exactNoSuffixPath = FindMusicFile(folder, exactNoSuffixName);
-            if (exactNoSuffixPath != null)
+            foreach (var candidate in candidates)
             {
-                cache[cacheKey] = exactNoSuffixPath;
-                SceneBGMLogger.Info($"匹配到场景{label}音乐（无后缀精确）: {cleanName} -> {Path.GetFileName(exactNoSuffixPath)} ({exactNoSuffixPath})");
-                return exactNoSuffixPath;
-            }
-
-            // 1.3 补充规则：使用 sceneId 精确匹配（带后缀），用于支持如 "level_farm_main_enter.mp3"
-            string sceneIdExactName = $"{cleanSceneId}_{suffix}";
-            string? sceneIdExactPath = FindMusicFile(folder, sceneIdExactName);
-            if (sceneIdExactPath != null)
-            {
-                cache[cacheKey] = sceneIdExactPath;
-                SceneBGMLogger.Info($"匹配到场景{label}音乐（sceneId）: {sceneId} -> {Path.GetFileName(sceneIdExactPath)} ({sceneIdExactPath})");
-                return sceneIdExactPath;
-            }
-
-            // 1.4 补充规则：使用 sceneId 精确匹配（无后缀）
-            string? sceneIdNoSuffixPath = FindMusicFile(folder, cleanSceneId);
-            if (sceneIdNoSuffixPath != null)
-            {
-                cache[cacheKey] = sceneIdNoSuffixPath;
-                SceneBGMLogger.Info($"匹配到场景{label}音乐（sceneId无后缀）: {sceneId} -> {Path.GetFileName(sceneIdNoSuffixPath)} ({sceneIdNoSuffixPath})");
-                return sceneIdNoSuffixPath;
-            }
-
-            // 2. 尝试场景类型匹配
-            string? sceneType = GetSceneType(cleanName);
-            if (!string.IsNullOrEmpty(sceneType))
-            {
-                string typeName = $"{sceneType}_{suffix}";
-                string? typePath = FindMusicFile(folder, typeName);
-                if (typePath != null)
-                {
-                    cache[cacheKey] = typePath;
-                    SceneBGMLogger.Info($"匹配到场景{label}音乐（类型）: {cleanName} -> {Path.GetFileName(typePath)} ({typePath})");
-                    return typePath;
-                }
-            }
-
-            // 3. 回退到默认音乐（但 Enter 对加载场景不使用默认，避免初始黑屏误播）
-            if (string.Equals(suffix, "enter", StringComparison.OrdinalIgnoreCase))
-            {
-                string? typeForDefault = sceneType ?? GetSceneType(cleanName);
-                if (string.Equals(typeForDefault, "loading", StringComparison.OrdinalIgnoreCase))
+                // Enter 对加载场景不使用默认，避免初始黑屏误播。
+                if (candidate.IsDefault &&
+                    string.Equals(suffix, "enter", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(sceneType, "loading", StringComparison.OrdinalIgnoreCase))
                 {
                     SceneBGMLogger.Info($"跳过默认场景{label}音乐（加载界面不播 enter）: {cleanName}");
                     cache[cacheKey] = null;
                     return null;
                 }
-            }
-            string defaultName = $"default_{suffix}";
-            string? defaultPath = FindMusicFile(folder, defaultName);
-            if (defaultPath != null)
-            {
-                cache[cacheKey] = defaultPath;
-                SceneBGMLogger.Info($"使用默认场景{label}音乐: {cleanName} -> {defaultName} ({defaultPath})");
-                return defaultPath;
+
+                string? path = FindMusicFile(folder, candidate.Name);
+                if (path != null)
+                {
+                    cache[cacheKey] = path;
+                    if (candidate.IsDefault)
+                    {
+                        SceneBGMLogger.Info($"使用默认场景{label}音乐: {cleanName} -> {candidate.Name} ({path})");
+                    }
+                    else
+                    {
+                        SceneBGMLogger.Info($"匹配到场景{label}音乐（{candidate.MatchKind}）: {candidate.SourceName} -> {Path.GetFileName(path)} ({path})");
+                    }
+
+                    return path;
+                }
             }
 
             // 没有找到任何音乐
-            string missingMusicNames = BuildMissingMusicNames(cleanName, cleanSceneId, sceneId ?? string.Empty, sceneType, suffix);
+            string missingMusicNames = BuildMissingMusicNames(candidates);
             SceneBGMLogger.Debug($"未找到场景{label}音乐: {cleanName}({missingMusicNames})");
             cache[cacheKey] = null; // 缓存负结果，避免重复查找
             return null;
         }
 
-        private static string BuildMissingMusicNames(string cleanName, string cleanSceneId, string sceneId, string? sceneType, string suffix)
+        private static List<MusicCandidate> BuildMusicCandidates(string cleanName, string cleanSceneId, string sceneId, string suffix)
+        {
+            var candidates = new List<MusicCandidate>();
+            AddMusicCandidate(candidates, $"{cleanName}_{suffix}", "精确", cleanName);
+            AddMusicCandidate(candidates, cleanName, "无后缀精确", cleanName);
+            AddMusicCandidate(candidates, $"{cleanSceneId}_{suffix}", "sceneId", sceneId);
+            AddMusicCandidate(candidates, cleanSceneId, "sceneId无后缀", sceneId);
+
+            foreach (string alias in BuildSceneIdAliases(cleanSceneId))
+            {
+                AddMusicCandidate(candidates, $"{alias}_{suffix}", "sceneId兼容", sceneId);
+                AddMusicCandidate(candidates, alias, "sceneId兼容无后缀", sceneId);
+            }
+
+            foreach (string type in GetSceneTypes(cleanName, cleanSceneId))
+            {
+                AddMusicCandidate(candidates, $"{type}_{suffix}", "类型", cleanName);
+            }
+
+            AddMusicCandidate(candidates, $"default_{suffix}", "默认", cleanName, isDefault: true);
+            return candidates;
+        }
+
+        private static string BuildMissingMusicNames(List<MusicCandidate> candidates)
         {
             var names = new List<string>();
-            AddMusicName(names, $"{cleanName}_{suffix}");
-            AddMusicName(names, cleanName);
-            AddMusicName(names, $"{cleanSceneId}_{suffix}");
-            AddMusicName(names, cleanSceneId);
-            AddMusicName(names, sceneId);
-            if (!string.IsNullOrEmpty(sceneType))
+            foreach (var candidate in candidates)
             {
-                AddMusicName(names, $"{sceneType}_{suffix}");
+                names.Add(candidate.Name);
             }
-            AddMusicName(names, $"default_{suffix}");
+
             return string.Join(", ", names);
         }
 
-        private static void AddMusicName(List<string> names, string name)
+        private static void AddMusicCandidate(List<MusicCandidate> candidates, string name, string matchKind, string sourceName, bool isDefault = false)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return;
 
-            foreach (string existing in names)
+            foreach (var existing in candidates)
             {
-                if (string.Equals(existing, name, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(existing.Name, name, StringComparison.OrdinalIgnoreCase))
                     return;
             }
 
-            names.Add(name);
+            candidates.Add(new MusicCandidate(name, matchKind, string.IsNullOrWhiteSpace(sourceName) ? name : sourceName, isDefault));
+        }
+
+        private static IEnumerable<string> BuildSceneIdAliases(string cleanSceneId)
+        {
+            if (!TrySplitLevelSceneId(cleanSceneId, out string mapName, out string variant))
+                yield break;
+
+            if (IsNumericVariant(variant))
+            {
+                yield return $"level_{mapName}_main";
+            }
+
+            yield return $"level_{mapName}";
+
+            foreach (string mapAlias in GetMapAliases(mapName))
+            {
+                if (IsNumericVariant(variant) || string.Equals(variant, "main", StringComparison.OrdinalIgnoreCase))
+                {
+                    yield return $"level_{mapAlias}_main";
+                }
+
+                yield return $"level_{mapAlias}";
+            }
+        }
+
+        private static bool TrySplitLevelSceneId(string cleanSceneId, out string mapName, out string variant)
+        {
+            mapName = string.Empty;
+            variant = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(cleanSceneId))
+                return false;
+
+            string[] parts = cleanSceneId.Split(new[] { '_' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 3 || !string.Equals(parts[0], "level", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            mapName = string.Join("_", parts, 1, parts.Length - 2);
+            variant = parts[parts.Length - 1];
+            return !string.IsNullOrWhiteSpace(mapName) && !string.IsNullOrWhiteSpace(variant);
+        }
+
+        private static bool IsNumericVariant(string variant)
+        {
+            if (string.IsNullOrWhiteSpace(variant))
+                return false;
+
+            foreach (char c in variant)
+            {
+                if (!char.IsDigit(c))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static IEnumerable<string> GetMapAliases(string mapName)
+        {
+            if (string.Equals(mapName, "hiddenwarehouse", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "warehouse";
+            }
+        }
+
+        private static string? GetFirstSceneType(string cleanName, string cleanSceneId)
+        {
+            foreach (string type in GetSceneTypes(cleanName, cleanSceneId))
+            {
+                return type;
+            }
+
+            return null;
+        }
+
+        private static List<string> GetSceneTypes(string cleanName, string cleanSceneId)
+        {
+            var types = new List<string>();
+            AddSceneType(types, GetSceneType(cleanName));
+            AddSceneType(types, GetSceneType(cleanSceneId));
+            return types;
+        }
+
+        private static void AddSceneType(List<string> types, string? type)
+        {
+            if (string.IsNullOrWhiteSpace(type))
+                return;
+
+            foreach (string existing in types)
+            {
+                if (string.Equals(existing, type, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+
+            types.Add(type);
+        }
+
+        private readonly struct MusicCandidate
+        {
+            public MusicCandidate(string name, string matchKind, string sourceName, bool isDefault)
+            {
+                Name = name;
+                MatchKind = matchKind;
+                SourceName = sourceName;
+                IsDefault = isDefault;
+            }
+
+            public string Name { get; }
+            public string MatchKind { get; }
+            public string SourceName { get; }
+            public bool IsDefault { get; }
         }
 
         /// <summary>
@@ -319,7 +406,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                 { "lab", new List<string> { "lab", "实验室", "研究所" } },
                 { "factory", new List<string> { "factory", "工厂", "工业区" } },
                 { "farm", new List<string> { "farm", "fram", "农场", "农场镇" } },
-                { "zero", new List<string> { "zero", "零号区", "0号区" } },
+                { "zero", new List<string> { "zero", "groundzero", "零号区", "0号区" } },
+                { "warehouse", new List<string> { "warehouse", "hiddenwarehouse", "仓库", "仓库区" } },
                 { "expedition", new List<string> { "expedition", "探险", "任务" } },
                 { "outskirts", new List<string> { "outskirts", "郊区", "边缘" } }
             };

@@ -30,15 +30,39 @@ features:
 ---
 
 <script setup>
+const bgmFormats = '.mp3, .wav, .ogg, .oga, .flac, .aif, .aiff, .mp2, .m4a, .mp4, .wma, .asf, .fsb, .it, .mid, .midi, .mod, .s3m, .xm'
+const sfx4Formats = '.mp3, .wav, .ogg, .oga'
+const fmtMap = {
+  'Title': bgmFormats,
+  'Home': bgmFormats,
+  'Scene': bgmFormats,
+  'Boss': bgmFormats,
+  'Extraction': bgmFormats,
+  'Voices': '.mp3, .wav（可通过 voice_rules.json 扩展 .ogg、.flac 等）',
+  'Footsteps': '.mp3, .wav（可通过 footsteps.json 扩展 .ogg、.flac 等）',
+  'Guns': sfx4Formats,
+  'Melee': sfx4Formats,
+  'Grenade': sfx4Formats,
+  'Items': sfx4Formats,
+}
 const chartOption = {
-  tooltip: { trigger: 'axis' },
+  tooltip: {
+    trigger: 'axis',
+    formatter: (params) => {
+      const p = Array.isArray(params) ? params[0] : params
+      const name = p.name || ''
+      const val = p.value || 0
+      const fmts = fmtMap[name] || ''
+      return `<strong>${name}</strong><br/>默认支持格式数量：<strong>${val}</strong><br/><span style="font-size:11px;color:#64748b">具体格式：${fmts}</span>`
+    }
+  },
   grid: { left: 60, right: 20, top: 20, bottom: 40 },
   xAxis: { type: 'category', data: ['Title','Home','Scene','Boss','Extraction','Voices','Footsteps','Guns','Melee','Grenade','Items'] },
-  yAxis: { type: 'value', max: 5 },
+  yAxis: { type: 'value', max: 20 },
   series: [{
     name: '默认支持格式数量',
     type: 'bar',
-    data: [1,1,4,4,2,2,2,4,4,4,4],
+    data: [19,19,19,19,19,2,2,4,4,4,4],
     itemStyle: { color: '#0ea5e9', borderRadius: [4,4,0,0] }
   }]
 }

@@ -90,7 +90,8 @@ SceneBGM/
 ```
 
 - 两段式模型：进入播 Enter（一次），然后切入 Loop（循环）。
-- 命名匹配优先级：精准场景名 > 场景类型关键词（如 `loading_*`、`lab_*`、`farm_*`）> 默认。同时支持 sceneId 匹配和无后缀匹配。
+- 命名匹配优先级：精准场景名 > sceneId 匹配 > sceneId 变体兼容 > 场景类型关键词（如 `loading_*`、`lab_*`、`farm_*`、`warehouse_*`）> 默认。同时支持无后缀匹配。
+- sceneId 变体兼容示例：`Level_GroundZero_1` 可匹配 `level_groundzero_main_enter.mp3`，`Level_Farm_01` 可匹配 `level_farm_main_enter.mp3`，`Level_HiddenWarehouse_Main` 可匹配 `level_warehouse_main_enter.mp3`。
 - 加载界面（Loading Screen）属于"loading"类型，Enter 不会对加载场景播默认音乐。
 - 高级参数：`SceneBGM/config.json`（淡入淡出时长、场景加载延迟、交叉渐变等）。
 

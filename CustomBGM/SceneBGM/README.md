@@ -46,12 +46,17 @@ DuckovCustomSounds/
 - 无后缀（放在哪个文件夹即代表 Enter/Loop）：`<scene>.mp3`
   - 例：`Enter/loadingscreen_getout.mp3`（进入音乐）
   - 例：`Loop/loadingscreen_getout.mp3`（循环音乐）
+- sceneId 变体兼容：
+  - `Level_GroundZero_1` 会继续尝试 `level_groundzero_main_enter.mp3`
+  - `Level_Farm_01` 会继续尝试 `level_farm_main_enter.mp3`
+  - `Level_HiddenWarehouse_Main` 会继续尝试 `level_warehouse_main_enter.mp3`
 
 #### 场景类型匹配（优先级中）
 使用场景类型关键词：
 - `farm_enter.mp3` - 匹配所有农场类型场景
 - `factory_enter.mp3` - 匹配所有工厂类型场景
 - `expedition_enter.mp3` - 匹配所有探险类型场景
+- `warehouse_enter.mp3` - 匹配仓库区类型场景
 - `loading_enter.mp3` - 匹配所有加载界面（如 `LoadingScreen_Getout`）
 
 #### 默认匹配（优先级低）
@@ -211,7 +216,8 @@ SceneBGM/
 | `lab` | lab, 实验室, 研究所 |
 | `factory` | factory, 工厂, 工业区 |
 | `farm` | farm, fram, 农场, 农场镇 |
-| `zero` | zero, 零号区, 0号区 |
+| `zero` | zero, groundzero, 零号区, 0号区 |
+| `warehouse` | warehouse, hiddenwarehouse, 仓库, 仓库区 |
 | `expedition` | expedition, 探险, 任务 |
 | `outskirts` | outskirts, 郊区, 边缘 |
 
