@@ -3,7 +3,7 @@ name: Release Package
 on:
   push:
     tags:
-      - 'v2.*'
+      - 'v[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -42,6 +42,13 @@ jobs:
           test -f DuckovCustomSounds-BuildRefs/0Harmony.dll
           test -f DuckovCustomSounds-BuildRefs/info.ini
           test -f DuckovCustomSounds-BuildRefs/preview.png
+
+      - name: Validate release tag
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tag must use a concrete version like v2.1.2: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
 
       - name: Restore
         run: dotnet restore DuckovCustomSounds.csproj
