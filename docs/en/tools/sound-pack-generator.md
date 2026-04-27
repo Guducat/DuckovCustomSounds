@@ -64,7 +64,7 @@ Online form, instant generation of a properly formatted pack.json.
 |------|------|
 | `description` | Brief description, shown after the name in the UI |
 | `compatibleModVersion` | Compatible mod version, informational only, does not affect loading |
-| `requiredModules` | List of involved modules: `CustomBGM`, `CustomEnemySounds`, `CustomFootStepSounds`, `CustomGunSounds`, `CustomMeleeSounds`, `CustomGrenadeSounds`, `CustomItemSounds`. Informational only, no strict validation |
+| `requiredModules` | List of involved modules: `CustomBGM`, `CustomEnemySounds`, `CustomFootStepSounds`, `CustomGunSounds`, `CustomMeleeSounds`, `CustomGrenadeSounds`, `CustomHitAndKillSounds`, `CustomItemSounds`. Informational only, no strict validation |
 | `optional.homepage` | Homepage link |
 | `optional.qq` | QQ number, group number, or link |
 

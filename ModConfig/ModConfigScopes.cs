@@ -28,6 +28,7 @@ namespace DuckovCustomSounds.ModConfig
         public static readonly ModConfigScope Grenade = new ModConfigScope("Grenade", "DCSGrenade | 手雷音效");
         public static readonly ModConfigScope Item = new ModConfigScope("Item", "DCSItem | 物品音效");
         public static readonly ModConfigScope Melee = new ModConfigScope("Melee", "DCSMelee | 近战音效");
+        public static readonly ModConfigScope HitAndKill = new ModConfigScope("HitAndKill", "DCSHitAndKill | 命中与击杀音效");
         public static readonly ModConfigScope BossBGM = new ModConfigScope("BossBGM", "DCSBossBGM | 首领音乐");
         public static readonly ModConfigScope HomeBGM = new ModConfigScope("HomeBGM", "DCSHomeBGM | 基地音乐");
         public static readonly ModConfigScope SceneBGM = new ModConfigScope("SceneBGM", "DCSSceneBGM | 场景音乐");
@@ -48,6 +49,7 @@ namespace DuckovCustomSounds.ModConfig
             ["Grenade"] = "手雷音效",
             ["Item"] = "物品音效",
             ["Melee"] = "近战音效",
+            ["HitAndKill"] = "命中与击杀音效",
         };
 
         public static string GetLoggingModuleDisplayName(string module)

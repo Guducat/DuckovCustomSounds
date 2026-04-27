@@ -53,6 +53,7 @@ namespace DuckovCustomSounds.Logging
             if (eventName.StartsWith("SFX/Combat/Gun/", System.StringComparison.OrdinalIgnoreCase)) return "Gun";
             if (eventName.StartsWith("SFX/Combat/Explosive/", System.StringComparison.OrdinalIgnoreCase)) return "Grenade";
             if (eventName.StartsWith("SFX/Combat/Melee/", System.StringComparison.OrdinalIgnoreCase)) return "Melee";
+            if (eventName.StartsWith("SFX/Combat/Marker/", System.StringComparison.OrdinalIgnoreCase)) return "HitAndKill";
             if (eventName.StartsWith("SFX/Item/", System.StringComparison.OrdinalIgnoreCase)) return "Item";
             if (eventName.StartsWith("Music/", System.StringComparison.OrdinalIgnoreCase)) return "BGM";
             return "Core";

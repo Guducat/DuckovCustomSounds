@@ -100,6 +100,9 @@ namespace DuckovCustomSounds
                 // 初始化近战音效系统
                 DuckovCustomSounds.CustomMeleeSounds.CustomMeleeSounds.Initialize();
 
+                // 初始化命中与击杀音效系统
+                DuckovCustomSounds.CustomHitAndKillSounds.CustomHitAndKillSounds.Initialize();
+
                 // 初始化物品音效系统
                 DuckovCustomSounds.CustomItemSounds.CustomItemSounds.Initialize();
 
@@ -250,6 +253,7 @@ namespace DuckovCustomSounds
 		        //没有Unload try { DuckovCustomSounds.CustomGrenadeSounds.CustomGrenadeSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载手雷音效模块失败: {ex.Message}"); }
 		        //没有Unload try { DuckovCustomSounds.CustomGunSounds.CustomGunSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载枪械音效模块失败: {ex.Message}"); }
 		        //没有Unload try { DuckovCustomSounds.CustomMeleeSounds.CustomMeleeSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载近战音效模块失败: {ex.Message}"); }
+		        try { DuckovCustomSounds.CustomHitAndKillSounds.CustomHitAndKillSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载命中与击杀音效模块失败: {ex.Message}"); }
 		        //没有Unload try { DuckovCustomSounds.CustomItemSounds.CustomItemSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载物品音效模块失败: {ex.Message}"); }
 		        try { DuckovCustomSounds.CustomFootStepSounds.CustomFootStepSounds.Unload(); } catch (Exception ex) { CoreLog.Warning($"卸载脚步音效模块失败: {ex.Message}"); }
 

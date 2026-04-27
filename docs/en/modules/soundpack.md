@@ -101,6 +101,7 @@ Sound Pack subdirectory names match module directory names:
 | Guns | `CustomGunSounds/` |
 | Melee | `CustomMeleeSounds/` |
 | Grenades | `CustomGrenadeSounds/` |
+| Hit & Kill | `CustomHitAndKillSounds/` |
 | Items | `CustomItemSounds/` |
 
 ## FAQ

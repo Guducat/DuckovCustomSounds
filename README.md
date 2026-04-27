@@ -24,6 +24,8 @@
 - 自定义撤离倒计时音效/音乐
 - 自定义枪声
 - 自定义近战声
+- 自定义命中与击杀提示音
+- 自定义玩家与NPC受击音效
 - 自定义打药/喝水/进食音效
 - 自定义行走/跑步/翻滚音效
 - BOSS BGM
@@ -36,7 +38,6 @@
 
 - 环境音效
 - 不同手雷投掷物分别自定义不同音效
-- 受击音效、命中音效自定义
 - 在不同增益buff或状态下脚步声音不同
 - 在不同buff时有不同音效，buff消失音效消失
 - 角色血量偏低时播放警示音
@@ -105,6 +106,7 @@ DuckovCustomSounds/
 ├── CustomFootStepSounds/     # 脚步音效模块
 ├── CustomGrenadeSounds/      # 手雷音效模块
 ├── CustomGunSounds/           # 枪声音效模块
+├── CustomHitAndKillSounds/    # 命中、击杀与受击音效模块
 ├── CustomItemSounds/         # 物品音效模块
 ├── CustomMeleeSounds/         # 近战音效模块
 ├── Logging/                  # 日志系统

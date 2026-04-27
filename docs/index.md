@@ -5,7 +5,7 @@ titleTemplate: 逃离鸭科夫音频自定义Mod
 hero:
   name: Duckov Custom Sounds
   text: 鸭科夫自定义音效音乐Mod
-  tagline: BGM、敌人语音、脚步声、武器、物品与声音包一键切换
+  tagline: BGM、敌人语音、脚步声、武器、命中击杀、物品与声音包一键切换
   image:
     src: https://github.com/Guducat/DuckovCustomSounds/raw/v2.x/docs/.vitepress/public/DuckovCustomSounds.png
     alt: Duckov Custom Sounds
@@ -26,7 +26,7 @@ features:
   - title: 脚步声与动作音效
     details: 支持 walk/run/dash，覆盖全流程；与 FMOD 3D 距离一致，混音可控。
   - title: 武器/手雷/近战/物品
-    details: 覆盖 Shoot、Explosive、Melee、Item 使用等关键事件，支持按 soundKey 与 TypeID 匹配。
+    details: 覆盖 Shoot、Explosive、Melee、Hit/Kill Marker、Item 使用等关键事件，支持按 soundKey 与 TypeID 匹配。
 ---
 
 <script setup>
@@ -43,6 +43,7 @@ const fmtMap = {
   'Guns': sfx4Formats,
   'Melee': sfx4Formats,
   'Grenade': sfx4Formats,
+  'HitKill': sfx4Formats,
   'Items': sfx4Formats,
 }
 const chartOption = {
@@ -57,12 +58,12 @@ const chartOption = {
     }
   },
   grid: { left: 60, right: 20, top: 20, bottom: 40 },
-  xAxis: { type: 'category', data: ['Title','Home','Scene','Boss','Extraction','Voices','Footsteps','Guns','Melee','Grenade','Items'] },
+  xAxis: { type: 'category', data: ['Title','Home','Scene','Boss','Extraction','Voices','Footsteps','Guns','Melee','Grenade','HitKill','Items'] },
   yAxis: { type: 'value', max: 20 },
   series: [{
     name: '默认支持格式数量',
     type: 'bar',
-    data: [19,19,19,19,19,2,2,4,4,4,4],
+    data: [19,19,19,19,19,2,2,4,4,4,4,4],
     itemStyle: { color: '#0ea5e9', borderRadius: [4,4,0,0] }
   }]
 }

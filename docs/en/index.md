@@ -4,7 +4,7 @@ title: Duckov Custom Sounds
 titleTemplate: Audio customization mod for Escape from Duckov
 hero:
   name: Duckov Custom Sounds Mod
-  tagline: BGM, enemy voices, footsteps, weapons, items & one-click Sound Pack switching
+  tagline: BGM, enemy voices, footsteps, weapons, hit/kill sounds, items & one-click Sound Pack switching
   image:
     src: https://github.com/Guducat/DuckovCustomSounds/raw/v2.x/docs/.vitepress/public/DuckovCustomSounds.png
     alt: Duckov Custom Sounds
@@ -25,7 +25,7 @@ features:
   - title: Footsteps & Movement Sounds
     details: Supports walk/run/dash across the full flow; matches FMOD 3D distance, mix volume controllable.
   - title: Weapons / Grenades / Melee / Items
-    details: Covers Shoot, Explosive, Melee, and Item usage events, with soundKey and TypeID matching.
+    details: Covers Shoot, Explosive, Melee, Hit/Kill Marker, and Item usage events, with soundKey and TypeID matching.
 ---
 
 <script setup>
@@ -42,6 +42,7 @@ const fmtMap = {
   'Guns': sfx4Formats,
   'Melee': sfx4Formats,
   'Grenade': sfx4Formats,
+  'HitKill': sfx4Formats,
   'Items': sfx4Formats,
 }
 const chartOption = {
@@ -56,12 +57,12 @@ const chartOption = {
     }
   },
   grid: { left: 60, right: 20, top: 20, bottom: 40 },
-  xAxis: { type: 'category', data: ['Title','Home','Scene','Boss','Extraction','Voices','Footsteps','Guns','Melee','Grenade','Items'] },
+  xAxis: { type: 'category', data: ['Title','Home','Scene','Boss','Extraction','Voices','Footsteps','Guns','Melee','Grenade','HitKill','Items'] },
   yAxis: { type: 'value', max: 20 },
   series: [{
     name: 'Default supported formats',
     type: 'bar',
-    data: [19,19,19,19,19,2,2,4,4,4,4],
+    data: [19,19,19,19,19,2,2,4,4,4,4,4],
     itemStyle: { color: '#0ea5e9', borderRadius: [4,4,0,0] }
   }]
 }

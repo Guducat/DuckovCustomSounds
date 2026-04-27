@@ -34,6 +34,18 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Enable Custom Grenade Sounds | Bool | On | |
 | Volume Scale | Float | 1.0 | 0–2 |
 
+## Hit & Kill Sounds (HitAndKill)
+
+| Setting | Type | Default | Description |
+|--------|------|------|------|
+| Enable Hit & Kill Sounds | Bool | On | Master switch |
+| Replace Hit/Kill Marker Sounds | Bool | On | Covers hitmarker and killmarker |
+| Play Hurt Sounds | Bool | On | Player hurt and NPC hurt |
+| Enable Reflection Diagnostics | Bool | Off | Collects Unity serialized audio fields |
+| Volume Scale | Float | 1.0 | 0–2 |
+| Marker Cooldown Ms | Float | 30 | 0–500 |
+| Hurt Cooldown Ms | Float | 120 | 0–1000 |
+
 ## Footsteps (Footstep)
 
 | Setting | Type | Default | Description |

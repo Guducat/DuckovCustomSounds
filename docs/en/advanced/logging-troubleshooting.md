@@ -50,7 +50,7 @@ Add to `DuckovCustomSounds/settings.json`:
 - `defaultLevel`: Default level for all modules
 - `modules.ModuleName.level`: Override level for a specific module
 
-Available module names: `Core`, `SoundPack`, `Enemy`, `Footstep`, `BGM`, `HomeBGM`, `SceneBGM`, `ExtractionBGM`, `Gun`, `Grenade`, `Item`, `Melee`
+Available module names: `Core`, `SoundPack`, `Enemy`, `Footstep`, `BGM`, `HomeBGM`, `SceneBGM`, `ExtractionBGM`, `Gun`, `Grenade`, `Item`, `Melee`, `HitAndKill`
 
 ### Method 2: debug_off / .nolog File
 

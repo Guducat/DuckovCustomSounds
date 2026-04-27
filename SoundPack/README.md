@@ -18,7 +18,7 @@
   - 自定义BGM：`TitleBGM/`、`HomeBGM/`、`SceneBGM/`、`Extraction/`、`BossBGM/`
   - 自定义敌人语音：`CustomEnemySounds/`
   - 自定义脚步声：`CustomFootStepSounds/`
-  - 其他：`CustomGunSounds/`、`CustomMeleeSounds/`、`CustomGrenadeSounds/`、`CustomItemSounds/` 等
+  - 其他：`CustomGunSounds/`、`CustomMeleeSounds/`、`CustomGrenadeSounds/`、`CustomHitAndKillSounds/`、`CustomItemSounds/` 等
 - 读取顺序与回退：当前声音包 > Default（根目录资源）> 原版游戏音频。
 - 没检测到任何可用声音包时（包括没有可判定为 Default 的根目录资源），ModConfig UI 里不显示"声音包选择"。
 - "Default"是否出现在列表，由系统在根目录探测到典型资源目录且存在音频文件时判定（见"识别逻辑"）。
@@ -79,7 +79,8 @@ DuckovCustomSounds/
   "requiredModules": [
     "CustomBGM",
     "CustomEnemySounds",
-    "CustomFootStepSounds"
+    "CustomFootStepSounds",
+    "CustomHitAndKillSounds"
   ],
   "optional": {
     "homepage": "https://example.com",

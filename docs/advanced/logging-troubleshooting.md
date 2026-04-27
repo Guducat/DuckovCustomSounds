@@ -50,7 +50,7 @@
 - `defaultLevel`：所有模块的默认级别
 - `modules.模块名.level`：覆盖某个模块的级别
 
-可选模块名：`Core`、`SoundPack`、`Enemy`、`Footstep`、`BGM`、`HomeBGM`、`SceneBGM`、`ExtractionBGM`、`Gun`、`Grenade`、`Item`、`Melee`
+可选模块名：`Core`、`SoundPack`、`Enemy`、`Footstep`、`BGM`、`HomeBGM`、`SceneBGM`、`ExtractionBGM`、`Gun`、`Grenade`、`Item`、`Melee`、`HitAndKill`
 
 ### 方式二：debug_off / .nolog 文件
 

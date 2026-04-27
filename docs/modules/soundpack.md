@@ -101,6 +101,7 @@ DuckovCustomSounds/
 | 枪械 | `CustomGunSounds/` |
 | 近战 | `CustomMeleeSounds/` |
 | 手雷 | `CustomGrenadeSounds/` |
+| 命中与击杀 | `CustomHitAndKillSounds/` |
 | 物品 | `CustomItemSounds/` |
 
 ## 常见问题

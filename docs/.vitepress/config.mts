@@ -36,6 +36,7 @@ const rootNav: DefaultTheme.NavItem[] = [
       { text: '枪械', link: '/modules/guns' },
       { text: '近战', link: '/modules/melee' },
       { text: '手雷', link: '/modules/grenade' },
+      { text: '命中与击杀', link: '/modules/hit-and-kill' },
       { text: '物品', link: '/modules/items' }
     ]
   },
@@ -78,6 +79,7 @@ const rootSidebar: DefaultTheme.Sidebar = {
         { text: '枪械', link: '/modules/guns' },
         { text: '近战', link: '/modules/melee' },
         { text: '手雷', link: '/modules/grenade' },
+        { text: '命中与击杀', link: '/modules/hit-and-kill' },
         { text: '物品', link: '/modules/items' }
       ]
     }
@@ -126,6 +128,7 @@ const enNav: DefaultTheme.NavItem[] = [
       { text: 'Guns', link: '/en/modules/guns' },
       { text: 'Melee', link: '/en/modules/melee' },
       { text: 'Grenades', link: '/en/modules/grenade' },
+      { text: 'Hit & Kill', link: '/en/modules/hit-and-kill' },
       { text: 'Items', link: '/en/modules/items' }
     ]
   },
@@ -169,6 +172,7 @@ const enSidebar: DefaultTheme.Sidebar = {
         { text: 'Guns', link: '/en/modules/guns' },
         { text: 'Melee', link: '/en/modules/melee' },
         { text: 'Grenades', link: '/en/modules/grenade' },
+        { text: 'Hit & Kill', link: '/en/modules/hit-and-kill' },
         { text: 'Items', link: '/en/modules/items' }
       ]
     }

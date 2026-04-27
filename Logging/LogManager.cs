@@ -48,6 +48,7 @@ namespace DuckovCustomSounds.Logging
             ["CustomGrenadeSounds"] = "Grenade",
             ["CustomItemSounds"] = "Item",
             ["CustomMeleeSounds"] = "Melee",
+            ["CustomHitAndKillSounds"] = "HitAndKill",
             ["CustomBGM"] = "BGM",
             ["BossBGM"] = "BGM",
             ["CustomBossBGM"] = "BGM",
@@ -77,6 +78,7 @@ namespace DuckovCustomSounds.Logging
             "Footstep",
             "Item",
             "Melee",
+            "HitAndKill",
         };
         private static readonly object _gate = new object();
         private static bool _globalEnabled = true;
@@ -185,6 +187,7 @@ namespace DuckovCustomSounds.Logging
                         ["Footstep"] = new ModuleSection { level = "Info" },
                         ["Item"] = new ModuleSection { level = "Info" },
                         ["Melee"] = new ModuleSection { level = "Info" },
+                        ["HitAndKill"] = new ModuleSection { level = "Info" },
                     }
                 }
             };

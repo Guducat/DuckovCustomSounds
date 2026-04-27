@@ -172,7 +172,6 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
                     AudioManager_Post_GrenadeReplace.InjectIfMissing(current);
                 }
             }
-            catch { }
             finally
             {
                 __state.Restore();
