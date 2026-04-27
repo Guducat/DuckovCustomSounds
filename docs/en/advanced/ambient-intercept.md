@@ -5,7 +5,7 @@ title: Ambient Intercept (Experimental)
 # Ambient Intercept (Experimental)
 
 ::: warning Experimental Feature
-This feature is not yet officially supported. It is disabled by default and has no ModConfig UI entry — it can only be enabled manually via `settings.json`.
+This feature is not yet officially supported and is disabled by default. It can be enabled in ModConfig; when ModConfig is unavailable, it can still be enabled manually through `settings.json`.
 :::
 
 ## Overview
@@ -14,22 +14,45 @@ Mutes all `Amb/amb_*` prefixed game ambient sound events (wind, insects, ambient
 
 ## How to Enable
 
-Edit `settings.json`:
+Recommended in-game ModConfig entry:
+
+```text
+DCSAmbientIntercept | 环境音拦截 -> 启用环境音拦截（实验性）
+DCSAmbientIntercept | 环境音拦截 -> Intercept Storm Phase Stingers (Experimental)
+```
+
+Changes made through ModConfig take effect immediately.
+
+If ModConfig is unavailable, edit `settings.json`:
 
 ```json
 {
-  "enableAmbientIntercept": true
+  "enableAmbientIntercept": true,
+  "interceptStormStingers": true
 }
 ```
 
-Default is `false`. Restart the game for changes to take effect.
+Both `settings.json` fields default to `false`. Restart the game after manual edits.
+
+## Source Check
+
+This behavior has been checked against the game source:
+
+| Game source | Behavior |
+|-------------|----------|
+| `AudioManager.OnSubSceneLoaded` | Reads `SubSceneEntry.AmbientSound`, then plays scene ambience through `ambientSource.Post("Amb/amb_{soundkey}")` |
+| `WeatherFxControl` | Uses `Amb/amb_rain` as the default rain sound and plays it through `AudioManager.Post` |
+| `TimeOfDayController` | Storm phase cues are `Music/Stinger/stg_storm_1` and `Music/Stinger/stg_storm_2`, so they are outside the `Amb/amb_*` scope and are controlled by a separate option |
+
+The mod checks the event name in a Harmony Prefix on `AudioObject.Post(string, bool)`, so it covers ambient events that reach `AudioObject.Post` through `AudioManager`.
 
 ## Behavior
 
 | Rule | Description |
 |------|-------------|
-| Intercept scope | All `Amb/amb_*` prefixed ambient sound events |
-| Exception | `Amb/amb_storm` (storm ambient) is never intercepted |
+| Intercept scope | `Amb/amb_*` prefixed ambient events received by `AudioObject.Post` |
+| Exception | `Amb/amb_storm` is still allowed through |
+| Storm phase stingers | When `Intercept Storm Phase Stingers (Experimental)` is enabled, `Music/Stinger/stg_storm_1` and `Music/Stinger/stg_storm_2` are also intercepted |
 | Fail-safe | On exception, the original method is allowed through, ensuring game stability |
 
 ## Use Cases

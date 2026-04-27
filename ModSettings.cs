@@ -44,6 +44,8 @@ namespace DuckovCustomSounds
 
         public static bool EnableAmbientIntercept { get; private set; } = false;
 
+        public static bool InterceptStormStingers { get; private set; } = false;
+
         // New: Footstep module master switch
         public static bool EnableCustomFootStepSounds { get; private set; } = true;
 
@@ -214,6 +216,21 @@ namespace DuckovCustomSounds
                     needsWriteBack = true;
                 }
                 EnableAmbientIntercept = ambientVal;
+
+                // 6.1) interceptStormStingers（风暴阶段提示音拦截，默认 false）
+                const string StormStingerInterceptKey = "interceptStormStingers";
+                bool hadStormStingerKey = root.TryGetValue(StormStingerInterceptKey, StringComparison.OrdinalIgnoreCase, out var stormStingerToken);
+                bool stormStingerValid = TryReadBoolean(stormStingerToken, out bool stormStingerVal);
+                if (!stormStingerValid)
+                {
+                    stormStingerVal = false;
+                }
+                if (!hadStormStingerKey || !stormStingerValid)
+                {
+                    root[StormStingerInterceptKey] = stormStingerVal;
+                    needsWriteBack = true;
+                }
+                InterceptStormStingers = stormStingerVal;
 
                 // 7) enableCustomFootStepSounds（脚步声自定义开关，默认 true）
                 const string FootstepSwitchKey = "enableCustomFootStepSounds";
@@ -490,7 +507,7 @@ namespace DuckovCustomSounds
                     try
                     {
                         File.WriteAllText(path, root.ToString(Formatting.Indented));
-                        Log.Info($"settings.json {(exists ? "已补充" : "已创建")}默认键：{SoundPackKey}, overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {GrenadeDistanceKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}, {HomeBgmAutoNextKey}, {HomeBgmRandomEnabledKey}, {HomeBgmRandomNoRepeatKey}, {HomeBgmRandomizePrevKey}, {NPCCombatKey}, {EnemyVoiceModeKey}, {EnemyVoiceVolumeKey}, {PlayerQuakEnabledKey}, {PlayerQuakVolumeKey}");
+                        Log.Info($"settings.json {(exists ? "已补充" : "已创建")}默认键：{SoundPackKey}, overrideExtractionBGM, {DeathKey}, {GrenadeKey}, {GrenadeDistanceKey}, {LoggerKey}, {AudioLoggerKey}, {AmbientInterceptKey}, {StormStingerInterceptKey}, {FootstepSwitchKey}, {FootstepVolKey}, {HomeBgmAutoNextKey}, {HomeBgmRandomEnabledKey}, {HomeBgmRandomNoRepeatKey}, {HomeBgmRandomizePrevKey}, {NPCCombatKey}, {EnemyVoiceModeKey}, {EnemyVoiceVolumeKey}, {PlayerQuakEnabledKey}, {PlayerQuakVolumeKey}");
                     }
                     catch (Exception ex)
                     {

@@ -88,6 +88,13 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Extraction Music Mode | Enum | Disabled | Disabled / Countdown Sound / Success Replacement |
 | Extraction Sound Volume | Float | 100% | 0–100 |
 
+## Ambient Intercept (AmbientIntercept)
+
+| Setting | Type | Default | Description |
+|--------|------|------|------|
+| Enable Ambient Intercept (Experimental) | Bool | Off | Intercepts `Amb/amb_*` ambience while allowing `Amb/amb_storm` through |
+| Intercept Storm Phase Stingers (Experimental) | Bool | Off | Intercepts `Music/Stinger/stg_storm_1` and `Music/Stinger/stg_storm_2` |
+
 ## Sound Pack (SoundPack)
 
 | Setting | Type | Default | Description |

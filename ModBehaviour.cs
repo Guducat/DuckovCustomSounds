@@ -59,6 +59,9 @@ namespace DuckovCustomSounds
                 // 2. 读取并应用模块设置（例如 overrideExtractionBGM）
                 ModSettings.Initialize();
 
+                // 2.1 初始化环境音拦截配置（支持 ModConfig UI）
+                DuckovCustomSounds.CustomBGM.AmbientIntercept.AmbientInterceptConfig.Initialize();
+
                 // 3. 验证声音包有效性
                 if (!SoundPack.SoundPackManager.ValidateCurrentPack())
                 {

@@ -7,8 +7,9 @@ namespace DuckovCustomSounds.CustomBGM.AmbientIntercept
 {
     /// <summary>
     /// 环境音（Amb/amb_*）拦截：在 AudioObject.Post(string,bool) 的 Harmony Prefix 中统一屏蔽。
-    /// - 仅当 ModSettings.EnableAmbientIntercept=true 时生效；默认关闭以便灰度测试
-    /// - 放行特例：Amb/amb_storm
+    /// - 仅当 AmbientInterceptConfig.Enabled=true 时生效；默认关闭以便灰度测试
+    /// - 风暴阶段提示音由 AmbientInterceptConfig.InterceptStormStingers 单独控制
+    /// - 环境音放行特例：Amb/amb_storm
     /// - 出错安全：异常时放行原方法
     /// </summary>
     [HarmonyPatch(typeof(AudioObject))]
@@ -20,24 +21,26 @@ namespace DuckovCustomSounds.CustomBGM.AmbientIntercept
         {
             try
             {
-                if (!DuckovCustomSounds.ModSettings.EnableAmbientIntercept)
-                    return true; // 未开启：放行
-
                 if (string.IsNullOrEmpty(eventName))
                     return true;
 
-                // 仅处理环境音：Amb/amb_*
-                if (!eventName.StartsWith("Amb/amb_", StringComparison.OrdinalIgnoreCase))
-                    return true;
+                if (IsAmbientEvent(eventName))
+                {
+                    if (!AmbientInterceptConfig.Enabled || IsAllowedAmbientEvent(eventName))
+                        return true;
 
-                // 特例放行：风暴环境音
-                if (string.Equals(eventName, "Amb/amb_storm", StringComparison.OrdinalIgnoreCase))
-                    return true;
+                    return BlockEvent(ref __result, eventName);
+                }
 
-                // 命中：阻止原方法并返回空实例
-                BGMLogger.Info($"[AmbientIntercept] 拦截环境音: {eventName}");
-                __result = new FMOD.Studio.EventInstance?();
-                return false;
+                if (IsStormStinger(eventName))
+                {
+                    if (!AmbientInterceptConfig.InterceptStormStingers)
+                        return true;
+
+                    return BlockEvent(ref __result, eventName);
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -45,6 +48,28 @@ namespace DuckovCustomSounds.CustomBGM.AmbientIntercept
                 return true; // 出错时放行，确保稳定性
             }
         }
+
+        private static bool IsAmbientEvent(string eventName)
+        {
+            return eventName.StartsWith("Amb/amb_", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsAllowedAmbientEvent(string eventName)
+        {
+            return string.Equals(eventName, "Amb/amb_storm", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsStormStinger(string eventName)
+        {
+            return string.Equals(eventName, "Music/Stinger/stg_storm_1", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(eventName, "Music/Stinger/stg_storm_2", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool BlockEvent(ref FMOD.Studio.EventInstance? result, string eventName)
+        {
+            BGMLogger.Info($"[AmbientIntercept] 拦截音频事件: {eventName}");
+            result = new FMOD.Studio.EventInstance?();
+            return false;
+        }
     }
 }
-

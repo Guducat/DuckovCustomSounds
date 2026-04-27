@@ -32,6 +32,7 @@ namespace DuckovCustomSounds.ModConfig
         public static readonly ModConfigScope HomeBGM = new ModConfigScope("HomeBGM", "DCSHomeBGM | 基地音乐");
         public static readonly ModConfigScope SceneBGM = new ModConfigScope("SceneBGM", "DCSSceneBGM | 场景音乐");
         public static readonly ModConfigScope ExtractionBGM = new ModConfigScope("ExtractionBGM", "DCSExtractionBGM | 撤离音乐");
+        public static readonly ModConfigScope AmbientIntercept = new ModConfigScope("AmbientIntercept", "DCSAmbientIntercept | 环境音拦截");
 
         private static readonly Dictionary<string, string> LoggingModuleDisplayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {

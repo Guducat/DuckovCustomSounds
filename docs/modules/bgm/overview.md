@@ -79,7 +79,8 @@ title: BGM 模块总览
 
 针对不希望听到游戏环境音（风声、虫鸣等 Amb/amb_* 事件）的场景，提供全局静音拦截。
 
-- **开关**：`settings.json` 中设 `"enableAmbientIntercept": true`（默认 `false`，不支持 ModConfig UI 控制）
-- **行为**：拦截所有 `Amb/amb_*` 前缀的环境音事件
-- **特例放行**：`Amb/amb_storm`（风暴环境音）不会被拦截
+- **开关**：ModConfig 中的 `DCSAmbientIntercept | 环境音拦截`，或在 `settings.json` 中设 `"enableAmbientIntercept": true`（默认 `false`）
+- **行为**：拦截 `AudioObject.Post` 收到的 `Amb/amb_*` 前缀环境音事件
+- **特例放行**：`Amb/amb_storm` 保留放行
+- **风暴阶段提示音**：`拦截风暴阶段提示音（实验性）` 可额外拦截 `Music/Stinger/stg_storm_1` 与 `Music/Stinger/stg_storm_2`
 - **风险提示**：实验性功能，可能导致部分场景过度静音；仅建议有明确需求的用户开启

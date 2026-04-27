@@ -79,7 +79,8 @@ See individual sub-module pages for detailed instructions.
 
 For scenarios where you want to suppress game ambient sounds (wind, insects, etc. — `Amb/amb_*` events), a global mute intercept is available.
 
-- **Toggle**: Set `"enableAmbientIntercept": true` in `settings.json` (default `false`; not exposed in ModConfig UI)
-- **Behavior**: Intercepts all `Amb/amb_*` prefixed ambient sound events
-- **Exception**: `Amb/amb_storm` (storm ambient) is never intercepted
+- **Toggle**: Use `DCSAmbientIntercept | 环境音拦截` in ModConfig, or set `"enableAmbientIntercept": true` in `settings.json` (default `false`)
+- **Behavior**: Intercepts `Amb/amb_*` prefixed ambient events received by `AudioObject.Post`
+- **Exception**: `Amb/amb_storm` is still allowed through
+- **Storm phase stingers**: `Intercept Storm Phase Stingers (Experimental)` can also intercept `Music/Stinger/stg_storm_1` and `Music/Stinger/stg_storm_2`
 - **Caveat**: Experimental feature; may over-silence certain scenes. Only recommended for users with a clear need
