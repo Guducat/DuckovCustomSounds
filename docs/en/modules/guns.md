@@ -41,6 +41,8 @@ Each gun has a unique numeric ID. Different models within the same weapon family
 
 **Reload end**: `{TypeID}_reload_end` → `default_reload_end` → `default`
 
+Where `{soundKey}` is the weapon sound identifier obtained from the `key=xxx` field in the `[GunShoot]` line in `player.log`.
+
 ## Variants
 
 Add `_1`, `_2` suffixes to the same TypeID for random selection:

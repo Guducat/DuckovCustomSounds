@@ -37,7 +37,7 @@ CustomItemSounds/
 ## TypeID 与 soundKey
 
 - **TypeID**：每件物品的唯一数字 ID。获取方式：设 `logging.modules.Item.level` 为 `Debug`，用物品，player.log 搜 `[ItemUse]` 看 `TypeID=xxx`。
-- **soundKey**：物品类别。`food`（食物饮料）、`bandage`（绷带/药品，主分类）、`syringe`（注射器）。游戏事件：`SFX/Item/use_{soundKey}`。`meds` 是 `bandage` 的别名。
+- **soundKey**：物品类别。`food`（食物饮料）、`bandage`（绷带/药品，主分类）、`syringe`（注射器）。游戏事件：`SFX/Item/use_{soundKey}`。`meds` 是 `bandage` 的别名。**注意：饮料没有独立的 `drink` 类别，统一归在 `food` 下。**
 
 ## 文件查找优先级
 

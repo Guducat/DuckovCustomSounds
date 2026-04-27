@@ -22,6 +22,8 @@ namespace DuckovCustomSounds.CustomGrenadeSounds
             {
                 // 加载配置
                 GrenadeConfig.Initialize();
+                // 加载手雷声音映射（JSON）
+                GrenadeSoundMap.Initialize();
 
                 GrenadeLogger.Info("CustomGrenadeSounds 模块已初始化");
             }

@@ -90,6 +90,16 @@ const rootSidebar: DefaultTheme.Sidebar = {
         { text: '声音包生成器', link: '/tools/sound-pack-generator' }
       ]
     }
+  ],
+  '/advanced/': [
+    {
+      text: '高级',
+      items: [
+        { text: 'ModConfig 选项', link: '/advanced/modconfig' },
+        { text: '日志与排错', link: '/advanced/logging-troubleshooting' },
+        { text: '环境音拦截（实验性）', link: '/advanced/ambient-intercept' }
+      ]
+    }
   ]
 }
 
@@ -128,6 +138,7 @@ const enNav: DefaultTheme.NavItem[] = [
     items: [
       { text: 'ModConfig Options', link: '/en/advanced/modconfig' },
       { text: 'Logging & Troubleshooting', link: '/en/advanced/logging-troubleshooting' },
+      { text: 'Ambient Intercept (Experimental)', link: '/en/advanced/ambient-intercept' },
       { text: 'Changelog', link: '/en/changelog' }
     ]
   },
@@ -168,6 +179,16 @@ const enSidebar: DefaultTheme.Sidebar = {
       items: [
         { text: 'Tools Overview', link: '/en/tools/' },
         { text: 'Sound Pack Generator', link: '/en/tools/sound-pack-generator' }
+      ]
+    }
+  ],
+  '/en/advanced/': [
+    {
+      text: 'Advanced',
+      items: [
+        { text: 'ModConfig Options', link: '/en/advanced/modconfig' },
+        { text: 'Logging & Troubleshooting', link: '/en/advanced/logging-troubleshooting' },
+        { text: 'Ambient Intercept (Experimental)', link: '/en/advanced/ambient-intercept' }
       ]
     }
   ]

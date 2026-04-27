@@ -66,7 +66,7 @@ title: 声音包生成器
 | `compatibleModVersion` | 兼容 Mod 版本，仅说明，不影响加载 |
 | `requiredModules` | 涉及模块列表：`CustomBGM`、`CustomEnemySounds`、`CustomFootStepSounds`、`CustomGunSounds`、`CustomMeleeSounds`、`CustomGrenadeSounds`、`CustomItemSounds`。仅说明，不做强校验 |
 | `optional.homepage` | 主页链接 |
-| `optional.qq` | QQ 号或群号 |
+| `optional.qq` | QQ 号、群号或链接皆可 |
 
 ## 注意
 

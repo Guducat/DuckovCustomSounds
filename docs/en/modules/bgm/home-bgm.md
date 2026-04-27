@@ -35,7 +35,7 @@ HomeBGM/
 | Enable Home BGM | On | Master switch |
 | Enable Base Entry Sound | On | Play start.mp3 when entering base |
 | Music Volume (%) | 100 | 0–100%, takes effect immediately |
-| Use SFX Bus | Off | Experimental, routes through SFX instead of Music bus |
+| Route Music through SFX Bus | Off | Experimental, routes through SFX instead of Music bus |
 | Random Next Track | Off | Sequential or random playback |
 | Random Previous Too | Off | Requires Random to be enabled first |
 | Avoid Consecutive Repeat | On | Skips repeating the same track in random mode |

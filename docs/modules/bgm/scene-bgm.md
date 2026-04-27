@@ -29,7 +29,7 @@ SceneBGM/
 5. **类型关键词**：`loading_*`、`lab_*`、`factory_*`、`farm_*`、`zero_*`、`warehouse_*`、`expedition_*`、`outskirts_*`
 6. **默认**：`default_enter.mp3` / `default_loop.mp3`
 
-注意：加载界面属于"loading"类型，Enter 不会对加载场景播放默认音乐（避免黑屏时误播）。
+注意：加载界面属于"loading"类型，Enter 不会对加载场景播放默认音乐（避免黑屏时误播）。**类型关键词同样支持中文**（如 `农场_enter.mp3`、`仓库_enter.mp3`、`零号区_enter.mp3`、`工厂_enter.mp3` 等）。
 
 #### v2.1.1 更新
 `Level_HiddenWarehouse_Main` 同时兼容 `level_warehouse_main_*`，因为`仓库区`更改过场景名等数据，适合资源包使用稳定地图名。

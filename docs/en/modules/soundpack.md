@@ -82,7 +82,7 @@ DuckovCustomSounds/
 | `compatibleModVersion` | No | Target mod compatibility version, informational only, does not affect loading |
 | `requiredModules` | No | List of involved modules, informational only, no strict validation |
 | `optional.homepage` | No | Homepage link |
-| `optional.qq` | No | QQ number or group number |
+| `optional.qq` | No | QQ number, group number, or link |
 
 Notes:
 - The pack ID is the **folder name**, not set inside pack.json.

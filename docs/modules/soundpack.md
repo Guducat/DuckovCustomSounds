@@ -82,7 +82,7 @@ DuckovCustomSounds/
 | `compatibleModVersion` | 否 | 目标 Mod 兼容版本，只是说明，不影响加载 |
 | `requiredModules` | 否 | 涉及的模块列表，只是说明，不做强校验 |
 | `optional.homepage` | 否 | 主页链接 |
-| `optional.qq` | 否 | QQ 号或群号 |
+| `optional.qq` | 否 | QQ 号、群号或链接皆可 |
 
 注意：
 - 包 ID 是**文件夹名**，不在 pack.json 里设置。

@@ -156,3 +156,38 @@ The system picks one at random. With `BindVariantIndexPerEnemy` enabled, the sam
 **Different voices for different ranks**: Use `normal_`, `elite_`, `boss_` prefix to distinguish ranks.
 
 **One file covering all soundKeys**: Just place `normal_scav.mp3`; the system falls back to this when specific soundKey files are not found.
+
+## Advanced — Appendix: Common NameKey Reference
+
+The auto-generated `voice_rules.json` only includes Scav and USEC by default. To customize voices for more characters, reference the common NameKeys below and add corresponding entries to SimpleRules.
+
+| NameKey | Description |
+|---------|-------------|
+| `Cname_Scav` | Regular Scav |
+| `Cname_Usec` | USEC soldiers |
+| `Cname_Wolf` | Wolf (Boss) |
+| `Cname_Boss_Sniper` | Lauden (Boss) |
+| `Cname_Boss_Shot` | Shotgunner (Boss) |
+| `Cname_ServerGuardian` | Mine Chief (Boss) |
+| `Cname_Speedy` | Speedy Captain (Boss) |
+| `Cname_SpeedyChild` | Speedy Captain Minion |
+| `Cname_Prison_Boss` | Warden (Boss) |
+| `Cname_BALeader` | BA Leader (Boss) |
+| `Cname_BALeader_Child` | BA Leader Minion |
+| `Cname_Boss_Fly` | Fly Captain (Boss) |
+| `Cname_Boss_Fly_Child` | Fly Captain Minion |
+| `Cname_Boss_Arcade` | Rampant Arcade (Boss) |
+| `Cname_Boss_3Shot` | Three-Shot (Boss) |
+| `Cname_StormBoss1` ~ `StormBoss5` | Storm Bosses (Pulongpulong etc.) |
+| `Cname_ShortEagle` | Short Eagle (Boss) |
+| `Cname_UltraMan` | Ultraman (Boss) |
+| `Cname_CrazyRob` | Crazy Robot Spider (Boss) |
+| `Cname_Vida` | Vida (Boss) |
+| `Cname_ScavRage` | Enraged Scav |
+| `Cname_Raider` | Raider |
+| `Cname_RobSpider` | Robot Spider |
+| `Cname_StormCreature` | Storm Creature |
+| `Cname_Mushroom` | Mushroom Man |
+| `Cname_SchoolBully` | School Bully |
+
+For more NameKeys, search `player.log` for `[CES]` to see the actual enemy names being matched.

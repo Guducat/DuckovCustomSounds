@@ -21,7 +21,7 @@ CustomFootStepSounds/
     └── normal_duck_dash.mp3
 ```
 
-On first run, `footstep_voice_rule.json` is auto-generated (includes simplified rules for Player, Scav, and Usec by default).
+On first run, `footstep_voice_rule.json` is auto-generated (includes simplified rules for Player, Scav, and Usec by default). **Note: The config file must be named `footstep_voice_rule.json`, NOT `footsteps.json`.**
 
 ## soundKey Reference
 

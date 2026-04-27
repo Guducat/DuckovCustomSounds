@@ -61,3 +61,30 @@ File location: `BossBGM/config.json`. Auto-generated on first run.
 ## Priority
 
 Boss BGM has higher priority than Scene BGM and Title/Home BGM. Only one Boss track plays at a time; switching is handled with debounce and fade in/out.
+
+## Appendix: BOSS NameKey → Filename Reference
+
+Filename = NameKey minus the `Cname_` prefix. Supports `.mp3`/`.wav`/`.ogg`/`.flac`.
+
+| NameKey | Chinese Name | Filename |
+|---------|-------------|----------|
+| `Cname_BALeader` | BA队长 (BA Leader) | `BALeader.{ext}` |
+| `Cname_Boss_Sniper` | 劳登 (Lauden) | `Boss_Sniper.{ext}` |
+| `Cname_Boss_Shot` | 喷子 (Shotgunner) | `Boss_Shot.{ext}` |
+| `Cname_ServerGuardian` | 矿长 (Mine Chief) | `ServerGuardian.{ext}` |
+| `Cname_Speedy` | 急速团长 (Speedy Captain) | `Speedy.{ext}` |
+| `Cname_Boss_Fly` | 蝇蝇队长 (Fly Captain) | `Boss_Fly.{ext}` |
+| `Cname_Boss_Arcade` | 暴走街机 (Rampant Arcade) | `Boss_Arcade.{ext}` |
+| `Cname_Boss_3Shot` | 三枪哥 (Three-Shot) | `Boss_3Shot.{ext}` |
+| `Cname_Prison_Boss` | 典狱长 (Warden) | `Prison_Boss.{ext}` |
+| `Cname_StormBoss1` | 噗咙噗咙 (Pulongpulong) | `StormBoss1.{ext}` |
+| `Cname_StormBoss2` | 咕噜咕噜 (Gulugulu) | `StormBoss2.{ext}` |
+| `Cname_StormBoss3` | 啪啦啪啦 (Palapala) | `StormBoss3.{ext}` |
+| `Cname_StormBoss4` | 比利比利 (Bilibili) | `StormBoss4.{ext}` |
+| `Cname_StormBoss5` | 口口口口 (Koukoukoukou) | `StormBoss5.{ext}` |
+| `Cname_ShortEagle` | 矮鸭 (Short Eagle) | `ShortEagle.{ext}` |
+| `Cname_UltraMan` | 光之男 (Ultraman) | `UltraMan.{ext}` |
+| `Cname_CrazyRob` | 失控机械蜘蛛 (Crazy Robot Spider) | `CrazyRob.{ext}` |
+| `Cname_Vida` | 维达 (Vida) | `Vida.{ext}` |
+
+BOSSes not listed here or when no specific file is found fall back to `default_boss.{ext}`.

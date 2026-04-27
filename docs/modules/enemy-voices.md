@@ -156,3 +156,38 @@ Scav/normal_scav_surprise_2.mp3   # 变体 2
 **不同等级不同语音**：`normal_`、`elite_`、`boss_` 前缀区分等级。
 
 **一个文件覆盖所有 soundKey**：只放 `normal_scav.mp3`，系统找不到细分文件时回退到这个。
+
+## 高级 - 附录：常见 NameKey 参考
+
+首次运行生成的 `voice_rules.json` 仅含 Scav 和 USEC。如需为更多角色定制语音，参考以下游戏内常见 NameKey，在 SimpleRules 中添加对应规则即可。
+
+| NameKey | 说明 |
+|---------|------|
+| `Cname_Scav` | 普通 Scav |
+| `Cname_Usec` | USEC 士兵 |
+| `Cname_Wolf` | 沃尔夫（Boss） |
+| `Cname_Boss_Sniper` | 劳登（Boss） |
+| `Cname_Boss_Shot` | 喷子（Boss） |
+| `Cname_ServerGuardian` | 矿长（Boss） |
+| `Cname_Speedy` | 急速团长（Boss） |
+| `Cname_SpeedyChild` | 急速团长随从 |
+| `Cname_Prison_Boss` | 典狱长（Boss） |
+| `Cname_BALeader` | BA队长（Boss） |
+| `Cname_BALeader_Child` | BA队长随从 |
+| `Cname_Boss_Fly` | 蝇蝇队长（Boss） |
+| `Cname_Boss_Fly_Child` | 蝇蝇队长随从 |
+| `Cname_Boss_Arcade` | 暴走街机（Boss） |
+| `Cname_Boss_3Shot` | 三枪哥（Boss） |
+| `Cname_StormBoss1` ~ `StormBoss5` | 噗咙噗咙等风暴 Boss |
+| `Cname_ShortEagle` | 矮鸭（Boss） |
+| `Cname_UltraMan` | 光之男（Boss） |
+| `Cname_CrazyRob` | 失控机械蜘蛛（Boss） |
+| `Cname_Vida` | 维达（Boss） |
+| `Cname_ScavRage` | 愤怒 Scav |
+| `Cname_Raider` | 掠夺者 |
+| `Cname_RobSpider` | 机械蜘蛛 |
+| `Cname_StormCreature` | 风暴生物 |
+| `Cname_Mushroom` | 蘑菇人 |
+| `Cname_SchoolBully` | 校霸 |
+
+更多 NameKey 可在 player.log 中搜 `[CES]` 查看实际匹配的敌人名称。

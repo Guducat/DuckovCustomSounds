@@ -29,7 +29,7 @@ SceneBGM/
 5. **Type keywords**: `loading_*`, `lab_*`, `factory_*`, `farm_*`, `zero_*`, `warehouse_*`, `expedition_*`, `outskirts_*`
 6. **Default**: `default_enter.mp3` / `default_loop.mp3`
 
-Note: Loading screens belong to the "loading" type; Enter BGM will not play default music for loading scenes (to avoid unwanted playback during black screens).
+Note: Loading screens belong to the "loading" type; Enter BGM will not play default music for loading scenes (to avoid unwanted playback during black screens). **Type keywords also support Chinese** (e.g. `农场_enter.mp3`, `仓库_enter.mp3`, `零号区_enter.mp3`, `工厂_enter.mp3`, etc.).
 
 #### v2.1.1 Update
 `Level_HiddenWarehouse_Main` is now also compatible with `level_warehouse_main_*`, since the warehouse map had its scene name changed and resource packs should use the stable map name.

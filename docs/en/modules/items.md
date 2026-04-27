@@ -37,7 +37,7 @@ CustomItemSounds/
 ## TypeID and soundKey
 
 - **TypeID**: Unique numeric ID for each item. Obtain it by setting `logging.modules.Item.level` to `Debug`, using the item, then searching `player.log` for `[ItemUse]` to see `TypeID=xxx`.
-- **soundKey**: Item category. `food` (food/drink), `bandage` (bandages/medicine, primary category), `syringe` (injectors). Game event: `SFX/Item/use_{soundKey}`. `meds` is an alias for `bandage`.
+- **soundKey**: Item category. `food` (food/drink), `bandage` (bandages/medicine, primary category), `syringe` (injectors). Game event: `SFX/Item/use_{soundKey}`. `meds` is an alias for `bandage`. **Note: Drinks do not have a separate `drink` category; they belong under `food`.**
 
 ## File Lookup Priority
 

@@ -56,7 +56,7 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Enable Home BGM | Bool | On | |
 | Enable Base Entry Sound | Bool | On | Controls start.mp3 |
 | Music Volume | Int | 100% | 0–100 |
-| Use SFX Bus | Bool | Off | Experimental, routes via SFX instead of Music bus |
+| Route Music through SFX Bus | Bool | Off | Experimental, routes via SFX instead of Music bus |
 | Random Next Track | Bool | Off | |
 | Random Previous Too | Bool | Off | Requires Random to be enabled first |
 | Avoid Consecutive Repeat | Bool | On | Effective in random mode |

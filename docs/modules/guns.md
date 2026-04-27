@@ -41,6 +41,8 @@ CustomGunSounds/
 
 **换弹结束**：`{TypeID}_reload_end` → `default_reload_end` → `default`
 
+其中 `{soundKey}` 是从 player.log 中 `[GunShoot]` 行的 `key=xxx` 获取的武器音效标识。
+
 ## 变体
 
 同一个 TypeID 可以加 `_1`、`_2` 后缀随机选择：

@@ -61,3 +61,30 @@ BossBGM/
 ## 优先级
 
 Boss BGM 优先级高于场景 BGM 和标题/主页 BGM。多 Boss 时只播一个，切换有防抖和淡入淡出处理。
+
+## 附录：BOSS NameKey → 文件名对照表
+
+文件名 = NameKey 去掉 `Cname_` 前缀，支持 `.mp3`/`.wav`/`.ogg`/`.flac`。
+
+| NameKey | 中文名 | 文件名 |
+|---------|--------|--------|
+| `Cname_BALeader` | BA队长 | `BALeader.{ext}` |
+| `Cname_Boss_Sniper` | 劳登 | `Boss_Sniper.{ext}` |
+| `Cname_Boss_Shot` | 喷子 | `Boss_Shot.{ext}` |
+| `Cname_ServerGuardian` | 矿长 | `ServerGuardian.{ext}` |
+| `Cname_Speedy` | 急速团长 | `Speedy.{ext}` |
+| `Cname_Boss_Fly` | 蝇蝇队长 | `Boss_Fly.{ext}` |
+| `Cname_Boss_Arcade` | 暴走街机 | `Boss_Arcade.{ext}` |
+| `Cname_Boss_3Shot` | 三枪哥 | `Boss_3Shot.{ext}` |
+| `Cname_Prison_Boss` | 典狱长 | `Prison_Boss.{ext}` |
+| `Cname_StormBoss1` | 噗咙噗咙 | `StormBoss1.{ext}` |
+| `Cname_StormBoss2` | 咕噜咕噜 | `StormBoss2.{ext}` |
+| `Cname_StormBoss3` | 啪啦啪啦 | `StormBoss3.{ext}` |
+| `Cname_StormBoss4` | 比利比利 | `StormBoss4.{ext}` |
+| `Cname_StormBoss5` | 口口口口 | `StormBoss5.{ext}` |
+| `Cname_ShortEagle` | 矮鸭 | `ShortEagle.{ext}` |
+| `Cname_UltraMan` | 光之男 | `UltraMan.{ext}` |
+| `Cname_CrazyRob` | 失控机械蜘蛛 | `CrazyRob.{ext}` |
+| `Cname_Vida` | 维达 | `Vida.{ext}` |
+
+未列出的 BOSS 或找不到专属文件时，回退到 `default_boss.{ext}`。

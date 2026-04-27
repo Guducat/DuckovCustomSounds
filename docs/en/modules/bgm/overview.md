@@ -72,3 +72,14 @@ Transitions are handled via fade in/out. Extraction mode uses the SFX bus and is
 - **Multiple BGM conflict**: Priority is handled automatically: Boss > Scene > Title/Home. No manual coordination needed.
 
 See individual sub-module pages for detailed instructions.
+
+---
+
+## Experimental: Ambient Intercept
+
+For scenarios where you want to suppress game ambient sounds (wind, insects, etc. — `Amb/amb_*` events), a global mute intercept is available.
+
+- **Toggle**: Set `"enableAmbientIntercept": true` in `settings.json` (default `false`; not exposed in ModConfig UI)
+- **Behavior**: Intercepts all `Amb/amb_*` prefixed ambient sound events
+- **Exception**: `Amb/amb_storm` (storm ambient) is never intercepted
+- **Caveat**: Experimental feature; may over-silence certain scenes. Only recommended for users with a clear need

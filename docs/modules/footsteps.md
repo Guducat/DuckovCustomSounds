@@ -21,7 +21,7 @@ CustomFootStepSounds/
     └── normal_duck_dash.mp3
 ```
 
-首次运行自动生成 `footstep_voice_rule.json`（默认含 Player、Scav、Usec 的简化规则）。
+首次运行自动生成 `footstep_voice_rule.json`（默认含 Player、Scav、Usec 的简化规则）。**注意：配置文件名必须是 `footstep_voice_rule.json`，不是 `footsteps.json`。**
 
 ## soundKey 说明
 
