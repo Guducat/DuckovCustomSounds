@@ -40,3 +40,21 @@ Tip: The new additions above default to the "Music" volume slider; they auto-coo
 
 ## 2026-04-26 v2.1.1
 - Improvement: Improved scene entry music matching logic, reducing the chance of missing entry music.
+
+## 2026-04-27 v2.2.0
+
+- New: More grenade sound compatibility — legacy event fallback retained while routing by source and TypeID to dedicated sounds, with no-event injection and strict variant matching.
+- Improvement: Grenade sound docs and sound pack generator updated.
+
+## 2026-04-27 v2.2.1
+
+- New: ModConfig UI for ambient intercept, plus an independent storm phase stinger toggle (`Music/Stinger/stg_storm_1`, `stg_storm_2`).
+
+## 2026-04-27 v2.3.0
+
+- New: Hit and kill sound feedback module — hit/kill event replacement, ModConfig toggles and volume, reflection diagnostics for serialized fields.
+
+## 2026-08-12 v2.3.1
+
+- Fix: Boss BGM no longer suppresses Scene BGM while a Boss is outside trigger range, preventing scene and Boss music from going silent together.
+- Improvement: Scene BGM resumes automatically when a Boss leaves trigger range, is unregistered, or the scene is cleared; trigger distance changes apply immediately at runtime.

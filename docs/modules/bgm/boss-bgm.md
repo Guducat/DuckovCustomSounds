@@ -60,7 +60,7 @@ BossBGM/
 
 ## 优先级
 
-Boss BGM 优先级高于场景 BGM 和标题/主页 BGM。多 Boss 时只播一个，切换有防抖和淡入淡出处理。
+Boss 进入触发距离内时，Boss BGM 优先级高于场景 BGM 和标题/主页 BGM；Boss 离开触发距离、被注销或场景清理后，场景 BGM 自动恢复。多 Boss 时只播一个，切换有防抖和淡入淡出处理。
 
 ## 附录：BOSS NameKey → 文件名对照表
 

@@ -5,172 +5,170 @@ using UnityEngine;
 namespace DuckovCustomSounds.CustomBGM.BossBGM
 {
     /// <summary>
-    /// BOSS BGM 静态管理器
-    /// 管理所有活跃的 BOSS BGM Controller，处理多 BOSS 优先级（距离最近优先）
+    /// 管理所有 Boss BGM Controller，并按玩家距离选择当前活动 Boss。
     /// </summary>
     internal static class BossBGMManager
     {
-        private static List<BossBGMController> activeBosses = new List<BossBGMController>();
-        private static BossBGMController? currentActiveBoss = null;
+        private static readonly List<BossBGMController> ActiveBosses = new List<BossBGMController>();
 
-        private static float _lastSwitchTime = -999f;
+        private static BossBGMController? currentActiveBoss;
+        private static bool sceneBgmSuppressed;
+        private static float lastSwitchTime = -999f;
 
-        /// <summary>
-        /// 注册 BOSS
-        /// </summary>
         public static void RegisterBoss(BossBGMController boss)
         {
-            if (boss == null) return;
+            if (boss == null)
+                return;
 
-            if (!activeBosses.Contains(boss))
+            if (!ActiveBosses.Contains(boss))
             {
-                activeBosses.Add(boss);
-                BossBGMLogger.Debug($"BOSS 已注册: {boss.GetBossName()}, 当前活跃 BOSS 数量: {activeBosses.Count}");
+                ActiveBosses.Add(boss);
+                BossBGMLogger.Debug($"BOSS 已注册: {boss.GetBossName()}, 当前活跃 BOSS 数量: {ActiveBosses.Count}");
             }
 
-            // 立即更新活跃 BGM
+            UpdateActiveBGM();
+        }
+
+        public static void UnregisterBoss(BossBGMController boss)
+        {
+            if (boss == null)
+                return;
+
+            if (!ActiveBosses.Remove(boss))
+                return;
+
+            BossBGMLogger.Debug($"BOSS 已注销: {boss.GetBossName()}, 当前活跃 BOSS 数量: {ActiveBosses.Count}");
+
+            if (currentActiveBoss == boss)
+            {
+                boss.SetPriority(false);
+                currentActiveBoss = null;
+            }
+
             UpdateActiveBGM();
         }
 
         /// <summary>
-        /// 注销 BOSS
-        /// </summary>
-        public static void UnregisterBoss(BossBGMController boss)
-        {
-            if (boss == null) return;
-
-            if (activeBosses.Remove(boss))
-            {
-                BossBGMLogger.Debug($"BOSS 已注销: {boss.GetBossName()}, 当前活跃 BOSS 数量: {activeBosses.Count}");
-
-                // 如果注销的是当前活跃 BOSS，清除引用
-                if (currentActiveBoss == boss)
-                {
-                    currentActiveBoss = null;
-                }
-
-                // 立即更新活跃 BGM
-                UpdateActiveBGM();
-            }
-        }
-
-        /// <summary>
-        /// 更新活跃 BGM（由 ModBehaviour 定期调用）
-        /// 策略：距离最近的 BOSS 优先
+        /// 选择触发范围内最近的 Boss。由 ModBehaviour 定期调用。
         /// </summary>
         public static void UpdateActiveBGM()
         {
-            // 清理无效的 BOSS（GameObject 已销毁）
-            activeBosses.RemoveAll(b => b == null || b.gameObject == null);
+            ActiveBosses.RemoveAll(boss => boss == null || boss.gameObject == null);
 
-            bool hadActiveBoss = currentActiveBoss != null;
-
-            if (activeBosses.Count == 0)
+            if (!BossBGMConfig.Enabled)
             {
-                if (currentActiveBoss != null)
-                {
-                    currentActiveBoss = null;
-                    BossBGMLogger.Debug("所有 BOSS 已清除，无活跃 BGM");
-
-                    // 通知场景 BGM 系统：BOSS BGM 已停用
-                    NotifySceneBGM(false);
-                }
+                DeactivateCurrentBoss();
+                NotifySceneBGM(false);
                 return;
             }
 
-            // 找到距离最近的 BOSS
-            BossBGMController? closest = null;
-            float minDistance = float.MaxValue;
-
-            foreach (var boss in activeBosses)
+            if (ActiveBosses.Count == 0)
             {
-                if (boss == null)
+                if (currentActiveBoss != null)
+                    BossBGMLogger.Debug("所有 BOSS 已清除，无活跃 BGM");
+
+                currentActiveBoss = null;
+                NotifySceneBGM(false);
+                return;
+            }
+
+            float triggerDistance = Mathf.Max(0f, BossBGMConfig.TriggerDistance);
+            float triggerDistanceSquared = triggerDistance * triggerDistance;
+            BossBGMController? closest = null;
+            float closestDistanceSquared = float.MaxValue;
+            float currentDistanceSquared = float.MaxValue;
+            bool currentBossInRange = false;
+
+            foreach (BossBGMController boss in ActiveBosses)
+            {
+                if (!boss.TryGetDistanceSquaredToPlayer(out float distanceSquared))
                     continue;
 
-                float distance = boss.GetDistanceToPlayer();
-                if (distance < minDistance)
+                bool inRange = distanceSquared < triggerDistanceSquared;
+                if (boss == currentActiveBoss)
                 {
-                    minDistance = distance;
+                    currentDistanceSquared = distanceSquared;
+                    currentBossInRange = inRange;
+                }
+
+                if (inRange && distanceSquared < closestDistanceSquared)
+                {
                     closest = boss;
+                    closestDistanceSquared = distanceSquared;
                 }
             }
 
-            // 计算当前活跃者距离（如有）
-            float currentDistance = float.MaxValue;
-            if (currentActiveBoss != null)
+            if (closest == currentActiveBoss)
+                return;
+
+            BossBGMController? previousBoss = currentActiveBoss;
+            bool hadActiveBoss = previousBoss != null;
+            bool willHaveActiveBoss = closest != null;
+
+            if (previousBoss != null && closest != null && currentBossInRange)
             {
-                currentDistance = currentActiveBoss.GetDistanceToPlayer();
+                float elapsed = Time.time - lastSwitchTime;
+                float minInterval = BossBGMConfig.MinSwitchIntervalSeconds;
+                if (elapsed < minInterval)
+                {
+                    BossBGMLogger.Debug(
+                        $"[BossBGM] 切换冷却中：已过 {elapsed:F2}s / 冷却 {minInterval:F2}s，保持当前 {previousBoss.GetBossName()}");
+                    return;
+                }
+
+                float currentDistance = Mathf.Sqrt(currentDistanceSquared);
+                float closestDistance = Mathf.Sqrt(closestDistanceSquared);
+                float distanceAdvantage = currentDistance - closestDistance;
+                float requiredAdvantage = BossBGMConfig.MinDistanceDeltaToSwitch;
+                if (distanceAdvantage < requiredAdvantage)
+                {
+                    BossBGMLogger.Debug(
+                        $"[BossBGM] 距离优势不足：当前 {previousBoss.GetBossName()}={currentDistance:F1}m, " +
+                        $"新最近 {closest.GetBossName()}={closestDistance:F1}m, 阈值={requiredAdvantage:F1}m");
+                    return;
+                }
             }
 
-            // 切换活跃 BOSS（带防抖/粘滞）
-            if (closest != currentActiveBoss)
+            if (previousBoss != null)
             {
-                var activeBoss = currentActiveBoss;
-                var nextBoss = closest;
-                bool wasActive = activeBoss != null;
-                bool willBeActive = nextBoss != null;
-
-                // 如果已有活跃者且候选存在，则应用防抖与距离优势判断
-                if (activeBoss != null && nextBoss != null)
-                {
-                    // 1) 切换冷却
-                    float elapsed = Time.time - _lastSwitchTime;
-                    float minInterval = BossBGMConfig.MinSwitchIntervalSeconds;
-                    if (elapsed < minInterval)
-                    {
-                        BossBGMLogger.Debug($"[BossBGM] 切换冷却中：已过 {elapsed:F2}s / 冷却 {minInterval:F2}s，保持当前 {activeBoss.GetBossName()}");
-                        return;
-                    }
-
-                    // 2) 距离优势阈值
-                    float delta = currentDistance - minDistance; // 需要大于等于阈值才允许切换
-                    float required = BossBGMConfig.MinDistanceDeltaToSwitch;
-                    if (delta < required)
-                    {
-                        BossBGMLogger.Debug($"[BossBGM] 距离优势不足：当前 {activeBoss.GetBossName()}={currentDistance:F1}m, 新最近 {nextBoss.GetBossName()}={minDistance:F1}m, 阈值={required:F1}m");
-                        return;
-                    }
-                }
-
-                // 旧 BOSS 设置为非活跃（静音）
-                if (activeBoss != null && activeBoss.IsValid())
-                {
-                    activeBoss.SetPriority(false);
-                    BossBGMLogger.Debug($"BOSS BGM 静音: {activeBoss.GetBossName()}");
-                }
-
-                // 新 BOSS 设置为活跃（淡入）
-                if (nextBoss != null)
-                {
-                    nextBoss.SetPriority(true);
-                    BossBGMLogger.Info($"切换活跃 BOSS BGM: {nextBoss.GetBossName()} (新距离 {minDistance:F1}m / 原 {currentDistance:F1}m / 优势 {Mathf.Max(0f, currentDistance - minDistance):F1}m)");
-                }
-
-                currentActiveBoss = nextBoss;
-                _lastSwitchTime = Time.time;
-
-                // 通知场景 BGM 系统状态变化
-                if (!wasActive && willBeActive)
-                {
-                    // BOSS BGM 从无到有
-                    NotifySceneBGM(true);
-                }
-                else if (wasActive && !willBeActive)
-                {
-                    // BOSS BGM 从有到无
-                    NotifySceneBGM(false);
-                }
+                previousBoss.SetPriority(false);
+                BossBGMLogger.Debug($"BOSS BGM 静音: {previousBoss.GetBossName()}");
             }
+
+            if (closest != null)
+            {
+                closest.SetPriority(true);
+                float closestDistance = Mathf.Sqrt(closestDistanceSquared);
+                BossBGMLogger.Info($"切换活跃 BOSS BGM: {closest.GetBossName()} (距离 {closestDistance:F1}m)");
+            }
+
+            currentActiveBoss = closest;
+            lastSwitchTime = Time.time;
+
+            if (!hadActiveBoss && willHaveActiveBoss)
+                NotifySceneBGM(true);
+            else if (hadActiveBoss && !willHaveActiveBoss)
+                NotifySceneBGM(false);
         }
 
-        /// <summary>
-        /// 通知场景 BGM 系统 BOSS BGM 状态变化
-        /// </summary>
+        private static void DeactivateCurrentBoss()
+        {
+            if (currentActiveBoss == null)
+                return;
+
+            currentActiveBoss.SetPriority(false);
+            currentActiveBoss = null;
+        }
+
         private static void NotifySceneBGM(bool isActive)
         {
+            if (sceneBgmSuppressed == isActive)
+                return;
+
             try
             {
                 SceneBGM.CustomSceneBGM.SetBossBGMActive(isActive);
+                sceneBgmSuppressed = isActive;
                 BossBGMLogger.Debug($"已通知场景 BGM 系统: BOSS BGM Active = {isActive}");
             }
             catch (System.Exception ex)
@@ -179,224 +177,29 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             }
         }
 
-        /// <summary>
-        /// 清理所有 BOSS（场景切换时调用）
-        /// </summary>
         public static void Clear()
         {
-            BossBGMLogger.Debug($"清理所有 BOSS BGM，共 {activeBosses.Count} 个");
+            BossBGMLogger.Debug($"清理所有 BOSS BGM，共 {ActiveBosses.Count} 个");
 
-            // 销毁所有 Controller（会触发 OnDestroy 自动注销）
-            foreach (var boss in activeBosses.ToList())
+            foreach (BossBGMController boss in ActiveBosses.ToList())
             {
                 if (boss != null && boss.gameObject != null)
-                {
                     Object.Destroy(boss);
-                }
             }
 
-            activeBosses.Clear();
+            ActiveBosses.Clear();
             currentActiveBoss = null;
-
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            //
-            // 
-            //
-            //
-            // 
-            // 
-            //
-            //
-            //
-
-            //
-            //
-            //
-
-            //
-            //
-            
-            //
-            //
-            
-            //
-            //
-
-            //
-            //
-            // 
-            // 
-            //
-            //
-
-            // 
-            //
-            //
-            // 
-            // 
-            // 
-            // 
-            // 
-            // 
-            //
-            // 
-            // 
-            //
-            // 
-            //
-            
-            //
-            // 
-            // 
-            // 
-            //
-            //
-            // 
-            // 
-            // 
-            //
-            
-            //
-            // 
-            //
-            // 
-            // 
-            // 
-            //
-            
-            //
-            // 
-            // 
-            // 
-            //
-            //
-
-            //
-            // 
-            // 
-            //
-            // 
-            // 
-            
-            //
-            // 
-            
-            //
-            // 
-            // 
-            //
-            // 
-            // 
-            // 
-            // 
-            // 
-            
-            //
-            // 
-            // 
-            // 
-            //
-            // 
-            
-            // 
-            // 
-            //
-            // 
-            // 
-            //
-            // 
-            // 
-            // 
-            // 
-            // 
-            
-            //
-            // 
-            // 
-            //
-            // 
-            // 
-            // 
-            // 
-            // 
-            
-            //
-            // 
-            // 
-            // 
-            //
-            
-            //
-            //
-            
-            //
-            
-            //
-            //
-            
-            
-            //
-            // 
-            
-            //
-            // 
-            
-            //
-            // 
-            
-            //
-            //
-            // 
-            // 
+            NotifySceneBGM(false);
             BossBGMFader.ForceStopAll("SceneSwitch/Clear");
-            BossBGMLogger.Debug("BOSS    : Fader ForceStopAll");
+            BossBGMLogger.Debug("Boss BGM 已在场景清理时全部停止");
         }
 
-        /// <summary>
-        /// 获取当前活跃 BOSS 数量（用于调试）
-        /// </summary>
         public static int GetActiveBossCount()
         {
-            activeBosses.RemoveAll(b => b == null || b.gameObject == null);
-            return activeBosses.Count;
+            ActiveBosses.RemoveAll(boss => boss == null || boss.gameObject == null);
+            return ActiveBosses.Count;
         }
 
-        /// <summary>
-        /// 获取当前活跃 BOSS 名称（用于调试）
-        /// </summary>
         public static string GetCurrentActiveBossName()
         {
             return currentActiveBoss != null ? currentActiveBoss.GetBossName() : "None";

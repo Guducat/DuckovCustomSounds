@@ -76,4 +76,4 @@ SceneBGM/
 
 ## 优先级
 
-Boss BGM > 场景 Loop > 场景 Enter。Boss 激活时场景 BGM 自动降级或停止。
+Boss BGM > 场景 Loop > 场景 Enter。Boss 进入触发距离内时场景 BGM 自动降级或停止；Boss 离开触发距离或消失后自动恢复。

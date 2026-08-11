@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RestoreSources>$(MSBuildProjectDirectory)</RestoreSources>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="../CustomBGM/Core/AudioFileExtensions.cs" Link="AudioFileExtensions.cs" />
+        <Compile Include="../CustomBGM/BossBGM/BossBGMManager.cs" Link="BossBGMManager.cs" />
+        <Compile Include="../CustomBGM/SceneBGM/SceneMusicResolver.cs" Link="SceneMusicResolver.cs" />
+    </ItemGroup>
+
+</Project>

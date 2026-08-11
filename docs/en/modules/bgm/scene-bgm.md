@@ -76,4 +76,4 @@ File location: `SceneBGM/config.json`. Auto-generated on first run.
 
 ## Priority
 
-Boss BGM > Scene Loop > Scene Enter. Scene BGM is automatically downgraded or stopped when a Boss is active.
+Boss BGM > Scene Loop > Scene Enter. Scene BGM is automatically downgraded or stopped while a Boss is within trigger range, and resumes automatically when the Boss leaves trigger range or disappears.

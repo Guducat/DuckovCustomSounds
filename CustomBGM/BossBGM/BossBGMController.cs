@@ -29,10 +29,6 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         private float targetVolume = 0f;
         private float fadeSpeed; // 淡入淡出速度（根据 FadeDuration 计算）
 
-        // 配置参数
-        private float triggerDistance;
-        private float triggerDistanceSqr; // 优化：避免开方
-
         // 优先级控制
         private bool isActive = false;
 
@@ -57,8 +53,6 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                 bossName = ctx?.NameKey ?? "Unknown";
 
                 // 加载配置
-                triggerDistance = BossBGMConfig.TriggerDistance;
-                triggerDistanceSqr = triggerDistance * triggerDistance;
                 updateInterval = BossBGMConfig.UpdateInterval;
 
                 // 计算淡入淡出速度（2秒从 0 到 1 = 0.5/秒）
@@ -78,7 +72,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                 currentVolume = 0f;
                 targetVolume = 0f;
 
-                BossBGMLogger.Info($"BOSS BGM Controller 已启动: {bossName} (距离阈值: {triggerDistance}m, 淡入淡出: {BossBGMConfig.FadeDuration}s)");
+                BossBGMLogger.Info($"BOSS BGM Controller 已启动: {bossName} (距离阈值: {BossBGMConfig.TriggerDistance}m, 淡入淡出: {BossBGMConfig.FadeDuration}s)");
 
                 // 注册到 BossBGMManager
                 BossBGMManager.RegisterBoss(this);
@@ -155,6 +149,8 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             Vector3 delta = playerTransform.position - transform.position;
             float distanceSqr = delta.sqrMagnitude;
             float distance = Mathf.Sqrt(distanceSqr);
+            float triggerDistance = Mathf.Max(0f, BossBGMConfig.TriggerDistance);
+            float triggerDistanceSqr = triggerDistance * triggerDistance;
 
             // 根据距离和活跃状态设置目标音量
             if (!isActive)
@@ -251,19 +247,34 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         }
 
         /// <summary>
-        /// 获取到玩家的距离（供 BossBGMManager 调用）
+        /// 获取到玩家的距离平方（供 BossBGMManager 低开销筛选）
         /// </summary>
-        public float GetDistanceToPlayer()
+        public bool TryGetDistanceSquaredToPlayer(out float distanceSquared)
         {
+            distanceSquared = float.MaxValue;
+
             if (playerTransform == null)
             {
                 var levelManager = LevelManager.Instance;
                 if (levelManager == null || levelManager.MainCharacter == null)
-                    return float.MaxValue;
+                    return false;
+
                 playerTransform = levelManager.MainCharacter.transform;
             }
 
-            return Vector3.Distance(playerTransform.position, transform.position);
+            Vector3 delta = playerTransform.position - transform.position;
+            distanceSquared = delta.sqrMagnitude;
+            return true;
+        }
+
+        /// <summary>
+        /// 获取到玩家的距离（供 BossBGMManager 调用）
+        /// </summary>
+        public float GetDistanceToPlayer()
+        {
+            return TryGetDistanceSquaredToPlayer(out float distanceSquared)
+                ? Mathf.Sqrt(distanceSquared)
+                : float.MaxValue;
         }
 
         /// <summary>
