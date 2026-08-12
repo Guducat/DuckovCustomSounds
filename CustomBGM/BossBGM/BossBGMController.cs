@@ -239,11 +239,65 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         /// </summary>
         public void SetPriority(bool active)
         {
-                if (isActive != active)
+            if (active)
+            {
+                BossBGMFader.StopPending(this, "PriorityActivated");
+            }
+            else
+            {
+                TransferPlaybackToFader(Mathf.Max(0f, BossBGMConfig.FadeDuration), "PriorityDeactivated");
+            }
+
+            if (isActive != active)
+            {
+                isActive = active;
+                BossBGMLogger.Debug($"BOSS BGM 优先级变更: {bossName} -> {(active ? "激活" : "静音")}");
+            }
+        }
+
+        private void TransferPlaybackToFader(float fadeSeconds, string reason)
+        {
+            targetVolume = 0f;
+
+            if (bgmInstance.HasValue && bgmInstance.Value.isValid())
+            {
+                var instance = bgmInstance.Value;
+
+                if (BossBGMConfig.ResumePlaybackEnabled)
                 {
-                    isActive = active;
-                    BossBGMLogger.Debug($"BOSS BGM 优先级变更: {bossName} -> {(active ? "激活" : "静音")}");
+                    try
+                    {
+                        instance.getTimelinePosition(out lastTimelineMs);
+                        BossBGMLogger.Debug(
+                            $"[BossBGM] 保存进度: {bossName} -> {lastTimelineMs}ms, 原因: {reason}");
+                    }
+                    catch (Exception ex)
+                    {
+                        BossBGMLogger.Debug($"[BossBGM] 保存进度失败: {bossName} - {ex.Message}");
+                    }
                 }
+
+                try
+                {
+                    BossBGMFader.FadeOutAndRelease(instance, this, bossName, fadeSeconds);
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        instance.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+                        instance.release();
+                    }
+                    catch { }
+
+                    BossBGMLogger.Warning(
+                        $"[BossBGM] 淡出宿主不可用，已停止实例: {bossName}, 原因: {reason} - {ex.Message}");
+                }
+            }
+
+            bgmInstance = null;
+            currentVolume = 0f;
+            targetVolume = 0f;
         }
 
         /// <summary>
@@ -300,30 +354,9 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         {
             try
             {
-                // BOSS 死亡：启动“死亡淡出”，由宿主在指定时间后停止并释放
-                if (bgmInstance.HasValue && bgmInstance.Value.isValid())
-                {
-                    float deathFade = Mathf.Max(0f, BossBGMConfig.BossDeathFadeOutSeconds);
-                    try
-                    {
-                        BossBGMFader.FadeOutAndRelease(bgmInstance.Value, bossName, deathFade);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        // 兜底：如果宿主不可用，直接淡出停止
-                        try
-                        {
-                            bgmInstance.Value.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
-                            bgmInstance.Value.release();
-                        }
-                        catch { }
-                        BossBGMLogger.Warning($"[BossBGM] 死亡淡出宿主不可用，已直接停止: {bossName} - {ex.Message}");
-                    }
-                    finally
-                    {
-                        bgmInstance = null;
-                    }
-                }
+                TransferPlaybackToFader(
+                    Mathf.Max(0f, BossBGMConfig.BossDeathFadeOutSeconds),
+                    "Destroyed");
 
                 // 从 BossBGMManager 注销
                 BossBGMManager.UnregisterBoss(this);

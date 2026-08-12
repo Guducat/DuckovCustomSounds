@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using DuckovCustomSounds;
 using DuckovCustomSounds.CustomBGM.BossBGM;
@@ -17,14 +18,19 @@ var tests = new (string Name, Action Body)[]
     ("BossBGM trigger distance stays consistent after config reload", BossBgmTriggerDistanceStaysConsistentAfterConfigReload),
     ("Out-of-range boss does not suppress scene BGM", OutOfRangeBossDoesNotSuppressSceneBgm),
     ("Unregistering current boss restores scene BGM", UnregisteringCurrentBossRestoresSceneBgm),
+    ("Unregistering current boss with only far bosses restores scene BGM", UnregisteringCurrentBossWithOnlyFarBossesRestoresSceneBgm),
     ("Clearing boss manager restores scene BGM", ClearingBossManagerRestoresSceneBgm),
     ("Disabling boss BGM restores scene BGM", DisablingBossBgmRestoresSceneBgm),
     ("Switching bosses deactivates old controller without active instance", SwitchingBossesDeactivatesOldControllerWithoutActiveInstance),
     ("Out-of-range current boss bypasses switch cooldown", OutOfRangeCurrentBossBypassesSwitchCooldown),
     ("Boss range transitions update scene suppression", BossRangeTransitionsUpdateSceneSuppression),
+    ("Disabled current boss restores scene BGM", DisabledCurrentBossRestoresSceneBgm),
     ("Unregistering current boss keeps suppression for next candidate", UnregisteringCurrentBossKeepsSuppressionForNextCandidate),
     ("Re-enabling boss BGM reuses registered controllers", ReEnablingBossBgmReusesRegisteredControllers),
     ("Boss manager queries each distance once per update", BossManagerQueriesEachDistanceOncePerUpdate),
+    ("Boss fader completes at zero volume and releases the instance", BossFaderCompletesAtZeroVolumeAndReleasesInstance),
+    ("Boss fader stops only instances owned by the activated controller", BossFaderStopsOnlyInstancesOwnedByActivatedController),
+    ("Boss controller transfers playback to the persistent fader on deactivation", BossControllerTransfersPlaybackToPersistentFaderOnDeactivation),
     ("ExtractionBGM exposes configurable volume and applies it", ExtractionBgmExposesConfigurableVolumeAndAppliesIt),
     ("Extraction countdown cancellation fades out before release", ExtractionCountdownCancellationFadesOutBeforeRelease),
     ("TitleBGM stingers apply HomeBGM volume", TitleBgmStingersApplyHomeBgmVolume),
@@ -60,6 +66,10 @@ var tests = new (string Name, Action Body)[]
     ("Logger emits structured module scopes", LoggerEmitsStructuredModuleScopes),
     ("Diagnostic loggers use structured scopes", DiagnosticLoggersUseStructuredScopes),
     ("Map detector classifies loading scenes separately", MapDetectorClassifiesLoadingScenesSeparately),
+    ("Extraction coverage accepts every supported source scene", ExtractionCoverageAcceptsEverySupportedSourceScene),
+    ("Extraction coverage rejects base and unknown scenes", ExtractionCoverageRejectsBaseAndUnknownScenes),
+    ("Extraction transition suppresses only recent map stingers", ExtractionTransitionSuppressesOnlyRecentMapStingers),
+    ("Extraction completion ignores duplicate notifications", ExtractionCompletionIgnoresDuplicateNotifications),
     ("Extraction stinger supports contextual map stingers", ExtractionStingerSupportsContextualMapStingers),
     ("BGM audio file resolver supports cached FLAC lookup", BgmAudioFileResolverSupportsCachedFlacLookup),
     ("Ambient intercept is editable through ModConfig", AmbientInterceptIsEditableThroughModConfig),
@@ -174,6 +184,30 @@ void UnregisteringCurrentBossRestoresSceneBgm()
             throw new InvalidOperationException("当前 Boss 注销后应恢复场景音乐。");
         if (boss.PriorityActive)
             throw new InvalidOperationException("当前 Boss 注销后应撤销自身优先级。");
+    }
+    finally
+    {
+        BossBGMTestEnvironment.Reset();
+    }
+}
+
+void UnregisteringCurrentBossWithOnlyFarBossesRestoresSceneBgm()
+{
+    BossBGMTestEnvironment.Reset();
+
+    try
+    {
+        var currentBoss = new BossBGMController("current-boss", distance: 10f);
+        var farBoss = new BossBGMController("far-boss", distance: 100f);
+        BossBGMManager.RegisterBoss(currentBoss);
+        BossBGMManager.RegisterBoss(farBoss);
+
+        BossBGMManager.UnregisterBoss(currentBoss);
+
+        if (CustomSceneBGM.IsBossBGMActive)
+            throw new InvalidOperationException("当前 Boss 注销且仅剩范围外 Boss 时应恢复场景音乐。");
+        if (farBoss.PriorityActive)
+            throw new InvalidOperationException("范围外 Boss 不应获得播放优先级。");
     }
     finally
     {
@@ -307,6 +341,37 @@ void BossRangeTransitionsUpdateSceneSuppression()
     }
 }
 
+void DisabledCurrentBossRestoresSceneBgm()
+{
+    BossBGMTestEnvironment.Reset();
+
+    try
+    {
+        var boss = new BossBGMController("disabled-boss", distance: 10f);
+        BossBGMManager.RegisterBoss(boss);
+
+        boss.isActiveAndEnabled = false;
+        BossBGMManager.UpdateActiveBGM();
+
+        if (boss.PriorityActive)
+            throw new InvalidOperationException("停用的当前 Boss 应失去播放优先级。");
+        if (CustomSceneBGM.IsBossBGMActive)
+            throw new InvalidOperationException("当前 Boss 停用后应恢复场景音乐。");
+
+        boss.isActiveAndEnabled = true;
+        BossBGMManager.UpdateActiveBGM();
+
+        if (!boss.PriorityActive)
+            throw new InvalidOperationException("Boss 重新启用后应恢复参与候选选择。");
+        if (!CustomSceneBGM.IsBossBGMActive)
+            throw new InvalidOperationException("重新启用且位于范围内的 Boss 应再次抑制场景音乐。");
+    }
+    finally
+    {
+        BossBGMTestEnvironment.Reset();
+    }
+}
+
 void UnregisteringCurrentBossKeepsSuppressionForNextCandidate()
 {
     BossBGMTestEnvironment.Reset();
@@ -385,6 +450,120 @@ void BossManagerQueriesEachDistanceOncePerUpdate()
     }
 }
 
+void BossFaderCompletesAtZeroVolumeAndReleasesInstance()
+{
+    var owner = new BossBGMController("fading-boss", distance: 20f);
+    var state = new FMOD.Studio.EventInstanceState { Volume = 0.7f };
+    var instance = new FMOD.Studio.EventInstance(state);
+    var host = new BossBGMFaderHost();
+
+    var startFade = typeof(BossBGMFaderHost).GetMethod(
+        "StartFade",
+        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+        binder: null,
+        new[]
+        {
+            typeof(FMOD.Studio.EventInstance),
+            typeof(BossBGMController),
+            typeof(string),
+            typeof(float)
+        },
+        modifiers: null);
+    if (startFade == null)
+        throw new InvalidOperationException("BossBGMFaderHost 缺少带 Controller 所有者的 StartFade 入口。");
+
+    var advanceFades = typeof(BossBGMFaderHost).GetMethod(
+        "AdvanceFades",
+        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+    if (advanceFades == null)
+        throw new InvalidOperationException("BossBGMFaderHost 缺少可测试的确定性淡出推进入口。");
+
+    startFade.Invoke(host, new object[] { instance, owner, "fading-boss", 1f });
+    advanceFades.Invoke(host, new object[] { 0.4f });
+    advanceFades.Invoke(host, new object[] { 0.6f });
+
+    if (state.Volume != 0f)
+        throw new InvalidOperationException($"淡出完成音量应为 0，当前为 {state.Volume}。");
+    if (!state.Stopped)
+        throw new InvalidOperationException("淡出完成后应停止 FMOD 实例。");
+    if (!state.Released)
+        throw new InvalidOperationException("淡出完成后应释放 FMOD 实例。");
+}
+
+void BossFaderStopsOnlyInstancesOwnedByActivatedController()
+{
+    var firstOwner = new BossBGMController("first-owner", distance: 20f);
+    var secondOwner = new BossBGMController("second-owner", distance: 20f);
+    var firstState = new FMOD.Studio.EventInstanceState { Volume = 0.6f };
+    var secondState = new FMOD.Studio.EventInstanceState { Volume = 0.8f };
+
+    BossBGMFader.ForceStopAll("TestReset");
+    try
+    {
+        BossBGMFader.FadeOutAndRelease(
+            new FMOD.Studio.EventInstance(firstState),
+            firstOwner,
+            "first-owner",
+            1f);
+        BossBGMFader.FadeOutAndRelease(
+            new FMOD.Studio.EventInstance(secondState),
+            secondOwner,
+            "second-owner",
+            1f);
+
+        var stopPending = typeof(BossBGMFader).GetMethod(
+            "StopPending",
+            BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+        if (stopPending == null)
+            throw new InvalidOperationException("BossBGMFader 缺少按 Controller 所有者停止待淡出实例的入口。");
+
+        stopPending.Invoke(null, new object[] { firstOwner, "PriorityActivated" });
+
+        if (!firstState.Stopped || !firstState.Released)
+            throw new InvalidOperationException("重新激活 Controller 时应停止并释放其旧实例。");
+        if (secondState.Stopped || secondState.Released)
+            throw new InvalidOperationException("清理已激活 Controller 的旧实例时应保留其他 Controller 的淡出实例。");
+    }
+    finally
+    {
+        BossBGMFader.ForceStopAll("TestCleanup");
+    }
+}
+
+void BossControllerTransfersPlaybackToPersistentFaderOnDeactivation()
+{
+    var controller = Read("CustomBGM/BossBGM/BossBGMController.cs");
+
+    AssertContains(
+        controller,
+        "BossBGMFader.StopPending(this, \"PriorityActivated\");",
+        "Controller 重新激活时应清理自身尚未完成的旧实例淡出。");
+    AssertContains(
+        controller,
+        "TransferPlaybackToFader(Mathf.Max(0f, BossBGMConfig.FadeDuration), \"PriorityDeactivated\");",
+        "Controller 失去优先级时应立即将播放实例移交给持久淡出宿主。");
+    AssertContains(
+        controller,
+        "private void TransferPlaybackToFader(float fadeSeconds, string reason)",
+        "Controller 应统一处理离开范围与销毁时的实例移交。");
+    AssertContains(
+        controller,
+        "instance.getTimelinePosition(out lastTimelineMs);",
+        "实例移交前应保存播放进度，以便再次进入范围时恢复。");
+    AssertContains(
+        controller,
+        "BossBGMFader.FadeOutAndRelease(instance, this, bossName, fadeSeconds);",
+        "实例移交应记录 Controller 所有者，避免重新激活时影响其他 Boss。");
+    AssertContains(
+        controller,
+        "bgmInstance = null;\n            currentVolume = 0f;\n            targetVolume = 0f;",
+        "实例移交后应同步清除本地句柄与音量状态。");
+    AssertContains(
+        controller,
+        "TransferPlaybackToFader(\n                    Mathf.Max(0f, BossBGMConfig.BossDeathFadeOutSeconds),\n                    \"Destroyed\");",
+        "Controller 销毁时应复用统一移交逻辑并采用死亡淡出时长。");
+}
+
 void ExtractionBgmExposesConfigurableVolumeAndAppliesIt()
 {
     var config = Read("CustomBGM/ExtractionBGM/ExtractionBGMConfig.cs");
@@ -402,7 +581,7 @@ void ExtractionCountdownCancellationFadesOutBeforeRelease()
 
     AssertContains(sounds, "private const float CountdownCancelFadeOutSeconds = 0.35f",
         "倒计时取消应使用 0.x 秒淡出时长，避免立即切断音频。");
-    AssertContains(sounds, "StopActive(fadeCountdown: true);",
+    AssertContains(sounds, "StopActive(fadeCountdown: true, clearTransitionState: true);",
         "倒计时中止分支应进入淡出停止入口。");
     AssertContains(sounds, "FadeOutAndReleaseCountdown",
         "倒计时实例应通过独立淡出协程降低音量后释放。");
@@ -935,14 +1114,107 @@ void ExtractionStingerSupportsContextualMapStingers()
     var sounds = Read("CustomBGM/ExtractionBGM/ExtractionSounds.cs");
     var patches = Read("CustomBGM/ExtractionBGM/ExtractionSounds_Patches.cs");
 
-    AssertContains(sounds, "public static bool IsExtractionStingerKey", "撤离 Stinger 判断应封装为单一入口，避免补丁层固定读取白名单。");
-    AssertContains(sounds, "key.StartsWith(\"stg_map_\", StringComparison.OrdinalIgnoreCase)", "撤离上下文内应支持未知地图的 stg_map_* 成功音效。");
-    AssertContains(sounds, "string.Equals(key, \"stg_map_base\", StringComparison.OrdinalIgnoreCase)", "上下文扩展匹配应排除基地 Stinger。");
-    AssertContains(sounds, "HasActiveExtractionContext", "未知地图 Stinger 只能在撤离倒计时上下文内被识别。");
-    AssertContains(sounds, "CountdownSuccessStingerGraceSeconds", "撤离成功后的 Stinger 触发应有短时间保护窗口。");
-    AssertContains(patches, "ExtractionSounds.IsExtractionStingerKey(key)", "AudioManager.PlayStringer 补丁应使用统一的撤离 Stinger 判断入口。");
-    AssertDoesNotContain(patches, "ExtractionSounds.ExtractionStingerKeys.Contains(key)",
-        "补丁层不应继续固定读取撤离 Stinger 白名单。");
+    AssertContains(patches, "HarmonyPatch(typeof(LevelManager))", "撤离替换应挂接游戏确认撤离的 LevelManager 入口。");
+    AssertContains(patches, "HarmonyPatch(\"NotifyEvacuated\")", "撤离替换应覆盖 NotifyEvacuated，而非猜测少数地图键。");
+    AssertContains(patches, "ExtractionSounds.OnEvacuationCompleted()", "NotifyEvacuated 补丁应转发到撤离音乐控制器。");
+    AssertContains(sounds, "public static void OnEvacuationCompleted()", "撤离音乐控制器应提供确认撤离入口。");
+    AssertContains(sounds, "MultiSceneCore.MainSceneID", "多场景地图应使用权威主场景 ID 判断撤离来源。");
+    AssertContains(sounds, "MapDetector.GetCurrentScene()", "主场景实例缺失时应回退到统一地图检测结果。");
+    AssertContains(sounds, "ExtractionCoveragePolicy.IsSupportedSourceScene(sceneName)", "撤离确认应限定明确支持的来源场景。");
+    AssertContains(sounds, "ExtractionCoveragePolicy.ShouldSuppressMapStinger(", "撤离转场应通过统一规则覆盖未知地图 Stinger。");
+    AssertContains(patches, "ExtractionSounds.ShouldSuppressEvacuationStinger(key)", "PlayStringer 补丁应只负责抑制已替换的撤离转场音乐。");
+    AssertContains(sounds, "ExtractionBGMConfig.Mode == ExtractionBGMMode.Disabled", "禁用模式应放行游戏撤离音乐。");
+    AssertContains(sounds, "return _startedThisRound;", "倒数模式只应在倒数音效实际启动后抑制游戏撤离音乐。");
+    AssertContains(sounds, "_lastEvacuationCompletedTime = -1f;", "停止撤离音效时应清除转场抑制窗口。");
+    AssertContains(sounds, "StopActive(fadeCountdown: false, clearTransitionState: false)",
+        "场景切换 StopBGM 应保留撤离转场窗口，并允许后续撤离确认重新播放音乐。");
+    AssertContains(sounds, "_lastHandledEvacuationTime = -1f;", "停止播放后应解除撤离通知去重状态。");
+    AssertAtLeast(sounds, "ExtractionBGMConfig.Mode != ExtractionBGMMode.CountdownMode", 2,
+        "本次修复应保留倒数开始与逐帧播放的原有模式判断。");
+    AssertContains(sounds, "TryStartCountdownSFX();", "本次修复应保留原有五秒倒数音效入口。");
+}
+
+void ExtractionCoverageAcceptsEverySupportedSourceScene()
+{
+    string[] supportedScenes =
+    {
+        "Level_Farm_Main",
+        "Level_GroundZero_Main",
+        "Prologue_Main",
+        "Level_HiddenWarehouse_Main",
+        "Level_Guide_Main",
+        "Level_JLab_Main",
+        "Level_DemoChallenge_Main",
+        "Level_StormZone_Main",
+        "Level_ChallengeSnow_Main",
+        "Level_SnowMilitaryBase_Main",
+        "Level_SnowMilitaryBase_ColdStorage_Main",
+        "Level_SurivalChallenge_Main"
+    };
+
+    foreach (string sceneName in supportedScenes)
+    {
+        if (!DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.IsSupportedSourceScene(sceneName))
+            throw new InvalidOperationException($"撤离覆盖应接受来源场景: {sceneName}");
+    }
+
+    if (!DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.IsSupportedSourceScene("level_hiddenwarehouse_main"))
+        throw new InvalidOperationException("撤离来源场景匹配应忽略大小写。");
+}
+
+void ExtractionCoverageRejectsBaseAndUnknownScenes()
+{
+    string?[] rejectedScenes = { null, "", "Base", "LoadingScreen_Getout", "Level_Future_Main" };
+
+    foreach (string? sceneName in rejectedScenes)
+    {
+        if (DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.IsSupportedSourceScene(sceneName))
+            throw new InvalidOperationException($"撤离覆盖应拒绝来源场景: {sceneName ?? "<null>"}");
+    }
+}
+
+void ExtractionTransitionSuppressesOnlyRecentMapStingers()
+{
+    const float completedAt = 100f;
+    const float windowSeconds = 15f;
+
+    if (!DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.ShouldSuppressMapStinger(
+            "stg_map_hiddenwarehouse", completedAt, now: 110f, windowSeconds))
+        throw new InvalidOperationException("撤离完成后的短期窗口应覆盖未知地图 Stinger。");
+
+    string?[] allowedKeys = { null, "", "stg_map_base", "stg_storm_1", "Music/Stinger/stg_storm_1" };
+    foreach (string? key in allowedKeys)
+    {
+        if (DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.ShouldSuppressMapStinger(
+                key, completedAt, now: 110f, windowSeconds))
+            throw new InvalidOperationException($"撤离转场不应拦截事件: {key ?? "<null>"}");
+    }
+
+    if (DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.ShouldSuppressMapStinger(
+            "stg_map_hiddenwarehouse", completedAt, now: 116f, windowSeconds))
+        throw new InvalidOperationException("撤离转场窗口结束后应放行地图 Stinger。");
+
+    if (DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.ShouldSuppressMapStinger(
+            "stg_map_hiddenwarehouse", completedAt: -1f, now: 1f, windowSeconds))
+        throw new InvalidOperationException("尚未撤离时应放行地图 Stinger。");
+}
+
+void ExtractionCompletionIgnoresDuplicateNotifications()
+{
+    const float handledAt = 100f;
+    const float windowSeconds = 15f;
+
+    if (!DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.IsDuplicateCompletion(
+            "Level_HiddenWarehouse_Main", "Level_HiddenWarehouse_Main", handledAt, now: 110f, windowSeconds))
+        throw new InvalidOperationException("同一来源场景的短期重复撤离通知应被忽略。");
+
+    if (DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.IsDuplicateCompletion(
+            "Level_Farm_Main", "Level_HiddenWarehouse_Main", handledAt, now: 110f, windowSeconds))
+        throw new InvalidOperationException("不同来源场景的撤离通知应正常处理。");
+
+    if (DuckovCustomSounds.CustomBGM.ExtractionBGM.ExtractionCoveragePolicy.IsDuplicateCompletion(
+            "Level_HiddenWarehouse_Main", "Level_HiddenWarehouse_Main", handledAt, now: 116f, windowSeconds))
+        throw new InvalidOperationException("去重窗口结束后应允许新的撤离通知。");
 }
 
 void BgmAudioFileResolverSupportsCachedFlacLookup()

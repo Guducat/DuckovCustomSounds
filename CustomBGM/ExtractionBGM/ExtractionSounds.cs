@@ -1,9 +1,10 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using DuckovCustomSounds.CustomBGM.Core;
+using Duckov.Scenes;
+using MapDetection;
 
 namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
 {
@@ -15,20 +16,14 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
     /// </summary>
     internal static class ExtractionSounds
     {
-        // 撤离成功Stinger事件字典（确保只拦截真正的撤离事件）
-        public static readonly HashSet<string> ExtractionStingerKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "stg_map_zero",     // 主要撤离成功Stinger
-            "stg_map_farm"      // 农场地图撤离成功Stinger
-        };
-
         // 当前绑定的倒计时区域（只跟踪一个活动实例）
         private static WeakReference? _currentAreaRef;
-        private static bool _countdownActive = false;
         private static bool _startedThisRound = false;
-        private static float _lastCountdownSuccessTime = -1f;
-        private const float CountdownSuccessStingerGraceSeconds = 3.0f;
         private const float CountdownCancelFadeOutSeconds = 0.35f;
+        private const float EvacuationTransitionWindowSeconds = 15f;
+        private static float _lastEvacuationCompletedTime = -1f;
+        private static float _lastHandledEvacuationTime = -1f;
+        private static string _lastHandledEvacuationSceneName = string.Empty;
 
 
         // 当前倒计时音效的播放实例（用于在离开时强制停止）
@@ -78,9 +73,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                     return;
 
                 _currentAreaRef = new WeakReference(countDownArea);
-                _countdownActive = true;
                 _startedThisRound = false;
-                _lastCountdownSuccessTime = -1f;
                 ExtractionBGMLogger.Debug("撤离倒计时开始：等待剩余<=5s触发音效...");
             }
             catch (Exception ex)
@@ -95,16 +88,13 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             {
                 if (!ReferenceEqualsFromWeak(_currentAreaRef, countDownArea)) return;
 
-                _countdownActive = false;
-                _lastCountdownSuccessTime = -1f;
-
                 if (!_startedThisRound)
                 {
                     _currentAreaRef = null;
                     return;
                 }
 
-                StopActive(fadeCountdown: true);
+                StopActive(fadeCountdown: true, clearTransitionState: true);
                 ExtractionBGMLogger.Debug("撤离倒计时中止：撤离音效已开始淡出停止。");
             }
             catch (Exception ex)
@@ -122,8 +112,6 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 {
                     if (!ReferenceEqualsFromWeak(_currentAreaRef, countDownArea)) return;
 
-                    _countdownActive = false;
-                    _lastCountdownSuccessTime = Time.realtimeSinceStartup;
                     ExtractionBGMLogger.Debug("撤离成功：保留撤离音效直至自然结束。");
                 }
             }
@@ -171,7 +159,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 if (!hasActiveSound) return;
                 
                 // 在场景切换/StopBGM时一律停止，避免跨场景残留
-                StopActive(fadeCountdown: false);
+                StopActive(fadeCountdown: false, clearTransitionState: false);
                 ExtractionBGMLogger.Debug("场景切换/StopBGM：撤离音效已停止。");
             }
             catch (Exception ex)
@@ -209,37 +197,95 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             catch { return false; }
         }
 
-        public static bool IsExtractionStingerKey(string key)
+        /// <summary>
+        /// 游戏确认撤离成功后播放替换音乐，并开启短期地图 Stinger 抑制窗口。
+        /// </summary>
+        public static void OnEvacuationCompleted()
         {
             try
             {
-                if (string.IsNullOrEmpty(key)) return false;
-                if (ExtractionStingerKeys.Contains(key)) return true;
-                if (!key.StartsWith("stg_map_", StringComparison.OrdinalIgnoreCase)) return false;
-                if (string.Equals(key, "stg_map_base", StringComparison.OrdinalIgnoreCase)) return false;
+                string sceneName = GetCurrentSourceSceneName();
+                if (!ExtractionCoveragePolicy.IsSupportedSourceScene(sceneName))
+                {
+                    ExtractionBGMLogger.Debug($"撤离来源场景未纳入覆盖: {sceneName}");
+                    return;
+                }
 
-                return HasActiveExtractionContext();
+                float now = Time.realtimeSinceStartup;
+                if (ExtractionCoveragePolicy.IsDuplicateCompletion(
+                        sceneName,
+                        _lastHandledEvacuationSceneName,
+                        _lastHandledEvacuationTime,
+                        now,
+                        EvacuationTransitionWindowSeconds))
+                {
+                    ExtractionBGMLogger.Debug($"忽略同次撤离的重复通知: scene={sceneName}");
+                    return;
+                }
+
+                bool handled = OnSuccessStingerRequested($"evacuation:{sceneName}");
+                if (!handled)
+                {
+                    ExtractionBGMLogger.Debug($"撤离音乐由游戏处理: scene={sceneName}");
+                    return;
+                }
+
+                _lastHandledEvacuationSceneName = sceneName;
+                _lastHandledEvacuationTime = now;
+                _lastEvacuationCompletedTime = now;
+                ExtractionBGMLogger.Info($"撤离音乐替换已触发: scene={sceneName}");
             }
             catch (Exception ex)
             {
-                ExtractionBGMLogger.Warning($"IsExtractionStingerKey 异常：{ex.Message}");
+                ExtractionBGMLogger.Warning($"OnEvacuationCompleted 异常：{ex.Message}");
+            }
+        }
+
+        public static bool ShouldSuppressEvacuationStinger(string key)
+        {
+            try
+            {
+                if (ExtractionBGMConfig.Mode == ExtractionBGMMode.Disabled)
+                    return false;
+
+                bool suppress = ExtractionCoveragePolicy.ShouldSuppressMapStinger(
+                    key,
+                    _lastEvacuationCompletedTime,
+                    Time.realtimeSinceStartup,
+                    EvacuationTransitionWindowSeconds);
+
+                if (!suppress && _lastEvacuationCompletedTime >= 0f &&
+                    Time.realtimeSinceStartup - _lastEvacuationCompletedTime > EvacuationTransitionWindowSeconds)
+                {
+                    _lastEvacuationCompletedTime = -1f;
+                }
+
+                return suppress;
+            }
+            catch (Exception ex)
+            {
+                ExtractionBGMLogger.Warning($"ShouldSuppressEvacuationStinger 异常：{ex.Message}");
                 return false;
             }
         }
 
-        private static bool HasActiveExtractionContext()
+        private static string GetCurrentSourceSceneName()
         {
             try
             {
-                if (_countdownActive) return true;
-                if (_lastCountdownSuccessTime < 0f) return false;
-
-                return Time.realtimeSinceStartup - _lastCountdownSuccessTime <= CountdownSuccessStingerGraceSeconds;
+                if (MultiSceneCore.Instance != null)
+                {
+                    string mainSceneId = MultiSceneCore.MainSceneID;
+                    if (!string.IsNullOrEmpty(mainSceneId))
+                        return mainSceneId;
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                return false;
+                ExtractionBGMLogger.Debug($"读取主场景 ID 失败，回退到 MapDetector: {ex.Message}");
             }
+
+            return MapDetector.GetCurrentScene() ?? string.Empty;
         }
 
         /// <summary>
@@ -291,8 +337,9 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 // 倒计时模式：屏蔽成功Stinger（倒计时音效会持续）
                 if (mode == ExtractionBGMMode.CountdownMode)
                 {
-                    ExtractionBGMLogger.Debug("倒计时模式：屏蔽撤离成功Stinger（倒计时音效持续）");
-                    return true; // 拦截
+                    if (_startedThisRound)
+                        ExtractionBGMLogger.Debug("倒计时模式：屏蔽撤离成功Stinger（倒计时音效持续）");
+                    return _startedThisRound;
                 }
 
                 // 成功替换模式：播放自定义成功音效
@@ -319,31 +366,8 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                     }
                 }
 
-                // 禁用模式：使用旧逻辑（兼容1.0.0行为）
-                // 当 overrideExtractionBGM=false 时，播放自定义的 TitleBGM/extraction.mp3
-                var titleDir = Path.Combine(ModBehaviour.ModFolderName, "TitleBGM");
-                var legacyExtractionPath = AudioFileExtensions.FindMusicFile(titleDir, "extraction");
-                if (!string.IsNullOrEmpty(legacyExtractionPath))
-                {
-                    try
-                    {
-                        // 保存播放实例以便后续停止
-                        _currentLegacyInstance = Duckov.AudioManager.PlayCustomBGM(legacyExtractionPath, loop: false);
-                        ApplyConfiguredVolume(_currentLegacyInstance);
-                        ExtractionBGMLogger.Info($"已播放自定义撤离音效（旧逻辑）：{Path.GetFileName(legacyExtractionPath)} (事件: {stingerKey})");
-                        return true; // 拦截原版
-                    }
-                    catch (Exception ex)
-                    {
-                        ExtractionBGMLogger.Warning($"播放自定义撤离音效失败：{ex.Message}");
-                        return false; // 播放失败，放行原版
-                    }
-                }
-                else
-                {
-                    ExtractionBGMLogger.Info($"未找到自定义撤离音效文件：{legacyExtractionPath}，放行原版 (事件: {stingerKey})");
-                    return false; // 文件不存在，放行原版
-                }
+                ExtractionBGMLogger.Debug($"撤离音乐处于禁用模式，交由游戏处理: {stingerKey}");
+                return false;
             }
             catch (Exception ex)
             {
@@ -359,7 +383,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         {
             try
             {
-                StopActive(fadeCountdown: false);
+                StopActive(fadeCountdown: false, clearTransitionState: true);
                 ExtractionBGMLogger.Debug("已停止所有撤离音效（热重载）");
             }
             catch (Exception ex)
@@ -368,7 +392,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             }
         }
 
-        private static void StopActive(bool fadeCountdown)
+        private static void StopActive(bool fadeCountdown, bool clearTransitionState)
         {
             try
             {
@@ -412,12 +436,14 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 }
 
                 // 重置状态标志
-                _countdownActive = false;
                 _startedThisRound = false;
-                _lastCountdownSuccessTime = -1f;
                 _currentAreaRef = null;
                 _currentCountdownInstance = null;
                 _currentLegacyInstance = null;
+                _lastHandledEvacuationTime = -1f;
+                _lastHandledEvacuationSceneName = string.Empty;
+                if (clearTransitionState)
+                    _lastEvacuationCompletedTime = -1f;
                 ExtractionBGMLogger.Debug("撤离音效状态已重置");
             }
             catch (Exception ex)

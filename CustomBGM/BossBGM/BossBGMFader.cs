@@ -25,14 +25,32 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         {
             EnsureHost();
             if (_runner == null) return;
-            _runner.StartFade(instance, bossName, Mathf.Max(0.01f, seconds));
+            _runner.StartFade(instance, null, bossName, Mathf.Max(0.01f, seconds));
             BossBGMLogger.Info($"[BossBGM] 死亡淡出启动: {bossName}, {seconds:F1}s");
+        }
+
+        public static void FadeOutAndRelease(
+            FMOD.Studio.EventInstance instance,
+            BossBGMController owner,
+            string bossName,
+            float seconds)
+        {
+            EnsureHost();
+            if (_runner == null) return;
+            _runner.StartFade(instance, owner, bossName, Mathf.Max(0.01f, seconds));
+            BossBGMLogger.Info($"[BossBGM] 淡出启动: {bossName}, {seconds:F1}s");
         }
 
         public static void ForceStopAll(string reason)
         {
             if (_runner == null) return;
             _runner.ForceStopAll(reason);
+        }
+
+        public static void StopPending(BossBGMController owner, string reason)
+        {
+            if (_runner == null) return;
+            _runner.StopOwner(owner, reason);
         }
     }
 
@@ -41,14 +59,25 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         private class Entry
         {
             public FMOD.Studio.EventInstance Inst;
+            public BossBGMController? Owner;
             public string Name = string.Empty;
-            public float TimeLeft;
-            public bool Stopped;
+            public float StartVolume;
+            public float Duration;
+            public float Elapsed;
         }
 
         private readonly List<Entry> _entries = new List<Entry>();
 
         public void StartFade(FMOD.Studio.EventInstance instance, string name, float seconds)
+        {
+            StartFade(instance, null, name, seconds);
+        }
+
+        public void StartFade(
+            FMOD.Studio.EventInstance instance,
+            BossBGMController? owner,
+            string name,
+            float seconds)
         {
             // 若实例无效，直接忽略
             bool valid = instance.isValid();
@@ -57,7 +86,19 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                 BossBGMLogger.Debug($"[BossBGM] 死亡淡出跳过（实例无效）: {name}");
                 return;
             }
-            _entries.Add(new Entry { Inst = instance, Name = name, TimeLeft = seconds, Stopped = false });
+
+            float startVolume = 1f;
+            try { instance.getVolume(out startVolume, out _); } catch { }
+
+            _entries.Add(new Entry
+            {
+                Inst = instance,
+                Owner = owner,
+                Name = name,
+                StartVolume = Mathf.Clamp01(startVolume),
+                Duration = Mathf.Max(0.01f, seconds),
+                Elapsed = 0f
+            });
         }
 
         public void ForceStopAll(string reason)
@@ -79,11 +120,47 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             BossBGMLogger.Debug($"[BossBGM] 死亡淡出被强制清理：{reason}");
         }
 
+        public void StopOwner(BossBGMController owner, string reason)
+        {
+            int stoppedCount = 0;
+            for (int i = _entries.Count - 1; i >= 0; i--)
+            {
+                var entry = _entries[i];
+                if (!ReferenceEquals(entry.Owner, owner))
+                    continue;
+
+                try
+                {
+                    if (entry.Inst.isValid())
+                    {
+                        entry.Inst.stop(FMOD.Studio.STOP_MODE.IMMEDIATE);
+                        entry.Inst.release();
+                    }
+                }
+                catch { }
+
+                _entries.RemoveAt(i);
+                stoppedCount++;
+            }
+
+            if (stoppedCount > 0)
+            {
+                BossBGMLogger.Debug(
+                    $"[BossBGM] 已清理 Controller 的待淡出实例: {stoppedCount}, 原因: {reason}");
+            }
+        }
+
         private void Update()
         {
-            if (_entries.Count == 0) return;
+            AdvanceFades(Time.unscaledDeltaTime);
+        }
 
-            float dt = Time.unscaledDeltaTime; // 使用不受时间缩放影响的淡出
+        internal void AdvanceFades(float deltaTime)
+        {
+            if (_entries.Count == 0)
+                return;
+
+            float dt = Mathf.Max(0f, deltaTime);
             for (int i = _entries.Count - 1; i >= 0; i--)
             {
                 var e = _entries[i];
@@ -93,32 +170,25 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                     continue;
                 }
 
-                if (!e.Stopped)
+                e.Elapsed += dt;
+                float progress = Mathf.Clamp01(e.Elapsed / e.Duration);
+                try
                 {
-                    // 按线性比例降低音量
-                    float step = (e.TimeLeft > 0.0001f) ? dt / e.TimeLeft : 1f;
-                    float actual, final;
+                    e.Inst.setVolume(e.StartVolume * (1f - progress));
+                }
+                catch { }
+
+                if (progress >= 1f)
+                {
                     try
                     {
-                        e.Inst.getVolume(out actual, out final);
-                        float newVol = Mathf.Clamp01(actual - step);
-                        e.Inst.setVolume(newVol);
+                        e.Inst.setVolume(0f);
+                        e.Inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
+                        e.Inst.release();
+                        BossBGMLogger.Debug($"[BossBGM] 淡出完成并释放: {e.Name}");
                     }
                     catch { }
-
-                    e.TimeLeft -= dt;
-                    if (e.TimeLeft <= 0f)
-                    {
-                        try
-                        {
-                            e.Inst.stop(FMOD.Studio.STOP_MODE.ALLOWFADEOUT);
-                            e.Inst.release();
-                            e.Stopped = true;
-                            BossBGMLogger.Debug($"[BossBGM] 死亡淡出完成并释放: {e.Name}");
-                        }
-                        catch { }
-                        _entries.RemoveAt(i);
-                    }
+                    _entries.RemoveAt(i);
                 }
             }
         }

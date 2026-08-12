@@ -11,6 +11,18 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
     [HarmonyPatch]
     internal static class ExtractionSounds_Patches
     {
+        // LevelManager.NotifyEvacuated 是游戏确认撤离成功的统一入口。
+        [HarmonyPatch(typeof(LevelManager))]
+        internal static class LevelManager_NotifyEvacuated_Patch
+        {
+            [HarmonyPatch("NotifyEvacuated")]
+            [HarmonyPostfix]
+            public static void Postfix()
+            {
+                try { ExtractionSounds.OnEvacuationCompleted(); } catch { }
+            }
+        }
+
         // CountDownArea.BeginCountDown -> 通知开始
         [HarmonyPatch(typeof(CountDownArea))]
         internal static class CountDownArea_Begin_Patch
@@ -71,11 +83,7 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             }
         }
 
-        // --- 补丁：拦截撤离成功 Stinger (stg_map_zero) ---
-        // 根据配置模式决定行为：
-        // - Disabled: 放行原版逻辑
-        // - CountdownMode: 屏蔽Stinger（倒计时音效会持续）
-        // - SuccessStingerMode: 替换为自定义音效
+        // 替换成功后的短期转场保护：仅抑制非基地的地图 Stinger。
         [HarmonyPatch(typeof(AudioManager))]
         internal static class AudioManager_PlayStringer_Patch
         {
@@ -85,18 +93,15 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
             {
                 try
                 {
-                    // 仅拦截撤离成功 Stinger
-                    if (!ExtractionSounds.IsExtractionStingerKey(key))
+                    // 替换音乐已经由 NotifyEvacuated 播放；这里只抑制撤离转场随后发出的原版地图 Stinger。
+                    if (!ExtractionSounds.ShouldSuppressEvacuationStinger(key))
                     {
                         ExtractionBGMLogger.Debug($"放行非撤离Stinger事件: {key}");
-                        return true; // 非撤离Stinger，放行
+                        return true;
                     }
 
-                    ExtractionBGMLogger.Debug($"检测到撤离Stinger事件: {key}");
-                    
-                    // 调用 ExtractionSounds 处理
-                    bool handled = ExtractionSounds.OnSuccessStingerRequested(key);
-                    return !handled; // true=放行原版，false=拦截原版
+                    ExtractionBGMLogger.Debug($"撤离转场已使用自定义音乐，抑制原版地图 Stinger: {key}");
+                    return false;
                 }
                 catch (Exception ex)
                 {

@@ -10,7 +10,9 @@
 
     <ItemGroup>
         <Compile Include="../CustomBGM/Core/AudioFileExtensions.cs" Link="AudioFileExtensions.cs" />
+        <Compile Include="../CustomBGM/BossBGM/BossBGMFader.cs" Link="BossBGMFader.cs" />
         <Compile Include="../CustomBGM/BossBGM/BossBGMManager.cs" Link="BossBGMManager.cs" />
+        <Compile Include="../CustomBGM/ExtractionBGM/ExtractionCoveragePolicy.cs" Link="ExtractionCoveragePolicy.cs" />
         <Compile Include="../CustomBGM/SceneBGM/SceneMusicResolver.cs" Link="SceneMusicResolver.cs" />
     </ItemGroup>
 

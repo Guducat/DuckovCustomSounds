@@ -81,6 +81,9 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
 
             foreach (BossBGMController boss in ActiveBosses)
             {
+                if (!boss.isActiveAndEnabled)
+                    continue;
+
                 if (!boss.TryGetDistanceSquaredToPlayer(out float distanceSquared))
                     continue;
 
@@ -98,12 +101,14 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
                 }
             }
 
+            bool shouldSuppressSceneBgm = closest != null;
             if (closest == currentActiveBoss)
+            {
+                NotifySceneBGM(shouldSuppressSceneBgm);
                 return;
+            }
 
             BossBGMController? previousBoss = currentActiveBoss;
-            bool hadActiveBoss = previousBoss != null;
-            bool willHaveActiveBoss = closest != null;
 
             if (previousBoss != null && closest != null && currentBossInRange)
             {
@@ -144,11 +149,7 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
 
             currentActiveBoss = closest;
             lastSwitchTime = Time.time;
-
-            if (!hadActiveBoss && willHaveActiveBoss)
-                NotifySceneBGM(true);
-            else if (hadActiveBoss && !willHaveActiveBoss)
-                NotifySceneBGM(false);
+            NotifySceneBGM(shouldSuppressSceneBgm);
         }
 
         private static void DeactivateCurrentBoss()

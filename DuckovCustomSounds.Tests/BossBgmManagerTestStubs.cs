@@ -5,6 +5,7 @@ namespace UnityEngine
     internal static class Time
     {
         public static float time;
+        public static float unscaledDeltaTime { get; set; }
     }
 
     internal static class Mathf
@@ -12,12 +13,100 @@ namespace UnityEngine
         public static float Max(float left, float right) => System.Math.Max(left, right);
 
         public static float Sqrt(float value) => (float)System.Math.Sqrt(value);
+
+        public static float Clamp01(float value) => System.Math.Clamp(value, 0f, 1f);
     }
 
-    internal static class Object
+    internal class Object
     {
         public static void Destroy(object value)
         {
+        }
+
+        public static void DontDestroyOnLoad(object value)
+        {
+        }
+    }
+
+    internal sealed class GameObject : Object
+    {
+        public GameObject(string name)
+        {
+        }
+
+        public T AddComponent<T>() where T : new() => new T();
+    }
+
+    internal class MonoBehaviour : Object
+    {
+    }
+}
+
+namespace FMOD
+{
+    internal enum RESULT
+    {
+        OK
+    }
+}
+
+namespace FMOD.Studio
+{
+    internal enum STOP_MODE
+    {
+        IMMEDIATE,
+        ALLOWFADEOUT
+    }
+
+    internal sealed class EventInstanceState
+    {
+        public bool Valid { get; set; } = true;
+
+        public bool Stopped { get; set; }
+        public bool Released { get; set; }
+        public float Volume { get; set; } = 1f;
+    }
+
+    internal readonly struct EventInstance
+    {
+        private readonly EventInstanceState? state;
+
+        public EventInstance(EventInstanceState state)
+        {
+            this.state = state;
+        }
+
+        public bool isValid() => state?.Valid == true;
+
+        public FMOD.RESULT getVolume(out float volume, out float finalVolume)
+        {
+            volume = state?.Volume ?? 0f;
+            finalVolume = volume;
+            return FMOD.RESULT.OK;
+        }
+
+        public FMOD.RESULT setVolume(float volume)
+        {
+            if (state != null)
+                state.Volume = volume;
+            return FMOD.RESULT.OK;
+        }
+
+        public FMOD.RESULT stop(STOP_MODE mode)
+        {
+            if (state != null)
+                state.Stopped = true;
+            return FMOD.RESULT.OK;
+        }
+
+        public FMOD.RESULT release()
+        {
+            if (state != null)
+            {
+                state.Released = true;
+                state.Valid = false;
+            }
+            return FMOD.RESULT.OK;
         }
     }
 }
@@ -43,6 +132,8 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         public bool PriorityActive { get; private set; }
 
         public bool Valid { get; set; } = true;
+
+        public bool isActiveAndEnabled { get; set; } = true;
 
         public float GetDistanceToPlayer() => Distance;
 
@@ -71,13 +162,6 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
         public static float MinSwitchIntervalSeconds { get; set; } = 2f;
 
         public static float MinDistanceDeltaToSwitch { get; set; } = 5f;
-    }
-
-    internal static class BossBGMFader
-    {
-        public static void ForceStopAll(string reason)
-        {
-        }
     }
 
     internal static class BossBGMLogger

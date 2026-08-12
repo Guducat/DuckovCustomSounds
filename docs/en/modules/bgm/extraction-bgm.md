@@ -6,7 +6,7 @@ title: Extraction BGM
 
 Customize extraction zone sounds, supporting countdown cues and success stinger replacement.
 
-> On some maps the extraction success sound may falsely trigger; a future fix is planned.
+Success replacement is triggered by the game's confirmed evacuation event and filtered by the source level. Maps with previously unknown `stg_map_*` suffixes, including Hidden Warehouse, are covered while base and non-evacuation map cues remain vanilla.
 
 ## Three Modes
 
@@ -23,7 +23,7 @@ File lookup order: `Extraction/countdown.*` → `Extraction/extraction.*`.
 Recommended sound length: 10–15 seconds.
 
 ### Success Stinger Mode
-Only replaces the extraction success Stinger. Vanilla countdown sounds are preserved.
+Plays custom music after evacuation is confirmed and suppresses the vanilla map Stinger during the short evacuation transition. Existing countdown behavior is preserved.
 
 File lookup order: `Extraction/success.*` → `TitleBGM/extraction.*`.
 
@@ -71,7 +71,7 @@ Using ModConfig is recommended over directly editing settings.json.
 
 **Countdown sound doesn't trigger**: Confirm "Countdown Mode" is selected, the file exists (`countdown.*` or `extraction.*`), and the countdown is > 5 seconds.
 
-**Success stinger not replaced**: Confirm "Success Stinger Mode" is selected, the file exists (`success.*` or `TitleBGM/extraction.*`).
+**Success stinger not replaced**: Confirm "Success Stinger Mode" is selected, the file exists (`success.*` or `TitleBGM/extraction.*`), and the log contains `撤离音乐替换已触发`.
 
 **Hear two sounds in countdown mode**: The countdown sound clip is too short — the vanilla success Stinger plays before it ends. Use a 10–15 second clip.
 
