@@ -16,7 +16,7 @@ Select via ModConfig → ExtractionBGM.
 No changes; vanilla audio is used.
 
 ### Countdown Mode
-When the extraction countdown reaches ≤ 5 seconds, a custom sound plays (one-shot, via SFX bus). On extraction success, the vanilla Stinger is suppressed so the countdown sound can finish naturally. Aborting extraction stops it immediately.
+When the extraction countdown reaches ≤ 5 seconds, a custom sound plays (one-shot, via SFX bus) while scene BGM ducks quickly (volume only, never stopped, avoiding double BGM); scene BGM restores smoothly if extraction is aborted. On extraction success, the vanilla Stinger is suppressed so the countdown sound can finish naturally.
 
 File lookup order: `Extraction/countdown.*` → `Extraction/extraction.*`.
 

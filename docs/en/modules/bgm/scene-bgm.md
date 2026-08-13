@@ -76,4 +76,8 @@ File location: `SceneBGM/config.json`. Auto-generated on first run.
 
 ## Priority
 
-Boss BGM > Scene Loop > Scene Enter. Scene BGM is automatically downgraded or stopped while a Boss is within trigger range, and resumes automatically when the Boss leaves trigger range or disappears.
+Boss BGM > Scene Loop > Scene Enter.
+
+- **Boss suppression**: While a Boss is within trigger range, Scene Loop/Enter volumes fade smoothly to 0 (instances keep playing) and restore automatically when the Boss leaves trigger range or disappears.
+- **Self-heal (v2.3.3)**: If the loop instance is unexpectedly stopped during a Boss→Boss crossfade (shared music source contention), the loop BGM is rebuilt automatically when Boss suppression is released, so scene music never gets lost permanently.
+- **Extraction duck (v2.3.3)**: During the extraction countdown, scene BGM ducks quickly (volume only, never stopped) and restores smoothly if extraction is cancelled; the extraction success transition is handled by the game's StopBGM.

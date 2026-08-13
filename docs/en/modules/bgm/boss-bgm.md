@@ -60,7 +60,7 @@ File location: `BossBGM/config.json`. Auto-generated on first run.
 
 ## Priority
 
-When a Boss is within trigger range, Boss BGM has higher priority than Scene BGM and Title/Home BGM. Scene BGM resumes automatically when the Boss leaves trigger range, is unregistered, or the scene is cleared. Only one Boss track plays at a time; switching is handled with debounce and fade in/out.
+When a Boss is within trigger range, Boss BGM has higher priority than Scene BGM and Title/Home BGM. Scene BGM resumes automatically when the Boss leaves trigger range or is unregistered — if the scene loop BGM was unexpectedly stopped during a Boss→Boss crossfade, it is rebuilt automatically (self-heal) when suppression is released. Only one Boss track plays at a time; switching is handled with debounce and fade in/out.
 
 ## Appendix: BOSS NameKey → Filename Reference
 

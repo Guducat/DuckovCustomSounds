@@ -200,7 +200,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
         public static IReadOnlyList<bool> StateChanges => States;
 
-        public static void SetBossBGMActive(bool active)
+        public static void SetBossBGMActive(bool active, bool allowRebuild = true)
         {
             IsBossBGMActive = active;
             States.Add(active);

@@ -33,7 +33,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         private float fadeSpeed; // 淡入淡出速度
 
         // 状态
-        private bool isPrioritySuppressed = false; // 是否被优先级抑制（BOSS BGM 激活时）
+        private bool isPrioritySuppressed = false; // 是否被优先级抑制（BOSS BGM / 撤离激活时）
+        private bool useFastFade = false; // 撤离鸭子时使用快速淡出/淡入
         private bool isPlaying = false;
         private bool isFadingOut = false;
 
@@ -43,6 +44,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         // 定时器（用于检测播放结束）
         private float playbackCheckTimer = 0f;
         private const float PLAYBACK_CHECK_INTERVAL = 0.5f;
+        private const float FAST_FADE_MULTIPLIER = 4f; // 撤离鸭子时快速淡入淡出倍率
 
         /// <summary>
         /// 初始化控制器
@@ -126,8 +128,9 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
                 if (!Mathf.Approximately(currentVolume, effectiveTargetVolume))
                 {
-                    // 平滑淡入淡出
-                    currentVolume = Mathf.MoveTowards(currentVolume, effectiveTargetVolume, fadeSpeed * Time.deltaTime);
+                    // 平滑淡入淡出（撤离鸭子时使用快速淡出/淡入）
+                    float effectiveFadeSpeed = useFastFade ? fadeSpeed * FAST_FADE_MULTIPLIER : fadeSpeed;
+                    currentVolume = Mathf.MoveTowards(currentVolume, effectiveTargetVolume, effectiveFadeSpeed * Time.deltaTime);
                     bgmInstance.Value.setVolume(currentVolume);
 
                     // 淡出完成后停止
@@ -186,15 +189,17 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         }
 
         /// <summary>
-        /// 设置优先级抑制（BOSS BGM 激活时调用）
+        /// 设置优先级抑制（BOSS BGM / 撤离激活时调用）
+        /// fastFade：撤离鸭子使用快速淡出/淡入，避免长时间双 BGM 重叠。
         /// </summary>
-        public void SetPrioritySuppressed(bool suppressed)
+        public void SetPrioritySuppressed(bool suppressed, bool fastFade = false)
         {
-            if (isPrioritySuppressed == suppressed)
+            if (isPrioritySuppressed == suppressed && useFastFade == fastFade)
                 return;
 
             isPrioritySuppressed = suppressed;
-            SceneBGMLogger.Debug($"{musicType} BGM 优先级抑制: {sceneName} -> {suppressed}");
+            useFastFade = fastFade;
+            SceneBGMLogger.Debug($"{musicType} BGM 优先级抑制: {sceneName} -> {suppressed} (fastFade={fastFade})");
         }
 
         /// <summary>

@@ -33,6 +33,7 @@ var tests = new (string Name, Action Body)[]
     ("Boss controller transfers playback to the persistent fader on deactivation", BossControllerTransfersPlaybackToPersistentFaderOnDeactivation),
     ("ExtractionBGM exposes configurable volume and applies it", ExtractionBgmExposesConfigurableVolumeAndAppliesIt),
     ("Extraction countdown cancellation fades out before release", ExtractionCountdownCancellationFadesOutBeforeRelease),
+    ("Extraction countdown ducks scene BGM without stopping", ExtractionCountdownDucksSceneBgm),
     ("TitleBGM stingers apply HomeBGM volume", TitleBgmStingersApplyHomeBgmVolume),
     ("HomeBGM Set_Prefix entry trace is Verbose", HomeBgmSetPrefixEntryTraceIsVerbose),
     ("SceneBGM uses official scene events", SceneBgmUsesOfficialSceneEvents),
@@ -48,6 +49,7 @@ var tests = new (string Name, Action Body)[]
     ("Release CI runs source regression tests", ReleaseCiRunsSourceRegressionTests),
     ("Scene and Boss BGM use non-stopping custom playback", SceneAndBossBgmUseNonStoppingCustomPlayback),
     ("Stopped retained BGM instances are treated as inactive", StoppedRetainedBgmInstancesAreTreatedAsInactive),
+    ("Scene loop BGM self-heals when boss BGM deactivates", SceneLoopBgmSelfHealsWhenBossBgmDeactivates),
     ("Home stinger intercepts PlayStringer", HomeStingerInterceptsPlayStringer),
     ("Logging levels reload while the mod is running", LoggingLevelsReloadWhileModIsRunning),
     ("Logging levels are editable through ModConfig", LoggingLevelsAreEditableThroughModConfig),
@@ -592,6 +594,31 @@ void ExtractionCountdownCancellationFadesOutBeforeRelease()
         "倒计时取消日志不应继续描述为强制停止。");
 }
 
+void ExtractionCountdownDucksSceneBgm()
+{
+    var sounds = Read("CustomBGM/ExtractionBGM/ExtractionSounds.cs");
+    var manager = Read("CustomBGM/SceneBGM/SceneBGMManager.cs");
+    var controller = Read("CustomBGM/SceneBGM/SceneBGMController.cs");
+
+    // 倒计时开始：鸭子（只降音量、不停止）；取消/结束：归位。
+    AssertContains(sounds, "SetExtractionActive(true)",
+        "撤离倒计时开始时应对场景 BGM 鸭子压制（只降音量不停止）。");
+    AssertContains(sounds, "SetExtractionActive(false)",
+        "倒计时取消/结束时应恢复场景 BGM 音量（平滑淡入）。");
+
+    // 场景 BGM 管理器：撤离压制与 Boss 压制 OR 合并，任一激活都压制。
+    AssertContains(manager, "SetExtractionActive",
+        "场景 BGM 管理器应提供撤离鸭子压制入口。");
+    AssertContains(manager, "isBossBGMActive || isExtractionActive",
+        "Boss 与撤离压制应 OR 合并，任一激活都压制场景 BGM。");
+    AssertContains(manager, "bool fastFade = isExtractionActive",
+        "快速淡出速度应从当前合并状态（isExtractionActive）推导，避免 Boss 状态交错变化覆盖撤离的快速淡出。");
+
+    // 快速淡出/淡入：帧率友好，只走现有 setVolume 渐变。
+    AssertContains(controller, "fastFade",
+        "撤离鸭子应使用快速淡出/淡入，避免长时间双 BGM 重叠。");
+}
+
 void TitleBgmStingersApplyHomeBgmVolume()
 {
     var patches = Read("CustomBGM/CustomBGM_Patches.cs");
@@ -761,6 +788,22 @@ void StoppedRetainedBgmInstancesAreTreatedAsInactive()
     AssertContains(player, "PLAYBACK_STATE.STOPPING", "活跃实例判断应排除正在停止的 FMOD 实例。");
     AssertContains(sceneController, "CustomBGMPlayer.IsEventInstanceActive(bgmInstance)", "SceneBGM 应使用播放状态判断实例是否仍可播放。");
     AssertContains(bossController, "CustomBGMPlayer.IsEventInstanceActive(bgmInstance)", "BossBGM 应使用播放状态判断实例是否仍可播放。");
+}
+
+void SceneLoopBgmSelfHealsWhenBossBgmDeactivates()
+{
+    var manager = Read("CustomBGM/SceneBGM/SceneBGMManager.cs");
+    var bossManager = Read("CustomBGM/BossBGM/BossBGMManager.cs");
+
+    // 自愈入口：Boss 解除压制（active→inactive 转变）时，若循环 BGM 意外死亡则重建。
+    AssertContains(manager, "RestoreLoopBgmIfExpected",
+        "Boss 解除压制时，场景循环 BGM 意外死亡应调用自愈重建入口。");
+    AssertContains(manager, "allowRebuild",
+        "自愈应带 allowRebuild 门控，供场景切换清理路径禁用。");
+
+    // 场景切换清理（Clear）不得触发自愈，避免转场时把旧场景 BGM 拉回来。
+    AssertContains(bossManager, "NotifySceneBGM(false, allowRebuild: false)",
+        "Boss 管理器场景清理（Clear）应禁用自愈重建。");
 }
 
 void HomeStingerInterceptsPlayStringer()

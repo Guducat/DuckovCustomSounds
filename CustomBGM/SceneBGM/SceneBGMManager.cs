@@ -27,6 +27,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         // 状态标志
         private static bool isInitialized = false;
         private static bool isBossBGMActive = false;
+        private static bool isExtractionActive = false;
 
 
         // 跨调用请求排队（Enter 播放期间）
@@ -209,11 +210,8 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
                     fadeDuration: SceneBGMConfig.LoopFadeDuration
                 );
 
-                // 如果当前 BOSS BGM 激活，立即抑制循环音乐
-                if (isBossBGMActive)
-                {
-                    currentLoopBGM.SetPrioritySuppressed(true);
-                }
+                // 若 BOSS / 撤离压制激活，立即抑制循环音乐
+                ApplySuppressionToCurrentBgm();
 
                 SceneBGMLogger.Info($"循环音乐已播放: {displayName}");
             }
@@ -253,8 +251,9 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
 
         /// <summary>
         /// 设置 BOSS BGM 激活状态（由 BOSS BGM 系统调用）
+        /// allowRebuild：解除压制时是否允许自愈重建意外停止的循环 BGM（场景切换清理应传 false）。
         /// </summary>
-        public static void SetBossBGMActive(bool active)
+        public static void SetBossBGMActive(bool active, bool allowRebuild = true)
         {
             if (isBossBGMActive == active)
                 return;
@@ -262,17 +261,73 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
             isBossBGMActive = active;
             SceneBGMLogger.Debug($"BOSS BGM 状态变更: {active}");
 
-            // 抑制或恢复循环音乐
-            if (currentLoopBGM != null && currentLoopBGM.IsValid())
+            // Boss 解除压制时，若循环 BGM 已意外死亡则自愈重建（场景切换清理路径除外）
+            if (!active && allowRebuild && currentLoopBGM != null && !currentLoopBGM.IsValid())
             {
-                currentLoopBGM.SetPrioritySuppressed(active);
+                RestoreLoopBgmIfExpected();
             }
 
-            // 进入音乐如果正在播放，也抑制
+            ApplySuppressionToCurrentBgm();
+        }
+
+        /// <summary>
+        /// 设置撤离 BGM 激活状态（由撤离 BGM 系统调用）
+        /// 倒计时期间鸭子场景音乐（只降音量、不停止），取消/结束时平滑恢复。
+        /// </summary>
+        public static void SetExtractionActive(bool active)
+        {
+            if (isExtractionActive == active)
+                return;
+
+            isExtractionActive = active;
+            SceneBGMLogger.Debug($"撤离 BGM 状态变更: {active}");
+            ApplySuppressionToCurrentBgm();
+        }
+
+        /// <summary>
+        /// 合并 BOSS 与撤离的压制状态并应用到当前场景音乐。
+        /// 快速淡出速度由当前合并状态推导（撤离压制激活期间始终快速），
+        /// 与 BOSS/撤离事件的调用顺序无关。压制只做音量渐变、不停止实例；
+        /// 实例停止仅由场景切换或播放完成负责。
+        /// </summary>
+        private static void ApplySuppressionToCurrentBgm()
+        {
+            bool suppressed = isBossBGMActive || isExtractionActive;
+            bool fastFade = isExtractionActive;
+
+            if (currentLoopBGM != null && currentLoopBGM.IsValid())
+            {
+                currentLoopBGM.SetPrioritySuppressed(suppressed, fastFade);
+            }
+
             if (currentEnterBGM != null && currentEnterBGM.IsValid())
             {
-                currentEnterBGM.SetPrioritySuppressed(active);
+                currentEnterBGM.SetPrioritySuppressed(suppressed, fastFade);
             }
+        }
+
+        /// <summary>
+        /// Boss 解除压制时自愈：循环 BGM 意外死亡且当前场景仍应有循环音乐时重建。
+        /// </summary>
+        private static void RestoreLoopBgmIfExpected()
+        {
+            if (!SceneBGMConfig.LoopBGMEnabled || string.IsNullOrEmpty(currentSceneId))
+                return;
+
+            string? loopMusicPath = SceneMusicResolver.ResolveLoopMusicPath(currentSceneId, currentDisplayName);
+            if (string.IsNullOrEmpty(loopMusicPath))
+                return;
+
+            SceneBGMLogger.Info("BOSS BGM 解除压制后重建意外停止的场景循环 BGM（自愈）");
+
+            // 清理已死亡的旧循环控制器，避免僵尸 GameObject 累积
+            if (currentLoopBGM != null && currentLoopBGM.gameObject != null)
+            {
+                UnityEngine.Object.Destroy(currentLoopBGM.gameObject);
+                currentLoopBGM = null;
+            }
+
+            PlayLoopBGM(loopMusicPath, currentSceneId, currentDisplayName);
         }
 
         /// <summary>
@@ -399,7 +454,7 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         {
             bool enterPlaying = currentEnterBGM != null && currentEnterBGM.IsValid();
             bool loopPlaying = currentLoopBGM != null && currentLoopBGM.IsValid();
-            return $"Enter: {enterPlaying}, Loop: {loopPlaying}, BossBGM: {isBossBGMActive}";
+            return $"Enter: {enterPlaying}, Loop: {loopPlaying}, BossBGM: {isBossBGMActive}, Extraction: {isExtractionActive}";
         }
     }
 }

@@ -451,12 +451,24 @@ namespace DuckovCustomSounds.CustomBGM.SceneBGM
         /// <summary>
         /// 设置 BOSS BGM 激活状态（由 BOSS BGM 系统调用）
         /// </summary>
-        public static void SetBossBGMActive(bool active)
+        public static void SetBossBGMActive(bool active, bool allowRebuild = true)
         {
             if (!_initialized)
                 return;
 
-            SceneBGMManager.SetBossBGMActive(active);
+            SceneBGMManager.SetBossBGMActive(active, allowRebuild);
+        }
+
+        /// <summary>
+        /// 设置撤离 BGM 激活状态（由撤离 BGM 系统调用）
+        /// 倒计时期间鸭子场景音乐，取消/结束时恢复。
+        /// </summary>
+        public static void SetExtractionActive(bool active)
+        {
+            if (!_initialized)
+                return;
+
+            SceneBGMManager.SetExtractionActive(active);
         }
 
         /// <summary>

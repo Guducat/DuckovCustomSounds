@@ -58,3 +58,9 @@ Tip: The new additions above default to the "Music" volume slider; they auto-coo
 
 - Fix: Boss BGM no longer suppresses Scene BGM while a Boss is outside trigger range, preventing scene and Boss music from going silent together.
 - Improvement: Scene BGM resumes automatically when a Boss leaves trigger range, is unregistered, or the scene is cleared; trigger distance changes apply immediately at runtime.
+
+## 2026-08-14 v2.3.3
+
+- Fix: Scene BGM lost after a Boss→Boss switch (e.g., teleporting near another Boss) — the scene loop BGM now self-heals (rebuilds) when Boss suppression is released; scene-clear paths do not trigger the rebuild.
+- Fix: Double BGM in extraction countdown mode — scene BGM now ducks quickly (volume only, never stopped) during the countdown and restores smoothly on cancel; extraction success remains handled by the game's transition StopBGM.
+- Docs: README todos and known issues reorganized into "TODO & Improvements".

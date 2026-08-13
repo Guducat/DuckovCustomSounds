@@ -55,7 +55,7 @@ Extraction/
 
 模式（ModConfig → ExtractionBGM）：
 - **关闭**：不处理撤离音效，但若 `TitleBGM/extraction.*` 存在，仍会播放（旧版兼容）
-- **倒计时模式**：当撤离倒计时剩余 ≤5 秒时播放 `countdown.*`（若不存在则尝试 `extraction.*`）。撤离成功时屏蔽原版 Stinger
+- **倒计时模式**：当撤离倒计时剩余 ≤5 秒时播放 `countdown.*`（若不存在则尝试 `extraction.*`），期间场景 BGM 快速降音量避免双重 BGM，取消后恢复。撤离成功时屏蔽原版 Stinger
 - **成功替换模式**：替换撤离成功 Stinger，优先 `success.*`，不存在则回退到 `TitleBGM/extraction.*`
 
 场景切换或 StopBGM 时自动停止正在播放的撤离音效。
@@ -73,7 +73,7 @@ BossBGM/
 - 文件名 = 敌人 NameKey 去掉 `Cname_` 前缀。找不到专属文件时用 `default_boss.*`，再没有就不播。
 - ModConfig：启用开关、触发距离（10~200 米，默认 40）、音量。
 - 高级参数：`BossBGM/config.json`（淡入淡出、更新频率、防抖、死亡淡出等）。
-- 优先级：Boss BGM > 场景 BGM。目标进入范围淡入，离开或死亡淡出。
+- 优先级：Boss BGM > 场景 BGM。目标进入范围淡入，离开或死亡淡出；解除压制时若场景循环 BGM 意外停止会自动重建（自愈）。
 
 ### SceneBGM/
 

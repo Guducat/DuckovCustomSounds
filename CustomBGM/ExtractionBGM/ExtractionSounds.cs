@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using UnityEngine;
 using DuckovCustomSounds.CustomBGM.Core;
+using DuckovCustomSounds.CustomBGM.SceneBGM;
 using Duckov.Scenes;
 using MapDetection;
 
@@ -312,6 +313,11 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                     _currentCountdownInstance = Duckov.AudioManager.PostCustomSFX(path, loop: false);
                     ApplyConfiguredVolume(_currentCountdownInstance);
                     _startedThisRound = true;
+
+                    // 倒计时期间鸭子场景 BGM（只降音量、不停止；取消/结束时快速恢复）
+                    try { CustomSceneBGM.SetExtractionActive(true); }
+                    catch (Exception ex) { ExtractionBGMLogger.Warning($"鸭子场景 BGM 失败：{ex.Message}"); }
+
                     ExtractionBGMLogger.Info($"倒计时音效已触发（<=5s）：{Path.GetFileName(path)}");
                 }
                 catch (Exception ex)
@@ -448,6 +454,11 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                     _lastHandledEvacuationTime = -1f;
                     _lastHandledEvacuationSceneName = string.Empty;
                 }
+
+                // 恢复场景 BGM 音量（倒计时鸭子结束）
+                try { CustomSceneBGM.SetExtractionActive(false); }
+                catch (Exception ex) { ExtractionBGMLogger.Warning($"恢复场景 BGM 失败：{ex.Message}"); }
+
                 ExtractionBGMLogger.Debug("撤离音效状态已重置");
             }
             catch (Exception ex)

@@ -161,14 +161,14 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
             currentActiveBoss = null;
         }
 
-        private static void NotifySceneBGM(bool isActive)
+        private static void NotifySceneBGM(bool isActive, bool allowRebuild = true)
         {
             if (sceneBgmSuppressed == isActive)
                 return;
 
             try
             {
-                SceneBGM.CustomSceneBGM.SetBossBGMActive(isActive);
+                SceneBGM.CustomSceneBGM.SetBossBGMActive(isActive, allowRebuild);
                 sceneBgmSuppressed = isActive;
                 BossBGMLogger.Debug($"已通知场景 BGM 系统: BOSS BGM Active = {isActive}");
             }
@@ -190,7 +190,10 @@ namespace DuckovCustomSounds.CustomBGM.BossBGM
 
             ActiveBosses.Clear();
             currentActiveBoss = null;
-            NotifySceneBGM(false);
+
+            // 场景切换清理：只重置压制状态，不触发循环 BGM 自愈（新场景由 PlaySceneMusic 重建）
+            NotifySceneBGM(false, allowRebuild: false);
+
             BossBGMFader.ForceStopAll("SceneSwitch/Clear");
             BossBGMLogger.Debug("Boss BGM 已在场景清理时全部停止");
         }

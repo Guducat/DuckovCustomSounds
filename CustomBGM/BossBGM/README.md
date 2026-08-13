@@ -379,7 +379,7 @@ A: 增加 `updateInterval` 和 `managerUpdateInterval`（如 0.2 和 1.0）
 - BOSS 识别：自动发现带有 boss 标识的敌人并尝试播放其专属 BGM。
 - 距离触发：玩家距离小于触发距离时淡入；超出触发距离或离开场景时淡出并停止。
 - 切换规则：多个 BOSS 同时存在时，仅播放“当前有效 BOSS”的音乐；内置抖动抑制与最小间隔，避免频繁切换。
-- 优先级：BossBGM > 场景BGM > 基地/标题BGM。BossBGM 播放时，其它 BGM 会让位。
+- 优先级：BossBGM > 场景BGM > 基地/标题BGM。BossBGM 播放时，其它 BGM 会让位；解除压制时若场景循环 BGM 意外停止会自动重建（自愈）。
 - 音量与总线：默认走 Music 总线，跟随游戏“音乐”音量滑块。
 
 ---

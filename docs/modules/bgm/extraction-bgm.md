@@ -16,7 +16,7 @@ title: 撤离 BGM
 不做任何处理，使用原版音效。
 
 ### 倒计时模式（CountdownMode）
-撤离倒计时剩余 ≤5 秒时，播放自定义音效（单次播放，走 SFX 总线）。撤离成功时屏蔽原版 Stinger，让倒计时音效自然放完。中止撤离时立即停止。
+撤离倒计时剩余 ≤5 秒时，播放自定义音效（单次播放，走 SFX 总线），同时场景 BGM 快速降音量（不停止、避免双重 BGM）；中止撤离后场景 BGM 平滑恢复。撤离成功时屏蔽原版 Stinger，让倒计时音效自然放完。
 
 文件查找顺序：`Extraction/countdown.*` → `Extraction/extraction.*`。
 
