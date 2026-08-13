@@ -68,6 +68,8 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
         {
             try
             {
+                ResetEvacuationRoundState();
+
                 // 仅在倒计时模式下启用
                 if (ExtractionBGMConfig.Mode != ExtractionBGMMode.CountdownMode)
                     return;
@@ -440,16 +442,25 @@ namespace DuckovCustomSounds.CustomBGM.ExtractionBGM
                 _currentAreaRef = null;
                 _currentCountdownInstance = null;
                 _currentLegacyInstance = null;
-                _lastHandledEvacuationTime = -1f;
-                _lastHandledEvacuationSceneName = string.Empty;
                 if (clearTransitionState)
+                {
                     _lastEvacuationCompletedTime = -1f;
+                    _lastHandledEvacuationTime = -1f;
+                    _lastHandledEvacuationSceneName = string.Empty;
+                }
                 ExtractionBGMLogger.Debug("撤离音效状态已重置");
             }
             catch (Exception ex)
             {
                 ExtractionBGMLogger.Warning($"重置撤离音效状态失败：{ex.Message}");
             }
+        }
+
+        private static void ResetEvacuationRoundState()
+        {
+            _lastHandledEvacuationTime = -1f;
+            _lastHandledEvacuationSceneName = string.Empty;
+            _lastEvacuationCompletedTime = -1f;
         }
 
         private static void FadeOutAndReleaseCountdown(FMOD.Studio.EventInstance instance, float seconds)

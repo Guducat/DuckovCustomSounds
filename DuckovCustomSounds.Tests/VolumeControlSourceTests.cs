@@ -71,6 +71,7 @@ var tests = new (string Name, Action Body)[]
     ("Extraction transition suppresses only recent map stingers", ExtractionTransitionSuppressesOnlyRecentMapStingers),
     ("Extraction completion ignores duplicate notifications", ExtractionCompletionIgnoresDuplicateNotifications),
     ("Extraction stinger supports contextual map stingers", ExtractionStingerSupportsContextualMapStingers),
+    ("Extraction transition keeps duplicate guard across StopBGM", ExtractionTransitionKeepsDuplicateGuardAcrossStopBgm),
     ("BGM audio file resolver supports cached FLAC lookup", BgmAudioFileResolverSupportsCachedFlacLookup),
     ("Ambient intercept is editable through ModConfig", AmbientInterceptIsEditableThroughModConfig),
     ("Ambient intercept docs describe game source behavior", AmbientInterceptDocsDescribeGameSourceBehavior),
@@ -1132,6 +1133,28 @@ void ExtractionStingerSupportsContextualMapStingers()
     AssertAtLeast(sounds, "ExtractionBGMConfig.Mode != ExtractionBGMMode.CountdownMode", 2,
         "本次修复应保留倒数开始与逐帧播放的原有模式判断。");
     AssertContains(sounds, "TryStartCountdownSFX();", "本次修复应保留原有五秒倒数音效入口。");
+}
+
+void ExtractionTransitionKeepsDuplicateGuardAcrossStopBgm()
+{
+    var sounds = Read("CustomBGM/ExtractionBGM/ExtractionSounds.cs");
+
+    AssertContains(
+        sounds,
+        "private static void ResetEvacuationRoundState()",
+        "撤离控制器应提供新一轮撤离状态重置入口。");
+    AssertContains(
+        sounds,
+        "ResetEvacuationRoundState();",
+        "新的撤离倒计时开始时应重置上一轮撤离通知去重状态。");
+    AssertContains(
+        sounds,
+        "if (clearTransitionState)",
+        "场景切换停止音频时不应清空撤离通知去重，应只在完整重置时清空。");
+    AssertContains(
+        sounds,
+        "StopActive(fadeCountdown: false, clearTransitionState: false);",
+        "StopBGM 场景切换应保留撤离转场与去重状态。");
 }
 
 void ExtractionCoverageAcceptsEverySupportedSourceScene()
