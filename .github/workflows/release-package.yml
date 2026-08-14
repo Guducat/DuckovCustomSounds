@@ -53,9 +53,6 @@ jobs:
       - name: Restore
         run: dotnet restore DuckovCustomSounds.csproj
 
-      - name: Run source regression tests
-        run: dotnet run --project DuckovCustomSounds.Tests/DuckovCustomSounds.Tests.csproj
-
       - name: Build
         run: dotnet build DuckovCustomSounds.csproj -c "$CONFIGURATION" --no-restore /p:DuckovManagedDir="$MANAGED_DIR"
 

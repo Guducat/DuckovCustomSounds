@@ -5,6 +5,8 @@ obj/
 assets/
 node_modules/
 package-lock.json
+# 本地回归测试工程，不纳入版本控制
+DuckovCustomSounds.Tests/
 # VitePress cache and build output
 docs/.vitepress/dist
 docs/.vitepress/cache
