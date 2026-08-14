@@ -10,7 +10,7 @@
 | 系统 | 路径 |
 |------|------|
 | Windows | `C:\Users\{用户名}\AppData\LocalLow\TeamSoda\Duckov\player.log` |
-| Mac | `~/Library/Application Support/TeamSoda/Duckov/player.log` |
+| Mac | `~/Library/Logs/Unity/Player.log` |
 
 日志包含 `[DuckovCustomSounds]` 前缀的条目就是本 Mod 的输出。
 
@@ -37,6 +37,7 @@
 ```json
 {
   "logging": {
+    "enabled": true,
     "defaultLevel": "Info",
     "modules": {
       "Core": { "level": "Info" },
@@ -47,18 +48,21 @@
 }
 ```
 
+- `enabled`：全局总开关，`false` 时所有模块日志完全关闭（默认 true）
 - `defaultLevel`：所有模块的默认级别
 - `modules.模块名.level`：覆盖某个模块的级别
+
+settings.json 的日志设置与 `debug_off`/`.nolog` 文件均为**热生效**（约 1 秒内），无需重启游戏。
 
 可选模块名：`Core`、`SoundPack`、`Enemy`、`Footstep`、`BGM`、`HomeBGM`、`SceneBGM`、`ExtractionBGM`、`Gun`、`Grenade`、`Item`、`Melee`、`HitAndKill`
 
 ### 方式二：debug_off / .nolog 文件
 
-在 `DuckovCustomSounds/` 目录下创建空文件名为 `debug_off` 或 `.nolog`，所有模块的日志级别夹到 Info（不输出 Debug/Verbose）。
+在 `DuckovCustomSounds/` 目录下创建空文件名为 `debug_off` 或 `.nolog`，所有模块的日志级别钳制到 Info（不输出 Debug/Verbose）。
 
 ### 方式三：voice_rules.json（仅部分模块）
 
-`voice_rules.json` 和 `footstep_voice_rule.json` 里的 Debug.Level 设置也会同步到日志系统（仅当 settings.json 未对同名模块显式设置时）。
+`voice_rules.json` 和 `footstep_voice_rule.json` 里的 Debug.Level 设置也会同步到日志系统（仅当 settings.json 未对同名模块显式设置时）。其中 `Debug.Enabled=false` 会完全关闭该模块的日志输出。
 
 ## 常见问题
 
@@ -74,7 +78,7 @@
 
 **ModConfig 配置不保存**：检查 `settings.json` 是否被只读，磁盘空间是否足够。
 
-**音效延迟/卡顿**：音频文件不要超过 5MB，采样率 44.1kHz，用压缩格式（`.ogg`）。建议游戏装 SSD。
+**音效延迟/卡顿**：建议音频文件控制在 5MB 以内、采样率 44.1kHz，优先用压缩格式（`.ogg`）。建议游戏装 SSD。
 
 ## 排查方法
 

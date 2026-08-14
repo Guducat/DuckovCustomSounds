@@ -6,7 +6,7 @@
   "compatibleModVersion": "2.0.0",
   "requiredModules": [
     "CustomBGM",
-    "CustomFootsteps",
+    "CustomFootStepSounds",
     "CustomEnemySounds",
     "CustomHitAndKillSounds"
   ],

@@ -47,11 +47,10 @@ This module covers BGM customization for title/home, level scenes, Boss encounte
 
 Global priority (highest to lowest):
 1. Boss BGM (a Boss is within trigger distance)
-2. Scene Loop BGM (continuous cycling)
-3. Scene Enter BGM (one-shot)
-4. Title/Home BGM (in menus)
+2. Scene BGM (Enter and Loop are suppressed together)
+3. Title/Home BGM (in menus)
 
-Transitions are handled via fade in/out. Extraction mode uses the SFX bus and is independent from the BGM pipeline.
+Transitions are handled via fade in/out. The countdown sound uses the SFX bus; the success replacement sound plays through the Music bus.
 
 ---
 

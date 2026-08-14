@@ -4,7 +4,7 @@ title: Grenade Sounds
 
 # Grenade Sounds
 
-Replace grenade and explosive sounds. Matched by soundKey.
+Replace grenade and explosive sounds. Match by source and TypeID first, falling back to soundKey and default.
 
 ## Quick Start
 
@@ -17,8 +17,10 @@ CustomGrenadeSounds/
 │   ├── 1234.mp3             # Match by grenade TypeID
 │   ├── explode_grenade.mp3
 │   └── default.mp3
-└── breakable/
-    └── default.mp3          # Barrels and other breakables
+├── breakable/
+│   └── default.mp3          # Barrels and other breakables
+└── proxy/
+    └── default.mp3          # ExplosionProxy source
 ```
 
 soundKey comes from the game internals — **example names are for reference only**. Actual names must be confirmed through logs.
@@ -40,6 +42,8 @@ Grenade source lookup order:
 7. `CustomGrenadeSounds/{soundKey}.*`
 8. `CustomGrenadeSounds/default.*`
 
+> Note: steps 1 and 5 are skipped when the TypeID is unavailable (`fromWeaponItemID` ≤ 0); without a configured fileBase, `{fileBase}` and `{soundKey}` are the same file name.
+
 Barrels and other breakables use:
 
 1. `CustomGrenadeSounds/breakable/{fileBase}.*`
@@ -49,11 +53,11 @@ Barrels and other breakables use:
 5. `CustomGrenadeSounds/{soundKey}.*`
 6. `CustomGrenadeSounds/default.*`
 
-`ExplosionProxy` uses `CustomGrenadeSounds/proxy/`. Unknown sources use only the legacy root layout.
+`ExplosionProxy` lookup order: 1. `CustomGrenadeSounds/proxy/{fileBase}.*` 2. `CustomGrenadeSounds/proxy/{soundKey}.*` 3. `CustomGrenadeSounds/proxy/default.*` 4. `CustomGrenadeSounds/{fileBase}.*` 5. `CustomGrenadeSounds/{soundKey}.*` 6. `CustomGrenadeSounds/default.*`. Unknown sources use only the legacy root layout (`{fileBase}` → `{soundKey}` → `default`).
 
 ## Mapping and No-Event Injection
 
-`grenade_sound_map.json` can remap TypeIDs, share file basenames, and inject sounds for grenades that do not emit a native explosion event, such as smoke or EMP-style grenades.
+`grenade_sound_map.json` can remap TypeIDs, share file basenames, and inject sounds for grenades that do not emit a native explosion event, such as smoke or EMP-style grenades. Injected sounds are resolved through the grenade lookup chain (`grenade/` folder first, then the root fallback).
 
 ```json
 {
@@ -75,7 +79,7 @@ Barrels and other breakables use:
 
 ## Variants
 
-After `frag.mp3` is matched, files like `frag_1.mp3` and `frag_2.mp3` in the same folder are selected randomly. Only numeric suffixes such as `_1` and `_2` are treated as variants.
+After `frag.mp3` is matched, files like `frag_1.mp3` and `frag_2.mp3` in the same folder are selected randomly; variants are also matched when `frag.mp3` itself is absent but `frag_1.mp3` exists. Only numeric suffixes with value ≥ 1, such as `_1` and `_2`, are treated as variants.
 
 ## ModConfig
 

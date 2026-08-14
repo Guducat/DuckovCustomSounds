@@ -69,12 +69,12 @@ Using ModConfig is recommended over directly editing settings.json.
 
 ## FAQ
 
-**Countdown sound doesn't trigger**: Confirm "Countdown Mode" is selected, the file exists (`countdown.*` or `extraction.*`), and the countdown is > 5 seconds.
+**Countdown sound doesn't trigger**: Confirm "Countdown Mode" is selected, the file exists (`countdown.*` or `extraction.*`), and the countdown has ≤ 5 seconds remaining (by design it does not play while more than 5 seconds remain).
 
 **Success stinger not replaced**: Confirm "Success Stinger Mode" is selected, the file exists (`success.*` or `TitleBGM/extraction.*`), and the log contains `撤离音乐替换已触发`.
 
-**Hear two sounds in countdown mode**: The countdown sound clip is too short — the vanilla success Stinger plays before it ends. Use a 10–15 second clip.
+**Hear two sounds in countdown mode**: Since v2.3.1 the vanilla success Stinger is suppressed in Countdown Mode, so a second sound should not occur; if it still does, confirm you are not on an older version and check the log that the countdown sound actually triggered.
 
 **Can't use countdown and success replacement together**: The two modes are mutually exclusive. For a combined effect, use Countdown Mode with a long clip (covering countdown through success).
 
-**Volume not comfortable**: Extraction sounds use the SFX bus and are affected by the game's SFX volume. You can also adjust extraction sound volume independently in ModConfig.
+**Volume not comfortable**: The countdown sound uses the SFX bus (affected by the game's SFX volume); the success replacement sound uses the Music bus. Both can be adjusted via the Extraction Sound Volume in ModConfig.

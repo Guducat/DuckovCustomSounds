@@ -17,13 +17,23 @@ CustomMeleeSounds/
 
 ## TypeID
 
-Each melee weapon has a unique numeric ID. **Must use the number**; weapon names are NOT valid (e.g. `knife.mp3` is wrong).
+Each melee weapon has a unique numeric ID. **Use the numeric TypeID as the primary name**; files named by the event soundKey (e.g. `knife.mp3`) also work as a fallback, with numeric files taking priority.
 
 Obtaining them: Set `logging.modules.Melee.level` to `Debug`, attack with the weapon, search `player.log` for `[MeleeAttack]` and look at `TypeID=xxx`.
 
 ## File Lookup
 
-1. `{TypeID}.mp3` → 2. `default.mp3`
+Attack:
+1. `{TypeID}.mp3` → 2. `{soundKey}.mp3` → 3. `default.mp3`
+
+Swing:
+1. `{TypeID}_swing.mp3` → 2. `{soundKey}.mp3` → 3. `default_swing.mp3`
+
+`{soundKey}` is the part of the event name after the `SFX/Combat/Melee/attack_` / `swing_` prefix (see `soundKey=xxx` in the `[MeleeAttack]` / `[MeleeSwing]` logs).
+
+## Swing Sounds
+
+The melee swing (wind‑up/whiff) sound is separate from the attack: name files `{TypeID}_swing.mp3` (e.g. `98_swing.mp3`), falling back to `default_swing.mp3`; `_1`/`_2` variants are also supported. Obtain the TypeID the same way as for attacks (search the logs for `[MeleeSwing]`).
 
 ## Variants
 

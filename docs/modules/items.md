@@ -41,11 +41,18 @@ CustomItemSounds/
 
 ## 文件查找优先级
 
-1. `CustomItemSounds/{类别}/{TypeID}.*`
-2. `CustomItemSounds/{类别}/default.*`
-3. `CustomItemSounds/{TypeID}.*`
-4. `CustomItemSounds/{soundKey}.*`
-5. `CustomItemSounds/default.*`
+1. 分段文件（仅使用有阶段时）：`CustomItemSounds/{类别}/{TypeID}_action|_start` / `_finish|_end`（同级依次回退 `{soundKey}_...`、`default_...`）
+2. `CustomItemSounds/{类别}/{TypeID}.*`
+3. `CustomItemSounds/{类别}/{fileBase}.*`（未配置 fileBase 时即 `{soundKey}`）
+4. `CustomItemSounds/{类别}/default.*`
+5. 根目录分段：`CustomItemSounds/{TypeID}_action|_start` / `_finish|_end`
+6. `CustomItemSounds/{TypeID}.*`
+7. `CustomItemSounds/{fileBase}.*`（未配置时即 `{soundKey}`）
+8. `CustomItemSounds/default.*`
+
+## 变体
+
+与枪械/近战一致，支持 `_1`、`_2` 后缀随机选择（如 `bandage/20_1.mp3`）；即使没有基准文件 `20.mp3`，仅有变体也会被识别。
 
 ## 分段音效
 
@@ -72,6 +79,8 @@ bandage/
 
 文件位置：`CustomItemSounds/item_sound_map.json`。首次运行自动生成。用于精细控制 TypeID→类别映射，以及给无原版音效的物品主动注入音效。
 
+> 以下为示例配置；首次自动生成的文件不含任何 `items` 条目（仅含 `defaultWhenNoEvent: null` 与 `aliases: {"meds": "bandage"}`）。
+
 ```json
 {
   "defaultWhenNoEvent": null,
@@ -96,7 +105,7 @@ bandage/
 
 示例：TypeID 23 和 25 共用 `64.mp3`（放在 `bandage/` 目录下）。
 
-修改后回主菜单或重启生效。
+修改后需重启游戏生效。
 
 ## 格式
 

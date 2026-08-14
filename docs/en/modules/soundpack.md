@@ -20,7 +20,7 @@ Pack not showing up? Check that the folder contains a valid `pack.json`.
 - **settings.json (fallback)**: Edit `currentSoundPack` to `""` (empty string) to restore defaults, or set it to the pack folder name.
 - **Restore Default**: Select "Default" in ModConfig, or clear `currentSoundPack` and restart.
 
-Modules not provided by the pack automatically fall back: current pack → Default (root directory) → vanilla audio.
+Module files are looked up only inside the current pack's directory (the root directory when Default is selected); a module missing from the pack does not fall back to the root — the vanilla audio plays instead.
 
 ## Creating Your Own Pack
 
@@ -78,7 +78,7 @@ DuckovCustomSounds/
 | `name` | Yes | Display name in the UI list |
 | `author` | Yes | Author name |
 | `version` | Yes | Version number, semantic versioning recommended (1.0.0) |
-| `description` | No | Brief description, shown after the name in the UI |
+| `description` | No | Brief description (currently only stored in pack.json; not shown in the UI) |
 | `compatibleModVersion` | No | Target mod compatibility version, informational only, does not affect loading |
 | `requiredModules` | No | List of involved modules, informational only, no strict validation |
 | `optional.homepage` | No | Homepage link |
@@ -87,7 +87,7 @@ DuckovCustomSounds/
 Notes:
 - The pack ID is the **folder name**, not set inside pack.json.
 - If any of `name`/`author`/`version` is missing, the pack is ignored.
-- UI display format: `Name vVersion by Author - Description`.
+- Log display format: `Name vVersion by Author - Description`; the ModConfig dropdown shows only `name`.
 
 ## Involved Modules
 
@@ -106,7 +106,7 @@ Sound Pack subdirectory names match module directory names:
 
 ## FAQ
 
-- **Sound Pack option not showing**: No subfolder with a valid `pack.json` exists under `DuckovCustomSounds/`. If the root directory has typical resource folders and audio, a "Default" option automatically appears.
+- **Sound Pack option not showing**: No subfolder with a valid `pack.json` exists under `DuckovCustomSounds/` and the root directory has no typical resource folder (`HomeBGM`/`BossBGM`/`SceneBGM`/`TitleBGM`) containing audio — no option is shown in that case. If the root directory has typical resource folders with audio, a "Default" option automatically appears.
 - **Switching not taking effect**: A game restart is required. Check that `currentSoundPack` in `settings.json` is correct.
 - **Pack not appearing**: `pack.json` has invalid JSON syntax or is missing required fields.
 - **How to restore defaults**: Select "Default" in the UI, or clear `currentSoundPack` and restart.

@@ -62,7 +62,7 @@ title: 声音包生成器
 
 | 字段 | 说明 |
 |------|------|
-| `description` | 简介，UI 显示在名称后 |
+| `description` | 简介（当前仅写入 pack.json，UI 不显示） |
 | `compatibleModVersion` | 兼容 Mod 版本，仅说明，不影响加载 |
 | `requiredModules` | 涉及模块列表：`CustomBGM`、`CustomEnemySounds`、`CustomFootStepSounds`、`CustomGunSounds`、`CustomMeleeSounds`、`CustomGrenadeSounds`、`CustomHitAndKillSounds`、`CustomItemSounds`。仅说明，不做强校验 |
 | `optional.homepage` | 主页链接 |
@@ -71,7 +71,7 @@ title: 声音包生成器
 ## 注意
 
 - 包 ID = 文件夹名，不在 pack.json 里设置。
-- UI 显示：`名称 v版本号 by 作者 - 描述`。
+- 日志显示：`名称 v版本号 by 作者 - 描述`；ModConfig 下拉列表只显示 `name`。
 - 缺必填字段的包会被忽略。
 - 分发时只打包声音包文件夹，不要带 settings.json。
 

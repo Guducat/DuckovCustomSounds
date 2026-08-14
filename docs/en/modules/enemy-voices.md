@@ -47,8 +47,8 @@ Rule format: `{FilePattern}/{iconPrefix}_{voiceType}_{soundKey}{ext}`
 | Variable | Description |
 |------|------|
 | `FilePattern` | Directory, set in `voice_rules.json` SimpleRules, e.g. `CustomEnemySounds/Scav` |
-| `iconPrefix` | Rank: `normal`, `elite`, `boss` |
-| `voiceType` | If NameKey exists, extracted from NameKey (`Cname_Scav` → `scav`, `Cname_Usec` → `usec`). Otherwise, uses the game's raw VoiceType enum: `Duck`, `Robot`, `Wolf`, `Chicken`, `Crow`, `Eagle`, `coalball` |
+| `iconPrefix` | Determined by that SimpleRule's `IconType`; empty defaults to `normal`, can be set to `elite`/`boss` |
+| `voiceType` | If NameKey exists, extracted from the NameKey's second segment with original casing (`Cname_Scav` → `Scav`); matched first, falling back to the raw VoiceType. Otherwise, uses the game's raw VoiceType enum: `Duck`, `Robot`, `Wolf`, `Chicken`, `Crow`, `Eagle`, `coalball` |
 | `soundKey` | The four soundKeys above |
 | `ext` | `.mp3` or `.wav` (set in `voice_rules.json` `PreferredExtensions`) |
 
@@ -58,18 +58,19 @@ Scav/normal_scav_normal.mp3
 Scav/normal_scav_surprise.mp3
 Scav/normal_scav_grenade.mp3
 Scav/normal_scav_death.mp3
-Scav/elite_scav_normal.mp3      # Elite Scav
+Scav/elite_scav_normal.mp3      # Only matches with a rule like { "NameKey": "Cname_Scav", "IconType": "elite", "FilePattern": "CustomEnemySounds/Scav" }
 ```
 
-**Wrong naming**:
+**Not recommended (but still matches)**:
 ```
-Scav/normal_duck_normal.mp3  ❌  # Scav's voiceType is "scav", not "duck"
+Scav/normal_duck_normal.mp3  ⚠️  # Only when no "scav"-derived file exists does the engine fall back to the raw VoiceType (e.g. Duck), so this file can still match Scavs (case-insensitive on Windows); it is shared by every enemy of that voice line, so prefer the "scav" name
 ```
 
-Players (NameKey empty) are matched by Team:
+Players (NameKey empty) are matched by Team, for example:
 ```
-Player/normal_duck_footstep_walk_light.mp3
+Player/normal_duck_surprise.mp3
 ```
+(corresponding rule: `{ "Team": "player", "FilePattern": "CustomEnemySounds/Player" }`; footstep/dash sounds belong to the Footsteps module — see that page)
 
 ### Wildcard Fallback
 
@@ -100,7 +101,7 @@ File location: `CustomEnemySounds/voice_rules.json`
 |------|------|
 | `Debug.Level` | `Error`/`Warning`/`Info` (recommended)/`Debug`/`Verbose` |
 | `Debug.ValidateFileExists` | Whether to check if the file exists before playing (recommended `true`) |
-| `Fallback.UseOriginalWhenMissing` | Use vanilla when custom file is not found (recommended `true`) |
+| `Fallback.UseOriginalWhenMissing` | Reserved field, not functional in the current build (the vanilla sound always plays when no custom file matches) |
 | `Fallback.PreferredExtensions` | Extension priority order; can add `.ogg`, `.flac`, etc. |
 | `UseSimpleRules` | `true` = use simplified rules |
 | `SimpleRules[].NameKey` | Unique enemy identifier, e.g. `Cname_Scav` |
@@ -119,6 +120,25 @@ Scav/normal_scav_surprise_2.mp3   # Variant 2
 ```
 The system picks one at random. With `BindVariantIndexPerEnemy` enabled, the same enemy always uses the same variant.
 
+### Complex Rules (`Rules[]`)
+
+With `UseSimpleRules: false`, the `Rules[]` array is used:
+
+| Field | Description |
+|------|------|
+| `Team` | Team matching (e.g. `scav`, `pmc`) |
+| `IconType` | Prefix (same as simple mode; empty = `normal`) |
+| `MinHealth` / `MaxHealth` | Health range |
+| `NameKeyContains` | Partial NameKey match |
+| `ForceVoiceType` | Override voiceType (e.g. `Duck`/`Robot`) |
+| `SoundKeys` | Only match these soundKeys |
+| `FilePattern` | Audio directory; supports tokens `{team}`, `{rank}`, `{voiceType}`, `{soundKey}`, etc. |
+
+- `DefaultPattern`: default template `CustomEnemySounds/{team}/{rank}_{voiceType}_{soundKey}{ext}`; the `{team}`/`{rank}` tokens only apply in complex rules (in simple mode the prefix comes only from IconType).
+- Unknown soundKeys also participate at normal priority (10), not just the four built-in ones.
+- Simple mode has two wildcard fallbacks: dropping the soundKey (`{iconPrefix}_{voiceType}.{ext}`) and ignoring voiceType (`{iconPrefix}_*_{soundKey}{ext}`).
+- `MinCooldownSeconds` is not used by the voice module (it applies to the footsteps module).
+
 ## ModConfig Settings
 
 | Setting | Description |
@@ -133,27 +153,29 @@ The system picks one at random. With `BindVariantIndexPerEnemy` enabled, the sam
 {
   "enableNPCtoNPCCombatVoices": true,
   "enemyVoiceTriggerMode": "Original",
+  "enemyVoiceVolumeScale": 1.0,
   "deathVoiceFrequency": "always",
   "npcGrenadeSurprisedFrequency": "always",
   "npcGrenadeSurprisedMaxDistance": 10.0
 }
 ```
 
+- `enemyVoiceVolumeScale`: Voice volume scale, default 1.0, range 0–2
 - `deathVoiceFrequency`: `"always"` / number in seconds (cooldown) / `"off"` to disable
 - `npcGrenadeSurprisedFrequency`: Same as above
 - `npcGrenadeSurprisedMaxDistance`: Max distance for NPC grenade alert, default 10 meters
 
 ## FAQ
 
-**Voice not playing**: Set `Debug.Level: "Verbose"`, search `player.log` for `[CES]` to see the matching process. Check file naming, paths, and extensions. Scav's voiceType is `scav`, not `duck`.
+**Voice not playing**: Set `Debug.Level: "Verbose"`, search `player.log` for `[CES]` to see the matching process. Check file naming, paths, and extensions. Prefer the `scav` name for Scavs; `duck` is only a raw voice-line fallback, not recommended as the primary name.
 
 **Separate Boss voices**: Add a SimpleRules entry like `{ "NameKey": "Cname_Wolf", "FilePattern": "CustomEnemySounds/BossWolf" }`.
 
 **Triggering too frequently**: Use `PlayerOnly` mode, or set `deathVoiceFrequency: "5.0"`.
 
-**Disable a certain soundKey**: Don't provide the corresponding file, and set `UseOriginalWhenMissing: false` for silence.
+**Disable a certain soundKey**: There is no per-soundKey mute option in the current build; the vanilla sound always plays when no custom file matches. To reduce triggering, use the "Player Only" trigger mode or raise the corresponding frequency cooldown.
 
-**Different voices for different ranks**: Use `normal_`, `elite_`, `boss_` prefix to distinguish ranks.
+**Different voices for different ranks**: Add multiple SimpleRules entries for the same NameKey with different `IconType` values (`elite`/`boss`) and name the files with the matching prefix; `elite_`/`boss_` filenames alone do not work without such rules.
 
 **One file covering all soundKeys**: Just place `normal_scav.mp3`; the system falls back to this when specific soundKey files are not found.
 

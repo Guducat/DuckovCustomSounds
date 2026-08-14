@@ -10,6 +10,7 @@ title: 起步
 
 - 把 Mod 放入游戏 `Mods/` 目录，确认能正常加载（详见仓库根 `README.md`）。
 - 首次启动会自动生成 `DuckovCustomSounds/settings.json` 和各模块的默认配置文件。
+- ⚠️ 音频与配置文件放在**游戏根目录**的 `DuckovCustomSounds/`（首次启动自动生成），不是 `Mods/DuckovCustomSounds/`（后者只放 Mod 的 DLL）。
 
 ## 最小可用目录
 
@@ -44,7 +45,7 @@ DuckovCustomSounds/
 ## 日志与排错
 
 - 遇到路径不匹配、文件未找到等问题，打开相关模块的 Debug 级别查看解析过程。
-- 也可以在 `DuckovCustomSounds/` 下放 `debug_off` 或 `.nolog` 文件快速关闭日志。
+- 也可以在 `DuckovCustomSounds/` 下放 `debug_off` 或 `.nolog` 文件快速压低日志量（钳制到 Info，隐藏 Debug/Verbose）。
 - 详见"高级 > 日志与排错"。
 
 ## 下一步

@@ -25,4 +25,4 @@ Directory: `TitleBGM/`
 ## FAQ
 
 - **start/death not playing**: Verify the file exists with the correct extension; check that the setting toggle is on.
-- **Sound too loud/quiet**: Title-related sounds have no independent volume control; use external tools to batch-adjust file volume.
+- **Sound too loud/quiet**: Title-related sounds have no independent volume slider, but they follow HomeBGM's "Music Volume"; you can also use external tools to batch-adjust file volume.

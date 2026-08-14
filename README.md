@@ -2,7 +2,7 @@
 
 *图标由GPT-image-2生成*
 
-一个为《逃离鸭科夫》(Escape from Duckov) 游戏设计的自定义音效Mod，允许玩家替换游戏中的背景音乐和各种音效，
+一个为《逃离鸭科夫》(Escape from Duckov) 游戏设计的自定义音效Mod，允许玩家替换游戏中的背景音乐和各种音效。
 
 本mod用于替换各种BGM，规则较复杂，有问题请提issues或进群咨询。  
 本mod还在持续更新中，欢迎关注插眼。致力做成最大最多基础功能的音效mod！
@@ -16,28 +16,29 @@
 
 ### 本MOD做到了什么？
 
+- 声音包一键切换（基于 pack.json 管理多套资源，ModConfig UI 选择）
 - 自定义主菜单音乐
-- 自定义地堡背景音乐
-- 自定义敌方音效（巡逻、惊讶、死亡等）
-- 自定义手雷音效
+- 自定义地堡留声机背景音乐（播放时显示歌曲名与作者）
+- 自定义加载界面 / 加载完成 BGM
+- 自定义场景 BGM（进入音乐 + 常驻循环）
+- 自定义撤离倒计时音效 / 撤离成功音乐
+- BOSS BGM（专属曲目，自动淡入淡出与优先级协调）
+- 自定义敌方音效（巡逻、惊讶、死亡、换弹等）
+- 自定义手雷音效（支持按 TypeID 区分不同投掷物，油桶等可破坏物单独路由）
 - 增加敌方因手雷受惊的音效
-- 自定义撤离倒计时音效/音乐
 - 自定义枪声
 - 自定义近战声
 - 自定义命中与击杀提示音
 - 自定义玩家与NPC受击音效
 - 自定义打药/喝水/进食音效
 - 自定义行走/跑步/翻滚音效
-- BOSS BGM
-- 进图音效
+- 环境音拦截（实验性，如风暴阶段提示音）
 
 ### 更多功能仍在开发
 
 <details >
 <summary>大饼</summary>
 
-- 环境音效
-- 不同手雷投掷物分别自定义不同音效
 - 在不同增益buff或状态下脚步声音不同
 - 在不同buff时有不同音效，buff消失音效消失
 - 角色血量偏低时播放警示音
@@ -61,6 +62,10 @@ Escape from Duckov/Duckov_Data
         ├── 0Harmony.dll
         └── DuckovCustomSounds.dll
 ```
+
+> ⚠️ **注意区分两个同名文件夹**：
+> - `Mods/DuckovCustomSounds/`：Mod 本体（DLL 等），**不要把音频文件放这里**；
+> - 游戏根目录 `Escape from Duckov/DuckovCustomSounds/`：**音频文件与配置文件**（`settings.json`、`pack.json` 及各类模块目录）都放在这里，首次启动会自动生成，按文档中的目录结构摆放即可。
 
 ### 2. 配置音频文件
 参考WIKI，在指定目录下放置音频文件
@@ -125,8 +130,11 @@ DuckovCustomSounds/
 - [x] 自定义主菜单音乐
 - [x] 自定义安全屋背景音乐
 - [x] 安全屋播放音乐时留声机显示歌曲名和作者
+- [x] 声音包一键切换
+- [x] 自定义加载界面 / 加载完成 BGM
+- [x] 自定义场景 BGM（进入 / 循环）
 - [x] 自定义敌方音效(巡逻、惊讶、死亡等)
-- [x] 自定义手雷音效
+- [x] 自定义手雷音效（按 TypeID / 来源区分投掷物与油桶等可破坏物）
 - [x] 自定义死亡音效
 - [x] 增加敌人发现手雷的音效
 - [x] 自定义撤离成功音乐
@@ -137,7 +145,8 @@ DuckovCustomSounds/
 - [x] 自定义饮食/饮水/打药音效
 - [x] 自定义脚步音效
 - [x] BOSS BGM
-- [ ] 自定义环境音效
+- [x] 自定义命中与击杀提示音 / 玩家与NPC受击音效
+- [x] 环境音拦截（实验性）
 - [ ] 无限可能……
 
 ### 不重复实现的功能
@@ -148,9 +157,9 @@ DuckovCustomSounds/
 ---
 
 ### 示例资源包
-[蓝奏云-10月27日23时50分版本](https://guducat.lanzoul.com/iyxyE39i2cid)，音效请解压在*游戏根目录(Escape from Duckov/DuckovCustomSounds/...)下，确保结果与文档一致*。
+[蓝奏云-2025年10月27日演示包](https://guducat.lanzoul.com/iyxyE39i2cid)，音效请解压在*游戏根目录(Escape from Duckov/DuckovCustomSounds/...)下，确保结果与文档一致*。
 
-**额外说明**：资源包**仅作演示**，请自行修改。目前包括：DeltaForce 音效、阿萨拉小兵语音、罐头笑声、专业配音员手雷掷出声、优质战士、电棍、Minecraft。
+**额外说明**：资源包**仅作演示**（版本较旧，目录结构以最新文档为准），请自行修改。目前包括：DeltaForce 音效、阿萨拉小兵语音、罐头笑声、专业配音员手雷掷出声、优质战士、电棍、Minecraft。
 务必删除："Escape from Duckov\DuckovCustomSounds\CustomFootStepSounds\player\"这整个player文件夹！否则很吵！
 
 自定义资源包请参考[这里](https://guducat.github.io/DuckovCustomSounds/)。
@@ -186,7 +195,7 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=3596300200
 - 第三方 MOD 武器枪声匹配优化
 
 ### 待复测问题（可能未修复）
-- 油桶爆炸与手雷爆炸无法区分（两者共用同一音效）
+- 油桶爆炸与手雷爆炸的区分：v2.2.0 起已支持 `breakable/` 来源路由，待实际验证效果
 - 高射速枪吞声
 - 医疗箱音效重复播放两次
 

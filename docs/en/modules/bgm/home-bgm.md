@@ -32,7 +32,7 @@ HomeBGM/
 
 | Setting | Default | Description |
 |------|------|------|
-| Enable Home BGM | On | Master switch |
+| Enable Home Music | On | Master switch |
 | Enable Base Entry Sound | On | Play start.mp3 when entering base |
 | Music Volume (%) | 100 | 0–100%, takes effect immediately |
 | Route Music through SFX Bus | Off | Experimental, routes through SFX instead of Music bus |

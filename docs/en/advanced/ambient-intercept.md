@@ -17,9 +17,11 @@ Mutes all `Amb/amb_*` prefixed game ambient sound events (wind, insects, ambient
 Recommended in-game ModConfig entry:
 
 ```text
-DCSAmbientIntercept | 环境音拦截 -> 启用环境音拦截（实验性）
-DCSAmbientIntercept | 环境音拦截 -> Intercept Storm Phase Stingers (Experimental)
+DCSAmbientIntercept | 环境音拦截 -> 启用环境音拦截（实验性） (Enable Ambient Intercept, Experimental)
+DCSAmbientIntercept | 环境音拦截 -> 拦截风暴阶段提示音（实验性） (Intercept Storm Phase Stingers, Experimental)
 ```
+
+The actual UI labels are in Chinese (shown above); the English text in parentheses is the meaning for reference.
 
 Changes made through ModConfig take effect immediately.
 

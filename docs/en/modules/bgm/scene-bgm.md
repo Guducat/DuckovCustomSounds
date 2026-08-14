@@ -29,7 +29,7 @@ SceneBGM/
 5. **Type keywords**: `loading_*`, `lab_*`, `factory_*`, `farm_*`, `zero_*`, `warehouse_*`, `expedition_*`, `outskirts_*`
 6. **Default**: `default_enter.mp3` / `default_loop.mp3`
 
-Note: Loading screens belong to the "loading" type; Enter BGM will not play default music for loading scenes (to avoid unwanted playback during black screens). **Type keywords also support Chinese** (e.g. `农场_enter.mp3`, `仓库_enter.mp3`, `零号区_enter.mp3`, `工厂_enter.mp3`, etc.).
+Note: Loading screens belong to the "loading" type; Enter BGM will not play default music for loading scenes (to avoid unwanted playback during black screens). Chinese scene names work only as exact-name matches (the filename must equal the scene display name, e.g. `零号区_enter.mp3`, `农场镇_enter.mp3`); type matching generates ASCII keyword filenames (`farm_enter.mp3`, `warehouse_enter.mp3`, etc.).
 
 #### v2.1.1 Update
 `Level_HiddenWarehouse_Main` is now also compatible with `level_warehouse_main_*`, since the warehouse map had its scene name changed and resource packs should use the stable map name.
@@ -43,7 +43,7 @@ Note: Loading screens belong to the "loading" type; Enter BGM will not play defa
 | Enter Music Volume | 80% | 0–100% |
 | Enable Loop Scene BGM | On | Play Loop music |
 | Loop Music Volume | 60% | 0–100% |
-| Override Default Scene Music | On | Whether Loop overrides native scene music |
+| Override Default Scene Music | On | Reserved setting, currently has no effect |
 
 Changes take effect immediately; volume changes transition smoothly.
 
@@ -51,7 +51,7 @@ Changes take effect immediately; volume changes transition smoothly.
 
 1. Level initialization complete → delay `sceneLoadDelay` seconds
 2. If Enter music exists → fade in and play, auto-destroy on finish
-3. Cross-fade into Loop music
+3. Loop music starts after the Enter track finishes (no crossfade; `crossfadeDuration` is currently unused in code)
 4. Auto-stop on exiting the level
 
 ## Advanced Config (config.json)
@@ -72,11 +72,11 @@ File location: `SceneBGM/config.json`. Auto-generated on first run.
 | `enterFadeDuration` | Enter fade in/out time (seconds) |
 | `loopFadeDuration` | Loop fade in/out time (seconds) |
 | `sceneLoadDelay` | Delay after scene load (seconds) |
-| `crossfadeDuration` | Enter→Loop crossfade time (seconds) |
+| `crossfadeDuration` | Reserved parameter, currently unused in code |
 
 ## Priority
 
-Boss BGM > Scene Loop > Scene Enter.
+Boss BGM > Scene BGM (Enter and Loop are suppressed together).
 
 - **Boss suppression**: While a Boss is within trigger range, Scene Loop/Enter volumes fade smoothly to 0 (instances keep playing) and restore automatically when the Boss leaves trigger range or disappears.
 - **Self-heal (v2.3.3)**: If the loop instance is unexpectedly stopped during a Boss→Boss crossfade (shared music source contention), the loop BGM is rebuilt automatically when Boss suppression is released, so scene music never gets lost permanently.

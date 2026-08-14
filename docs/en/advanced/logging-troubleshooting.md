@@ -10,7 +10,7 @@ Logs are managed by the Unity engine and output to `player.log`. Log prefix form
 | System | Path |
 |------|------|
 | Windows | `C:\Users\{username}\AppData\LocalLow\TeamSoda\Duckov\player.log` |
-| Mac | `~/Library/Application Support/TeamSoda/Duckov/player.log` |
+| Mac | `~/Library/Logs/Unity/Player.log` |
 
 Log entries containing the `[DuckovCustomSounds]` prefix are outputs from this mod.
 
@@ -37,6 +37,7 @@ Add to `DuckovCustomSounds/settings.json`:
 ```json
 {
   "logging": {
+    "enabled": true,
     "defaultLevel": "Info",
     "modules": {
       "Core": { "level": "Info" },
@@ -47,8 +48,11 @@ Add to `DuckovCustomSounds/settings.json`:
 }
 ```
 
+- `enabled`: Global master switch; `false` turns off all module logging entirely (default true)
 - `defaultLevel`: Default level for all modules
 - `modules.ModuleName.level`: Override level for a specific module
+
+Log settings in settings.json and the `debug_off`/`.nolog` files are **hot-reloaded** (within ~1 second), no game restart needed.
 
 Available module names: `Core`, `SoundPack`, `Enemy`, `Footstep`, `BGM`, `HomeBGM`, `SceneBGM`, `ExtractionBGM`, `Gun`, `Grenade`, `Item`, `Melee`, `HitAndKill`
 
@@ -58,7 +62,7 @@ Create an empty file named `debug_off` or `.nolog` in the `DuckovCustomSounds/` 
 
 ### Method 3: voice_rules.json (Partial Modules Only)
 
-The `Debug.Level` settings in `voice_rules.json` and `footstep_voice_rule.json` will also sync to the logging system (only when settings.json does not explicitly set the same module).
+The `Debug.Level` settings in `voice_rules.json` and `footstep_voice_rule.json` will also sync to the logging system (only when settings.json does not explicitly set the same module). Note that `Debug.Enabled=false` completely disables that module's log output.
 
 ## FAQ
 
@@ -74,7 +78,7 @@ The `Debug.Level` settings in `voice_rules.json` and `footstep_voice_rule.json` 
 
 **ModConfig settings not saving**: Check if `settings.json` is read-only, or if disk space is sufficient.
 
-**Sound delay/stutter**: Keep audio files under 5 MB, sample rate 44.1kHz, use compressed formats (`.ogg`). Installing the game on an SSD is recommended.
+**Sound delay/stutter**: We recommend keeping audio files under 5 MB, at a 44.1kHz sample rate, and prefer compressed formats (`.ogg`). Installing the game on an SSD is also recommended.
 
 ## Troubleshooting Methodology
 

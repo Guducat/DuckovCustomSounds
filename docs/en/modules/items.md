@@ -41,11 +41,18 @@ CustomItemSounds/
 
 ## File Lookup Priority
 
-1. `CustomItemSounds/{category}/{TypeID}.*`
-2. `CustomItemSounds/{category}/default.*`
-3. `CustomItemSounds/{TypeID}.*`
-4. `CustomItemSounds/{soundKey}.*`
-5. `CustomItemSounds/default.*`
+1. Phase files (only while a use is in progress): `CustomItemSounds/{category}/{TypeID}_action|_start` / `_finish|_end` (falling back to `{soundKey}_...`, then `default_...` in the same folder)
+2. `CustomItemSounds/{category}/{TypeID}.*`
+3. `CustomItemSounds/{category}/{fileBase}.*` (`{soundKey}` when no fileBase is configured)
+4. `CustomItemSounds/{category}/default.*`
+5. Root phase files: `CustomItemSounds/{TypeID}_action|_start` / `_finish|_end`
+6. `CustomItemSounds/{TypeID}.*`
+7. `CustomItemSounds/{fileBase}.*` (`{soundKey}` when no fileBase is configured)
+8. `CustomItemSounds/default.*`
+
+## Variants
+
+Same as guns/melee: `_1`, `_2` suffixes are selected randomly (e.g. `bandage/20_1.mp3`); variants are recognized even when the base file `20.mp3` is absent.
 
 ## Segmented Sounds
 
@@ -72,6 +79,8 @@ bandage/
 
 File location: `CustomItemSounds/item_sound_map.json`. Auto-generated on first run. Used for fine‑grained control of TypeID→category mapping, and proactively injecting sounds for items without native audio events.
 
+> The following is an example config; the file generated on first run contains no `items` entries (only `defaultWhenNoEvent: null` and `aliases: {"meds": "bandage"}`).
+
 ```json
 {
   "defaultWhenNoEvent": null,
@@ -96,7 +105,7 @@ File location: `CustomItemSounds/item_sound_map.json`. Auto-generated on first r
 
 Example: TypeIDs 23 and 25 share `64.mp3` (placed in the `bandage/` directory).
 
-Changes take effect after returning to the main menu or restarting.
+Changes take effect after restarting the game.
 
 ## Formats
 

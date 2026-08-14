@@ -45,20 +45,22 @@ CustomFootStepSounds/
 
 | 变量 | 说明 |
 |------|------|
-| `{iconPrefix}` | 等级：`normal`、`elite`、`boss` |
-| `{voiceType}` | 有 NameKey 时从 NameKey 提取（如 `Cname_Scav` → `scav`）。没有时用游戏 `VoiceType` 枚举：`Duck`、`Robot`、`Wolf`、`Chicken`、`Crow`、`Eagle`、`coalball` |
+| `{iconPrefix}` | 规则中指定的 IconType（默认规则为空 → 恒为 `normal`；要 `elite`/`boss` 需在 SimpleRules 显式指定 IconType） |
+| `{voiceType}` | 有 NameKey 时从 NameKey 提取（如 `Cname_Scav` → `Scav`，大小写按 NameKey 原样）。没有时用游戏 `VoiceType` 枚举：`Duck`、`Robot`、`Wolf`、`Chicken`、`Crow`、`Eagle`、`coalball` |
 | `{soundKey}` | 上文所述 |
 | `{ext}` | `.mp3`、`.wav` 等（按 `PreferredExtensions` 顺序） |
 
 推荐：`Scav/normal_scav_footstep_walk_light.mp3`
 
-**注意**：Scav 的 voiceType 是 `scav` 不是 `duck`。系统优先使用从 NameKey 提取的值。
+**注意**：Scav 的 voiceType 是 `Scav` 不是 `Duck`（VoiceType 枚举是 `Duck`）。系统优先使用从 NameKey 提取的值；Windows 大小写不敏感，用小写文件名也能命中。
 
 ## footstep_voice_rule.json
 
+> 示例为简化版；首次生成的文件还含 `_comment` 注释字段与空的 `Rules` 数组。
+
 ```json
 {
-  "Debug": { "Enabled": true, "Level": "Info", "ValidateFileExists": true },
+  "Debug": { "Enabled": true, "Level": "Debug", "ValidateFileExists": true },
   "Fallback": { "UseOriginalWhenMissing": true, "PreferredExtensions": [".mp3", ".wav"] },
   "DefaultPattern": "CustomFootStepSounds/{team}/{rank}_{voiceType}_{soundKey}{ext}",
   "MinCooldownSeconds": 0.3,
@@ -77,8 +79,8 @@ CustomFootStepSounds/
 
 | 字段 | 说明 | 默认 |
 |------|------|------|
-| `Debug.Level` | `Error` / `Warning` / `Info` / `Debug` / `Verbose` | Info |
-| `Fallback.UseOriginalWhenMissing` | 没找到文件时用原版 | true |
+| `Debug.Level` | `Error` / `Warning` / `Info` / `Debug` / `Verbose` | Debug（首次生成文件） |
+| `Fallback.UseOriginalWhenMissing` | 没找到文件时用原版（预留项：当前未命中时始终保留原声，改此值不影响行为） | true |
 | `Fallback.PreferredExtensions` | 扩展名顺序，可加 `.ogg`、`.flac` | [".mp3",".wav"] |
 | `MinCooldownSeconds` | 同一角色最短触发间隔，避免音效重叠 | 0.3（0.05~2.0） |
 | `UseSimpleRules` | 用简化规则 | true |
@@ -113,7 +115,7 @@ Scav/normal_scav_footstep_walk_light_1.mp3   # 变体 1
 
 ## 常见问题
 
-**放了文件还播原声**：开 Debug 日志，在 player.log 搜 `[CFS:Route]`。确认文件名中 voiceType 正确（Scav → `scav`，不是 `duck`）。看路径日志需要同时开启 SceneBGM/EnemyVoice 的 Debug。
+**放了文件还播原声**：开 Debug 日志，在 player.log 搜 `[CFS:Route]`。确认文件名中 voiceType 正确（Scav → `Scav`，不是 `Duck`）。查看 `[CFS:Path]` 路径日志需将 Footstep 模块日志级别设为 Verbose（在 `settings.json` 的 `logging.modules.Footstep.level` 或 `footstep_voice_rule.json` 的 `Debug.Level` 设置）；搜 `[CFS:Route]` 只需 Debug 级。
 
 **脚步声频繁被打断/缺失**：调 `MinCooldownSeconds`（被打断就调大，缺失就调小）。
 

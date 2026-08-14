@@ -24,7 +24,7 @@ features:
   - title: 敌人语音规则引擎
     details: 按团队/段位/类型/NameKey 多维匹配，变体绑定与优先级控制。
   - title: 脚步声与动作音效
-    details: 支持 walk/run/dash，覆盖全流程；与 FMOD 3D 距离一致，混音可控。
+    details: 支持 walk/run/dash，覆盖全流程；音量与触发间隔可在 ModConfig 调节。
   - title: 武器/手雷/近战/物品
     details: 覆盖 Shoot、Explosive、Melee、Hit/Kill Marker、Item 使用等关键事件，支持按 soundKey 与 TypeID 匹配。
 ---
@@ -39,7 +39,7 @@ const fmtMap = {
   'Boss': bgmFormats,
   'Extraction': bgmFormats,
   'Voices': '.mp3, .wav（可通过 voice_rules.json 扩展 .ogg、.flac 等）',
-  'Footsteps': '.mp3, .wav（可通过 footsteps.json 扩展 .ogg、.flac 等）',
+  'Footsteps': '.mp3, .wav（可通过 footstep_voice_rule.json 扩展 .ogg、.flac 等）',
   'Guns': sfx4Formats,
   'Melee': sfx4Formats,
   'Grenade': sfx4Formats,

@@ -4,7 +4,7 @@ title: Boss BGM
 
 # Boss BGM
 
-为特定 Boss 播放专属 BGM。进入触发距离内自动淡入，离开或死亡时平滑淡出。多 Boss 并存时按最近且优先级最高的规则选择。
+为特定 Boss 播放专属 BGM。进入触发距离内自动淡入，离开或死亡时平滑淡出。多 Boss 并存时选择触发距离内最近的 Boss（切换有防抖与距离优势阈值）。
 
 ## 目录与命名
 
@@ -24,8 +24,8 @@ BossBGM/
 
 | 设置 | 默认 | 范围 |
 |------|------|------|
-| 启用 Boss BGM | 开 | 开/关 |
-| 触发距离 | 50 米 | 10-200 米 |
+| 启用首领音乐 | 开 | 开/关 |
+| 触发距离 | 40 米 | 10-200 米 |
 | 音量 | 70% | 0-100% |
 
 ## 高级配置（config.json）
@@ -34,6 +34,7 @@ BossBGM/
 
 ```json
 {
+  "volume": 0.7,
   "fadeDuration": 2.0,
   "updateInterval": 0.1,
   "managerUpdateInterval": 0.5,
@@ -48,14 +49,15 @@ BossBGM/
 
 | 参数 | 说明 |
 |------|------|
+| `volume` | 音量（0~1） |
 | `fadeDuration` | 淡入/淡出时间（秒） |
 | `updateInterval` | 单体更新频率（秒） |
 | `managerUpdateInterval` | 管理器更新频率（秒） |
 | `minSwitchIntervalSeconds` | 切换防抖间隔（秒） |
 | `minDistanceDeltaToSwitch` | 切换最小距离变化（米） |
 | `resumePlaybackEnabled` | 是否从暂停处恢复播放 |
-| `delayedStopEnabled` | 离开后延迟停止（避免边界反复） |
-| `delayedStopSeconds` | 延迟停止时间（秒） |
+| `delayedStopEnabled` | 预留参数，当前代码未使用 |
+| `delayedStopSeconds` | 预留参数，当前代码未使用 |
 | `bossDeathFadeOutSeconds` | Boss 死亡后淡出时间（秒） |
 
 ## 优先级
@@ -64,7 +66,7 @@ Boss 进入触发距离内时，Boss BGM 优先级高于场景 BGM 和标题/主
 
 ## 附录：BOSS NameKey → 文件名对照表
 
-文件名 = NameKey 去掉 `Cname_` 前缀，支持 `.mp3`/`.wav`/`.ogg`/`.flac`。
+文件名 = NameKey 去掉 `Cname_` 前缀，支持 `AudioFileExtensions` 全部格式（`.mp3`/`.wav`/`.ogg`/`.oga`/`.flac`/`.aif`/`.aiff`/`.mp2`/`.m4a`/`.mp4`/`.wma`/`.asf`/`.fsb`/`.it`/`.mid`/`.midi`/`.mod`/`.s3m`/`.xm`）。
 
 | NameKey | 中文名 | 文件名 |
 |---------|--------|--------|

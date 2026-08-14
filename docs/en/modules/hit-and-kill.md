@@ -71,8 +71,8 @@ Some audio events live in Unity serialized resources. Decompiled C# shows the fi
 | Play Hurt Sounds | On |
 | Enable Reflection Diagnostics | Off |
 | Volume Scale | 1.0 (0–2) |
-| Marker Cooldown Ms | 30 |
-| Hurt Cooldown Ms | 120 |
+| Marker Cooldown Ms | 30 (0–500) |
+| Hurt Cooldown Ms | 120 (0–1000) |
 
 ## Logging
 
@@ -82,10 +82,12 @@ Set in `settings.json`:
 {
   "logging": {
     "modules": {
-      "HitAndKill": { "level": "Debug" }
+      "HitAndKill": { "level": "Verbose" }
     }
   }
 }
 ```
 
-For unknown hurt events, enable both `enableAudioPostLogger` and `reflectionDiagnostics`.
+> `enableAudioPostLogger` traces are logged at Verbose level; `Debug` filters them out, so use `Verbose` when troubleshooting.
+
+For unknown hurt events, enable both `enableAudioPostLogger` (a top-level key in settings.json, off by default) and `reflectionDiagnostics` ("Enable Reflection Diagnostics" in ModConfig).

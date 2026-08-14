@@ -62,7 +62,7 @@ Online form, instant generation of a properly formatted pack.json.
 
 | Field | Description |
 |------|------|
-| `description` | Brief description, shown after the name in the UI |
+| `description` | Brief description (currently only stored in pack.json; not shown in the UI) |
 | `compatibleModVersion` | Compatible mod version, informational only, does not affect loading |
 | `requiredModules` | List of involved modules: `CustomBGM`, `CustomEnemySounds`, `CustomFootStepSounds`, `CustomGunSounds`, `CustomMeleeSounds`, `CustomGrenadeSounds`, `CustomHitAndKillSounds`, `CustomItemSounds`. Informational only, no strict validation |
 | `optional.homepage` | Homepage link |
@@ -71,7 +71,7 @@ Online form, instant generation of a properly formatted pack.json.
 ## Notes
 
 - Pack ID = folder name, not set inside pack.json.
-- UI display: `Name vVersion by Author - Description`.
+- Log display: `Name vVersion by Author - Description`; the ModConfig dropdown shows only `name`.
 - Packs missing required fields are ignored.
 - When distributing, only include the sound pack folder, do not include settings.json.
 

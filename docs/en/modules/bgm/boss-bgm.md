@@ -4,7 +4,7 @@ title: Boss BGM
 
 # Boss BGM
 
-Play exclusive BGM for specific Bosses. Auto fade-in when entering trigger range, smooth fade-out on leaving or death. When multiple Bosses are present, the closest and highest-priority rule is selected.
+Play exclusive BGM for specific Bosses. Auto fade-in when entering trigger range, smooth fade-out on leaving or death. When multiple Bosses are present, the closest one within trigger range is selected (switching has debounce and a distance-advantage threshold).
 
 ## Directory & Naming
 
@@ -24,8 +24,8 @@ BossBGM/
 
 | Setting | Default | Range |
 |------|------|------|
-| Enable Boss BGM | On | On/Off |
-| Trigger Distance | 50 m | 10–200 m |
+| Enable Boss Music | On | On/Off |
+| Trigger Distance | 40 m | 10–200 m |
 | Volume | 70% | 0–100% |
 
 ## Advanced Config (config.json)
@@ -34,6 +34,7 @@ File location: `BossBGM/config.json`. Auto-generated on first run.
 
 ```json
 {
+  "volume": 0.7,
   "fadeDuration": 2.0,
   "updateInterval": 0.1,
   "managerUpdateInterval": 0.5,
@@ -48,14 +49,15 @@ File location: `BossBGM/config.json`. Auto-generated on first run.
 
 | Parameter | Description |
 |------|------|
+| `volume` | Volume (0–1) |
 | `fadeDuration` | Fade in/out duration (seconds) |
 | `updateInterval` | Per‑entity update frequency (seconds) |
 | `managerUpdateInterval` | Manager update frequency (seconds) |
 | `minSwitchIntervalSeconds` | Switch debounce interval (seconds) |
 | `minDistanceDeltaToSwitch` | Minimum distance change to trigger a switch (meters) |
 | `resumePlaybackEnabled` | Resume playback from pause position |
-| `delayedStopEnabled` | Delay stop after leaving range (avoids boundary flicker) |
-| `delayedStopSeconds` | Delayed stop duration (seconds) |
+| `delayedStopEnabled` | Reserved parameter, currently unused in code |
+| `delayedStopSeconds` | Reserved parameter, currently unused in code |
 | `bossDeathFadeOutSeconds` | Fade-out duration after Boss death (seconds) |
 
 ## Priority
@@ -64,7 +66,7 @@ When a Boss is within trigger range, Boss BGM has higher priority than Scene BGM
 
 ## Appendix: BOSS NameKey → Filename Reference
 
-Filename = NameKey minus the `Cname_` prefix. Supports `.mp3`/`.wav`/`.ogg`/`.flac`.
+Filename = NameKey minus the `Cname_` prefix. Supports all `AudioFileExtensions` formats (`.mp3`/`.wav`/`.ogg`/`.oga`/`.flac`/`.aif`/`.aiff`/`.mp2`/`.m4a`/`.mp4`/`.wma`/`.asf`/`.fsb`/`.it`/`.mid`/`.midi`/`.mod`/`.s3m`/`.xm`).
 
 | NameKey | Chinese Name | Filename |
 |---------|-------------|----------|

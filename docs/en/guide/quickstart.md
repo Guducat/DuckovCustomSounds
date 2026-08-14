@@ -10,6 +10,7 @@ This page helps you quickly install, place audio files, and verify that replacem
 
 - Place the mod in your game's `Mods/` directory and confirm it loads correctly (see repo root `README.md` for details).
 - On first launch, `DuckovCustomSounds/settings.json` and default config files for each module are auto-generated.
+- ⚠️ Audio and config files live in `DuckovCustomSounds/` at the **game root** (auto-generated on first launch) — NOT in `Mods/DuckovCustomSounds/` (that one only holds the mod DLLs).
 
 ## Minimal Working Directory
 
@@ -44,7 +45,7 @@ DuckovCustomSounds/
 ## Logging & Troubleshooting
 
 - For path mismatches, files not found, etc., enable Debug level on the relevant module to see the resolution process.
-- You can also place a `debug_off` or `.nolog` file under `DuckovCustomSounds/` to quickly suppress logs.
+- You can also place a `debug_off` or `.nolog` file under `DuckovCustomSounds/` to quickly reduce log volume (clamped to Info, hiding Debug/Verbose).
 - See "Advanced > Logging & Troubleshooting" for details.
 
 ## Next Steps

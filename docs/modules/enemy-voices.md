@@ -47,8 +47,8 @@ CustomEnemySounds/
 | 变量 | 说明 |
 |------|------|
 | `FilePattern` | 目录，在 `voice_rules.json` 的 SimpleRules 里设置，如 `CustomEnemySounds/Scav` |
-| `iconPrefix` | 等级：`normal`（普通）、`elite`（精英）、`boss`（Boss） |
-| `voiceType` | 有 NameKey 时从 NameKey 提取（`Cname_Scav` → `scav`，`Cname_Usec` → `usec`）。没有 NameKey 时用游戏原始 VoiceType 枚举值：`Duck`、`Robot`、`Wolf`、`Chicken`、`Crow`、`Eagle`、`coalball` |
+| `iconPrefix` | 由该条 SimpleRule 的 `IconType` 决定；留空默认 `normal`，可设为 `elite`/`boss` |
+| `voiceType` | 有 NameKey 时从 NameKey 第二段提取，保留原始大小写（`Cname_Scav` → `Scav`）；先按该段匹配，未命中再回退原始 VoiceType。没有 NameKey 时直接用游戏 VoiceType 枚举值：`Duck`、`Robot`、`Wolf`、`Chicken`、`Crow`、`Eagle`、`coalball` |
 | `soundKey` | 以上四个 soundKey |
 | `ext` | `.mp3` 或 `.wav`（在 `voice_rules.json` 的 `PreferredExtensions` 里设置） |
 
@@ -58,18 +58,19 @@ Scav/normal_scav_normal.mp3
 Scav/normal_scav_surprise.mp3
 Scav/normal_scav_grenade.mp3
 Scav/normal_scav_death.mp3
-Scav/elite_scav_normal.mp3      # 精英 Scav
+Scav/elite_scav_normal.mp3      # 需配合规则 { "NameKey": "Cname_Scav", "IconType": "elite", "FilePattern": "CustomEnemySounds/Scav" } 才会命中
 ```
 
-**错误命名**：
+**不推荐命名（但会命中）**：
 ```
-Scav/normal_duck_normal.mp3  ❌  # Scav 的 voiceType 是 "scav"，不是 "duck"
+Scav/normal_duck_normal.mp3  ⚠️  # 仅当 "scav" 命名的文件不存在时，系统会回退用原始 VoiceType（如 Duck）匹配，因此该文件对 Scav 仍会命中（Windows 大小写不敏感）；但它会与所有同声线敌人共用，建议优先用 "scav" 命名
 ```
 
-玩家（NameKey 为空）按 Team 匹配：
+玩家（NameKey 为空）按 Team 匹配，例如：
 ```
-Player/normal_duck_footstep_walk_light.mp3
+Player/normal_duck_surprise.mp3
 ```
+（对应规则 `{ "Team": "player", "FilePattern": "CustomEnemySounds/Player" }`；脚步/冲刺音效属于「脚步」模块，见该模块文档）
 
 ### 通配回退
 
@@ -100,7 +101,7 @@ Player/normal_duck_footstep_walk_light.mp3
 |------|------|
 | `Debug.Level` | `Error`/`Warning`/`Info`（推荐）/`Debug`/`Verbose` |
 | `Debug.ValidateFileExists` | 是否在播放前检查文件存在（建议 `true`） |
-| `Fallback.UseOriginalWhenMissing` | 没找到自定义文件时用原版（建议 `true`） |
+| `Fallback.UseOriginalWhenMissing` | 预留字段，当前版本未生效（未匹配到自定义文件时始终保留原声） |
 | `Fallback.PreferredExtensions` | 扩展名优先顺序，可加 `.ogg`、`.flac` 等 |
 | `UseSimpleRules` | `true` = 用简化规则 |
 | `SimpleRules[].NameKey` | 敌人唯一标识，如 `Cname_Scav` |
@@ -119,6 +120,25 @@ Scav/normal_scav_surprise_2.mp3   # 变体 2
 ```
 系统随机选一个播放。开启 `BindVariantIndexPerEnemy` 后，同一敌人每次都用同一个变体。
 
+### 复杂规则（Rules）
+
+`UseSimpleRules: false` 时使用复杂规则数组 `Rules[]`：
+
+| 字段 | 说明 |
+|------|------|
+| `Team` | 队伍匹配（如 `scav`、`pmc`） |
+| `IconType` | 前缀（同简单模式，留空为 `normal`） |
+| `MinHealth` / `MaxHealth` | 血量区间 |
+| `NameKeyContains` | NameKey 部分匹配 |
+| `ForceVoiceType` | 强制 voiceType（如 `Duck`/`Robot`） |
+| `SoundKeys` | 仅匹配这些 soundKey |
+| `FilePattern` | 音频目录，支持令牌 `{team}`、`{rank}`、`{voiceType}`、`{soundKey}` 等 |
+
+- `DefaultPattern`：默认模板 `CustomEnemySounds/{team}/{rank}_{voiceType}_{soundKey}{ext}`，`{team}`/`{rank}` 令牌仅在复杂规则中生效（简单模式前缀只来自 IconType）。
+- 未知的 soundKey 也按普通优先级（10）参与匹配，不只限于内置四个。
+- 简单模式的通配回退有两种：去掉 soundKey 的 `{iconPrefix}_{voiceType}.{ext}`，以及忽略 voiceType 的 `{iconPrefix}_*_{soundKey}{ext}`。
+- `MinCooldownSeconds` 字段在语音模块未使用（脚步模块才生效）。
+
 ## ModConfig 设置
 
 | 设置 | 说明 |
@@ -133,27 +153,29 @@ Scav/normal_scav_surprise_2.mp3   # 变体 2
 {
   "enableNPCtoNPCCombatVoices": true,
   "enemyVoiceTriggerMode": "Original",
+  "enemyVoiceVolumeScale": 1.0,
   "deathVoiceFrequency": "always",
   "npcGrenadeSurprisedFrequency": "always",
   "npcGrenadeSurprisedMaxDistance": 10.0
 }
 ```
 
+- `enemyVoiceVolumeScale`：语音音量倍率，默认 1.0，范围 0~2
 - `deathVoiceFrequency`：`"always"` / 数字秒（冷却）/ `"off"` 禁用
 - `npcGrenadeSurprisedFrequency`：同上
 - `npcGrenadeSurprisedMaxDistance`：NPC 对手雷提示的最大距离，默认 10 米
 
 ## 常见问题
 
-**语音不播放**：设置 `Debug.Level: "Verbose"`，在 player.log 里搜 `[CES]` 看匹配过程。检查文件命名、路径、扩展名。Scav 的 voiceType 是 `scav` 不是 `duck`。
+**语音不播放**：设置 `Debug.Level: "Verbose"`，在 player.log 里搜 `[CES]` 看匹配过程。检查文件命名、路径、扩展名。Scav 优先用 `scav` 命名；`duck` 只是原始声线回退，不建议依赖。
 
 **Boss 单独语音**：在 SimpleRules 加一条 `{ "NameKey": "Cname_Wolf", "FilePattern": "CustomEnemySounds/BossWolf" }`。
 
 **触发太频繁**：用 `PlayerOnly` 模式，或设 `deathVoiceFrequency: "5.0"`。
 
-**禁用某个 soundKey**：不提供对应文件，设 `UseOriginalWhenMissing: false` 即静音。
+**禁用某个 soundKey**：当前版本没有按 soundKey 静音的配置项；未提供自定义文件时始终保留原声。需要减少触发可改用「仅玩家相关（PlayerOnly）」触发模式，或调大对应频率冷却。
 
-**不同等级不同语音**：`normal_`、`elite_`、`boss_` 前缀区分等级。
+**不同等级不同语音**：在 SimpleRules 里为同一 NameKey 添加多条 `IconType` 不同的规则（`elite`/`boss`），文件用对应前缀命名；仅靠 `elite_`/`boss_` 文件名而不加规则不会生效。
 
 **一个文件覆盖所有 soundKey**：只放 `normal_scav.mp3`，系统找不到细分文件时回退到这个。
 

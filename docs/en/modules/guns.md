@@ -37,11 +37,11 @@ Each gun has a unique numeric ID. Different models within the same weapon family
 
 **Shoot (unsuppressed)**: `{TypeID}` → `{soundKey}` → `default`
 
-**Reload start**: `{TypeID}_reload_start` → `{TypeID}_reload` → `default_reload_start` → `default_reload` → `default`
+**Reload start**: `{TypeID}_reload_start` → `{TypeID}_reload` → `{soundKey}` → `default_reload_start` → `default_reload` → `default`
 
-**Reload end**: `{TypeID}_reload_end` → `default_reload_end` → `default`
+**Reload end**: `{TypeID}_reload_end` → `{soundKey}` → `default_reload_end` → `default`
 
-Where `{soundKey}` is the weapon sound identifier obtained from the `key=xxx` field in the `[GunShoot]` line in `player.log`.
+Where `{soundKey}` is the weapon sound identifier obtained from the `soundKey=xxx` field in the `[GunShoot]` line in `player.log`.
 
 ## Variants
 
@@ -54,13 +54,16 @@ Add `_1`, `_2` suffixes to the same TypeID for random selection:
 
 ## Shoot Rate Limiting
 
-Prevents high‑rate‑of‑fire sound overlap. Set in `settings.json` (requires `gunShootDev` enabled):
+Prevents high‑rate‑of‑fire sound overlap. Set in `settings.json` (requires `gunShootDev` enabled, which is never written automatically):
 ```json
 {
   "enableGunShootRateLimit": true,
-  "gunShootMinIntervalMs": 50.0
+  "gunShootMinIntervalMs": 95.0,
+  "gunShootRateLimitPerType": { "258": 150 }
 }
 ```
+
+If `gunShootMinIntervalMs` is not set, the default is 95 (range 0–1000); `gunShootRateLimitPerType` overrides the interval per TypeID.
 
 ## ModConfig
 

@@ -17,7 +17,7 @@ Tip: The new additions above default to the "Music" volume slider; they auto-coo
 
 ## 2026-04-25 v2.1.0
 
-- New: Fixed `TitleBGM/startFX.*` not playing.
+- Fix: `TitleBGM/startFX.*` not playing.
 - New: *Music* files now support 18 formats including `.flac`, `.ogg`, `.wav`, etc., no longer limited to `.mp3`.
 - New: Multiple modules now have independent volume sliders (0–200%), tied to the "SFX" bus, adjustable in ModConfig.
 - New: Runtime hot-switch of log level — change log level in ModConfig or `settings.json`, takes effect immediately without restart.
@@ -58,6 +58,10 @@ Tip: The new additions above default to the "Music" volume slider; they auto-coo
 
 - Fix: Boss BGM no longer suppresses Scene BGM while a Boss is outside trigger range, preventing scene and Boss music from going silent together.
 - Improvement: Scene BGM resumes automatically when a Boss leaves trigger range, is unregistered, or the scene is cleared; trigger distance changes apply immediately at runtime.
+
+## 2026-08-13 v2.3.2
+
+- Fix: Duplicate extraction BGM playback — scene transitions no longer clear the extraction notification dedup state via StopBGM (transition state is preserved); the state now resets only when a new extraction round starts, preventing the same round's sound from triggering twice.
 
 ## 2026-08-14 v2.3.3
 

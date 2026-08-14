@@ -45,20 +45,22 @@ Format: `{FilePattern}/{iconPrefix}_{voiceType}_{soundKey}{ext}`
 
 | Variable | Description |
 |------|------|
-| `{iconPrefix}` | Rank: `normal`, `elite`, `boss` |
-| `{voiceType}` | If NameKey exists, extracted from NameKey (e.g. `Cname_Scav` → `scav`). Otherwise, uses the game's `VoiceType` enum: `Duck`, `Robot`, `Wolf`, `Chicken`, `Crow`, `Eagle`, `coalball` |
+| `{iconPrefix}` | Determined by the rule's IconType (default rules are empty → always `normal`; set `IconType` explicitly in SimpleRules for `elite`/`boss`) |
+| `{voiceType}` | If NameKey exists, extracted from NameKey with original casing (e.g. `Cname_Scav` → `Scav`). Otherwise, uses the game's `VoiceType` enum: `Duck`, `Robot`, `Wolf`, `Chicken`, `Crow`, `Eagle`, `coalball` |
 | `{soundKey}` | As described above |
 | `{ext}` | `.mp3`, `.wav`, etc. (in `PreferredExtensions` order) |
 
 Recommended: `Scav/normal_scav_footstep_walk_light.mp3`
 
-**Note**: Scav's voiceType is `scav`, not `duck`. The system prioritizes the value extracted from NameKey.
+**Note**: Scav's voiceType is `Scav`, not `Duck` (the `VoiceType` enum value is `Duck`). The system prioritizes the value extracted from NameKey; Windows is case-insensitive, so lowercase filenames also match.
 
 ## footstep_voice_rule.json
 
+> The example below is simplified; the file generated on first run also contains `_comment` fields and an empty `Rules` array.
+
 ```json
 {
-  "Debug": { "Enabled": true, "Level": "Info", "ValidateFileExists": true },
+  "Debug": { "Enabled": true, "Level": "Debug", "ValidateFileExists": true },
   "Fallback": { "UseOriginalWhenMissing": true, "PreferredExtensions": [".mp3", ".wav"] },
   "DefaultPattern": "CustomFootStepSounds/{team}/{rank}_{voiceType}_{soundKey}{ext}",
   "MinCooldownSeconds": 0.3,
@@ -77,8 +79,8 @@ Recommended: `Scav/normal_scav_footstep_walk_light.mp3`
 
 | Field | Description | Default |
 |------|------|------|
-| `Debug.Level` | `Error` / `Warning` / `Info` / `Debug` / `Verbose` | Info |
-| `Fallback.UseOriginalWhenMissing` | Use vanilla when file not found | true |
+| `Debug.Level` | `Error` / `Warning` / `Info` / `Debug` / `Verbose` | Debug (generated file) |
+| `Fallback.UseOriginalWhenMissing` | Use vanilla when file not found (reserved: the vanilla sound always plays when nothing matches; changing this value has no effect) | true |
 | `Fallback.PreferredExtensions` | Extension priority order; can add `.ogg`, `.flac` | [".mp3",".wav"] |
 | `MinCooldownSeconds` | Minimum trigger interval for the same character to avoid sound overlap | 0.3 (0.05–2.0) |
 | `UseSimpleRules` | Use simplified rules | true |
@@ -113,7 +115,7 @@ Scav/normal_scav_footstep_walk_light_1.mp3   # Variant 1
 
 ## FAQ
 
-**Original sounds still play despite having files**: Enable Debug logging, search `player.log` for `[CFS:Route]`. Confirm the voiceType in the filename is correct (Scav → `scav`, not `duck`). Viewing path logs requires enabling Debug for SceneBGM/EnemyVoice as well.
+**Original sounds still play despite having files**: Enable Debug logging, search `player.log` for `[CFS:Route]`. Confirm the voiceType in the filename is correct (Scav → `Scav`, not `Duck`). To view `[CFS:Path]` path logs, set the Footstep module log level to Verbose (via `logging.modules.Footstep.level` in `settings.json` or `Debug.Level` in `footstep_voice_rule.json`); `[CFS:Route]` only requires Debug.
 
 **Footsteps frequently interrupted/missing**: Adjust `MinCooldownSeconds` (increase if interrupted, decrease if missing).
 

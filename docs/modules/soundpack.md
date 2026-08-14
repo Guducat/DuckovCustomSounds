@@ -20,7 +20,7 @@ title: 声音包系统
 - **settings.json（备选）**：编辑 `currentSoundPack` 为空串 `""` 恢复默认，或设为包文件夹名。
 - **恢复 Default**：在 ModConfig 选 "Default"，或清空 `currentSoundPack`，重启。
 
-没提供的模块会自动回退：当前包 → Default（根目录）→ 原版音效。
+模块文件只在当前声音包目录里查找（选 Default 时是根目录）；包内没有的模块不会回退到根目录，而是直接使用原版音效。
 
 ## 自己做包
 
@@ -78,7 +78,7 @@ DuckovCustomSounds/
 | `name` | 是 | 在 UI 列表里显示的名字 |
 | `author` | 是 | 作者名 |
 | `version` | 是 | 版本号，建议语义化（1.0.0） |
-| `description` | 否 | 简介，UI 会显示在名称后面 |
+| `description` | 否 | 简介（当前仅写入 pack.json，UI 不显示） |
 | `compatibleModVersion` | 否 | 目标 Mod 兼容版本，只是说明，不影响加载 |
 | `requiredModules` | 否 | 涉及的模块列表，只是说明，不做强校验 |
 | `optional.homepage` | 否 | 主页链接 |
@@ -87,7 +87,7 @@ DuckovCustomSounds/
 注意：
 - 包 ID 是**文件夹名**，不在 pack.json 里设置。
 - `name`/`author`/`version` 缺一个，系统会忽略这个包。
-- UI 显示格式：`名称 v版本号 by 作者 - 描述`。
+- 日志显示格式：`名称 v版本号 by 作者 - 描述`；ModConfig 下拉列表只显示 `name`。
 
 ## 涉及模块
 
@@ -106,7 +106,7 @@ DuckovCustomSounds/
 
 ## 常见问题
 
-- **看不到声音包选项**：`DuckovCustomSounds/` 下没有包含有效 `pack.json` 的子文件夹。根目录有典型资源目录且有音频时，会自动出现 "Default" 选项。
+- **看不到声音包选项**：`DuckovCustomSounds/` 下没有包含有效 `pack.json` 的子文件夹，且根目录也没有带音频的典型资源目录（`HomeBGM`/`BossBGM`/`SceneBGM`/`TitleBGM`）时，不会显示任何选项。根目录有典型资源目录且有音频时，会自动出现 "Default" 选项。
 - **切换不生效**：需重启游戏。检查 `settings.json` 里 `currentSoundPack` 是否正确。
 - **包没出现**：`pack.json` JSON 格式错误或缺少必填字段。
 - **怎么恢复默认**：UI 选 "Default"，或清空 `currentSoundPack` 值重启。

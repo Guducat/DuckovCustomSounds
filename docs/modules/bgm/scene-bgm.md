@@ -29,7 +29,7 @@ SceneBGM/
 5. **类型关键词**：`loading_*`、`lab_*`、`factory_*`、`farm_*`、`zero_*`、`warehouse_*`、`expedition_*`、`outskirts_*`
 6. **默认**：`default_enter.mp3` / `default_loop.mp3`
 
-注意：加载界面属于"loading"类型，Enter 不会对加载场景播放默认音乐（避免黑屏时误播）。**类型关键词同样支持中文**（如 `农场_enter.mp3`、`仓库_enter.mp3`、`零号区_enter.mp3`、`工厂_enter.mp3` 等）。
+注意：加载界面属于"loading"类型，Enter 不会对加载场景播放默认音乐（避免黑屏时误播）。中文场景名可直接用于精确匹配（文件名需与场景显示名一致，如 `零号区_enter.mp3`、`农场镇_enter.mp3`）；类型匹配生成的是英文关键词文件（`farm_enter.mp3`、`warehouse_enter.mp3` 等）。
 
 #### v2.1.1 更新
 `Level_HiddenWarehouse_Main` 同时兼容 `level_warehouse_main_*`，因为`仓库区`更改过场景名等数据，适合资源包使用稳定地图名。
@@ -43,7 +43,7 @@ SceneBGM/
 | 进入音乐音量 | 80% | 0-100% |
 | 启用循环场景 BGM | 开 | 播放 Loop 音乐 |
 | 循环音乐音量 | 60% | 0-100% |
-| 覆盖默认场景音乐 | 开 | Loop 是否覆盖游戏原场景音乐 |
+| 覆盖默认场景音乐 | 开 | 预留设置，当前版本未实际生效 |
 
 改动即时生效；音量变化平滑过渡。
 
@@ -51,7 +51,7 @@ SceneBGM/
 
 1. 关卡初始化完成 → 延迟 `sceneLoadDelay` 秒
 2. 如果有 Enter 音乐 → 淡入播放，结束后自动销毁
-3. 切入 Loop 音乐 → 与 Enter 交叉渐变
+3. Enter 播放完成后切入 Loop 音乐（当前无交叉渐变，`crossfadeDuration` 尚未生效）
 4. 退出关卡时自动停止
 
 ## 高级配置（config.json）
@@ -72,11 +72,11 @@ SceneBGM/
 | `enterFadeDuration` | Enter 淡入/淡出时间（秒） |
 | `loopFadeDuration` | Loop 淡入/淡出时间（秒） |
 | `sceneLoadDelay` | 场景加载后延迟（秒） |
-| `crossfadeDuration` | Enter→Loop 交叉渐变时间（秒） |
+| `crossfadeDuration` | 预留参数，当前代码未使用 |
 
 ## 优先级
 
-Boss BGM > 场景 Loop > 场景 Enter。
+Boss BGM > 场景 BGM（Enter 与 Loop 同被压制）。
 
 - **Boss 压制**：Boss 进入触发距离内时，场景 Loop/Enter 音量平滑降至 0（实例保持播放）；Boss 离开触发距离或消失后自动恢复。
 - **自愈（v2.3.3）**：Boss→Boss 切换的交叉淡出期间，若循环 BGM 实例被意外停止（共享音乐源争用），Boss 解除压制时会自动重建循环 BGM，场景音乐不会永久丢失。

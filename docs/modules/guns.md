@@ -37,11 +37,11 @@ CustomGunSounds/
 
 **射击（无消音器）**：`{TypeID}` → `{soundKey}` → `default`
 
-**换弹开始**：`{TypeID}_reload_start` → `{TypeID}_reload` → `default_reload_start` → `default_reload` → `default`
+**换弹开始**：`{TypeID}_reload_start` → `{TypeID}_reload` → `{soundKey}` → `default_reload_start` → `default_reload` → `default`
 
-**换弹结束**：`{TypeID}_reload_end` → `default_reload_end` → `default`
+**换弹结束**：`{TypeID}_reload_end` → `{soundKey}` → `default_reload_end` → `default`
 
-其中 `{soundKey}` 是从 player.log 中 `[GunShoot]` 行的 `key=xxx` 获取的武器音效标识。
+其中 `{soundKey}` 是从 player.log 中 `[GunShoot]` 行的 `soundKey=xxx` 获取的武器音效标识。
 
 ## 变体
 
@@ -54,13 +54,16 @@ CustomGunSounds/
 
 ## 射击速率限制
 
-防止高射速音效重叠。在 `settings.json` 设（需开启 `gunShootDev`）：
+防止高射速音效重叠。在 `settings.json` 设（需开启 `gunShootDev`，该开关不会自动写入）：
 ```json
 {
   "enableGunShootRateLimit": true,
-  "gunShootMinIntervalMs": 50.0
+  "gunShootMinIntervalMs": 95.0,
+  "gunShootRateLimitPerType": { "258": 150 }
 }
 ```
+
+未设置 `gunShootMinIntervalMs` 时默认 95（范围 0~1000）；`gunShootRateLimitPerType` 可按 TypeID 单独覆盖间隔。
 
 ## ModConfig
 

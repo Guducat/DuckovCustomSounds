@@ -49,6 +49,7 @@ const rootNav: DefaultTheme.NavItem[] = [
     items: [
       { text: 'ModConfig 选项', link: '/advanced/modconfig' },
       { text: '日志与排错', link: '/advanced/logging-troubleshooting' },
+      { text: '环境音拦截（实验性）', link: '/advanced/ambient-intercept' },
       { text: '更新日志', link: '/changelog' }
     ]
   },
@@ -99,7 +100,8 @@ const rootSidebar: DefaultTheme.Sidebar = {
       items: [
         { text: 'ModConfig 选项', link: '/advanced/modconfig' },
         { text: '日志与排错', link: '/advanced/logging-troubleshooting' },
-        { text: '环境音拦截（实验性）', link: '/advanced/ambient-intercept' }
+        { text: '环境音拦截（实验性）', link: '/advanced/ambient-intercept' },
+        { text: '更新日志', link: '/changelog' }
       ]
     }
   ]
@@ -192,7 +194,8 @@ const enSidebar: DefaultTheme.Sidebar = {
       items: [
         { text: 'ModConfig Options', link: '/en/advanced/modconfig' },
         { text: 'Logging & Troubleshooting', link: '/en/advanced/logging-troubleshooting' },
-        { text: 'Ambient Intercept (Experimental)', link: '/en/advanced/ambient-intercept' }
+        { text: 'Ambient Intercept (Experimental)', link: '/en/advanced/ambient-intercept' },
+        { text: 'Changelog', link: '/en/changelog' }
       ]
     }
   ]

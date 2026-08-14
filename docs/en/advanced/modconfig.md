@@ -1,8 +1,8 @@
 # ModConfig Options
 
-All settings can be changed through the in-game ModConfig UI. Except for Sound Pack switching (requires restart), other options take effect immediately.
+All settings can be changed through the in-game ModConfig UI. Except for Sound Pack switching (requires restart), other options take effect immediately. Each group is shown in the UI as `DCSxxx | Chinese name` (as in the section headings below).
 
-## Item Sounds (Item)
+## Item Sounds (DCSItem)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
@@ -13,28 +13,28 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Enable Bandage/Medicine | Bool | On | Includes meds category |
 | Enable Syringe | Bool | On | |
 
-## Gun Sounds (Gun)
+## Gun Sounds (DCSGun)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Enable Custom Gun Sounds | Bool | On | |
 | Volume Scale | Float | 1.0 | 0–2 |
 
-## Melee Sounds (Melee)
+## Melee Sounds (DCSMelee)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Enable Custom Melee Sounds | Bool | On | |
 | Volume Scale | Float | 1.0 | 0–2 |
 
-## Grenade Sounds (Grenade)
+## Grenade Sounds (DCSGrenade)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Enable Custom Grenade Sounds | Bool | On | |
 | Volume Scale | Float | 1.0 | 0–2 |
 
-## Hit & Kill Sounds (HitAndKill)
+## Hit & Kill Sounds (DCSHitAndKill)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
@@ -46,14 +46,14 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Marker Cooldown Ms | Float | 30 | 0–500 |
 | Hurt Cooldown Ms | Float | 120 | 0–1000 |
 
-## Footsteps (Footstep)
+## Footsteps (DCSFootstep)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Enable Custom Footstep Sounds | Bool | On | |
 | Volume Scale | Float | 1.0 | 0–2 |
 
-## Enemy Voices (EnemyVoice)
+## Enemy Voices (DCSEnemyVoice)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
@@ -61,11 +61,11 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Voice Trigger Mode | Enum | Original | Original / Player Only / Mixed |
 | Voice Volume Scale | Float | 1.0 | 0–2 |
 
-## Home BGM (HomeBGM)
+## Home Music (DCSHomeBGM)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
-| Enable Home BGM | Bool | On | |
+| Enable Home Music | Bool | On | |
 | Enable Base Entry Sound | Bool | On | Controls start.mp3 |
 | Music Volume | Int | 100% | 0–100 |
 | Route Music through SFX Bus | Bool | Off | Experimental, routes via SFX instead of Music bus |
@@ -74,40 +74,49 @@ All settings can be changed through the in-game ModConfig UI. Except for Sound P
 | Avoid Consecutive Repeat | Bool | On | Effective in random mode |
 | Auto‑play Next Track | Bool | On | |
 
-## Scene BGM (SceneBGM)
+## Scene Music (DCSSceneBGM)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Enable Scene Music System | Bool | On | |
-| [Enter] Enable Enter Scene BGM | Bool | On | |
-| [Enter] Enter Music Volume | Float | 80% | 0–100 |
-| [Loop] Enable Loop Scene BGM | Bool | On | |
-| [Loop] Loop Music Volume | Float | 60% | 0–100 |
-| [Loop] Override Default Scene Music | Bool | On | |
+| [Enter BGM] Enable Enter Scene BGM | Bool | On | |
+| [Enter BGM] Enter Music Volume | Float | 80% | 0–100 |
+| [Loop BGM] Enable Loop Scene BGM | Bool | On | |
+| [Loop BGM] Loop Music Volume | Float | 60% | 0–100 |
+| [Loop BGM] Override Default Scene Music | Bool | On | Reserved setting, currently has no effect |
 
-## Boss BGM (BossBGM)
+## Boss Music (DCSBossBGM)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
-| Enable Boss BGM | Bool | On | |
+| Enable Boss Music | Bool | On | |
 | Trigger Distance | Float | 40 m | 10–200 |
 | Boss Music Volume | Float | 70% | 0–100 |
 
-## Extraction BGM (ExtractionBGM)
+## Extraction Music (DCSExtractionBGM)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Extraction Music Mode | Enum | Disabled | Disabled / Countdown Sound / Success Replacement |
 | Extraction Sound Volume | Float | 100% | 0–100 |
 
-## Ambient Intercept (AmbientIntercept)
+## Ambient Intercept (DCSAmbientIntercept)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|
 | Enable Ambient Intercept (Experimental) | Bool | Off | Intercepts `Amb/amb_*` ambience while allowing `Amb/amb_storm` through |
 | Intercept Storm Phase Stingers (Experimental) | Bool | Off | Intercepts `Music/Stinger/stg_storm_1` and `Music/Stinger/stg_storm_2` |
 
-## Sound Pack (SoundPack)
+## Sound Logging (DCSLogging)
+
+| Setting | Type | Default | Description |
+|--------|------|------|------|
+| Enable Log Output | Bool | On | Global master switch; disables all module logging when off |
+| Core / SoundPack / Enemy / Footstep / BGM / HomeBGM / SceneBGM / ExtractionBGM / Gun / Grenade / Item / Melee log level | Dropdown | Info | Error/Warning/Info/Debug/Verbose, hot-switchable |
+
+Note: the `HitAndKill` module's log level is **not** in this UI group; it can only be set via `logging.modules.HitAndKill.level` in settings.json.
+
+## Sound Pack (DCSSoundPack)
 
 | Setting | Type | Default | Description |
 |--------|------|------|------|

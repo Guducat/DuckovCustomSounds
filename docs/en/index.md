@@ -23,7 +23,7 @@ features:
   - title: Rule‑driven Enemy Voices
     details: Multi‑dimension matching by team/rank/type/NameKey, variant binding and priority control.
   - title: Footsteps & Movement Sounds
-    details: Supports walk/run/dash across the full flow; matches FMOD 3D distance, mix volume controllable.
+    details: Supports walk/run/dash across the full flow; volume and trigger interval adjustable in ModConfig.
   - title: Weapons / Grenades / Melee / Items
     details: Covers Shoot, Explosive, Melee, Hit/Kill Marker, and Item usage events, with soundKey and TypeID matching.
 ---
@@ -38,7 +38,7 @@ const fmtMap = {
   'Boss': bgmFormats,
   'Extraction': bgmFormats,
   'Voices': '.mp3, .wav（extendable to .ogg, .flac via voice_rules.json）',
-  'Footsteps': '.mp3, .wav（extendable to .ogg, .flac via footsteps.json）',
+  'Footsteps': '.mp3, .wav (extendable to .ogg, .flac via footstep_voice_rule.json)',
   'Guns': sfx4Formats,
   'Melee': sfx4Formats,
   'Grenade': sfx4Formats,

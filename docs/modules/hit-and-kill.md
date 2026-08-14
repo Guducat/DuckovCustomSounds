@@ -37,7 +37,7 @@ CustomHitAndKillSounds/
 
 ## 变体
 
-同一个文件可以添加 `_1`、`_2` 后缀随机选择：
+同一个文件可以添加 `_1`、`_2` 等任意正整数后缀随机选择：
 
 ```text
 CustomHitAndKillSounds/
@@ -71,8 +71,8 @@ SFX/Combat/Marker/killmarker_head
 | 播放受击音效 | 开 |
 | 启用反射诊断日志 | 关 |
 | 音量倍率 | 1.0（0~2） |
-| 提示音冷却毫秒 | 30 |
-| 受击音效冷却毫秒 | 120 |
+| 提示音冷却毫秒 | 30（0~500） |
+| 受击音效冷却毫秒 | 120（0~1000） |
 
 ## 日志
 
@@ -82,10 +82,12 @@ SFX/Combat/Marker/killmarker_head
 {
   "logging": {
     "modules": {
-      "HitAndKill": { "level": "Debug" }
+      "HitAndKill": { "level": "Verbose" }
     }
   }
 }
 ```
 
-排查未知受击事件时，可同时开启 `enableAudioPostLogger` 和 `reflectionDiagnostics`。
+> `enableAudioPostLogger` 的跟踪日志是 Verbose 级，设 `Debug` 会被过滤，排查时请用 `Verbose`。
+
+排查未知受击事件时，可同时开启 `enableAudioPostLogger`（settings.json 顶层键，默认关闭）和 `reflectionDiagnostics`（ModConfig 中的"启用反射诊断日志"）。
